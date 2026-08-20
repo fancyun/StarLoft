@@ -1,7 +1,7 @@
 <template>
   <div class="api-container">
     <div class="content">
-      <div class="card">
+      <div class="card" v-loading="pageLoading">
         <h3 class="section-title">
           <el-icon><Key /></el-icon>
           API 密钥
@@ -59,6 +59,7 @@ const userStore = useUserStore()
 
 const userInfo = ref<any>({})
 const showSecret = ref(false)
+const pageLoading = ref(true)
 
 const maskSecret = (secret: string) => {
   if (!secret) return ''
@@ -93,6 +94,8 @@ const loadData = async () => {
     userStore.setUserInfo(profile)
   } catch (error) {
     console.error(error)
+  } finally {
+    pageLoading.value = false
   }
 }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-container">
-    <div class="content">
+    <div class="content" v-loading="pageLoading">
       <!-- 状态卡片 -->
       <div class="status-cards">
         <div class="card">
@@ -72,6 +72,7 @@ const userStore = useUserStore()
 
 const userInfo = ref<any>({})
 const callChartRef = ref()
+const pageLoading = ref(true)
 
 let callChartInstance: ReturnType<typeof echarts.init> | null = null
 let disposed = false
@@ -113,6 +114,8 @@ const loadData = async () => {
     userStore.setUserInfo(profile)
   } catch (error) {
     console.error(error)
+  } finally {
+    pageLoading.value = false
   }
 }
 

@@ -2,6 +2,8 @@
   <div class="kyc-container">
     <div class="content">
       <div class="kyc-card">
+        <el-skeleton v-if="pageLoading" :rows="8" animated />
+        <template v-else>
         <!-- 状态 1：已实名（record_status=2） -->
         <div v-if="recordStatus === 2" class="verified-section">
           <el-icon class="success-icon"><SuccessFilled /></el-icon>
@@ -102,6 +104,7 @@
             </ul>
           </div>
         </div>
+        </template>
       </div>
     </div>
   </div>
@@ -116,6 +119,7 @@ import { userAPI } from '@/api'
 const router = useRouter()
 
 const loading = ref(false)
+const pageLoading = ref(true)
 const recordStatus = ref(-1)  // -1=无记录, 1=进行中, 2=已实名, 3=失败
 const kycName = ref('')
 const kycIDCard = ref('')
@@ -258,6 +262,8 @@ const loadData = async () => {
     kycPrice.value = profileRes.kyc_price || 1.0
   } catch (error) {
     console.error(error)
+  } finally {
+    pageLoading.value = false
   }
 }
 

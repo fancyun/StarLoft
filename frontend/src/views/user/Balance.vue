@@ -1,7 +1,7 @@
 <template>
   <div class="balance-container">
     <div class="content">
-      <div class="card">
+      <div class="card" v-loading="pageLoading">
         <h3 class="section-title">
           <el-icon><Wallet /></el-icon>
           余额管理
@@ -48,6 +48,7 @@ const userStore = useUserStore()
 
 const userInfo = ref<any>({})
 const rechargeLoading = ref(false)
+const pageLoading = ref(true)
 
 const rechargeForm = reactive({
   amount: '',
@@ -83,6 +84,8 @@ const loadData = async () => {
     userStore.setUserInfo(profile)
   } catch (error) {
     console.error(error)
+  } finally {
+    pageLoading.value = false
   }
 }
 

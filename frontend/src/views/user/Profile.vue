@@ -1,6 +1,6 @@
 <template>
   <div class="profile-container">
-    <div class="content">
+    <div class="content" v-loading="pageLoading">
       <div class="profile-grid">
         <!-- 个人信息 -->
         <div class="card">
@@ -131,6 +131,7 @@ const userStore = useUserStore()
 
 const userInfo = ref<any>({})
 const showSecret = ref(false)
+const pageLoading = ref(true)
 const dialogVisible = ref(false)
 const rechargeLoading = ref(false)
 const passwordLoading = ref(false)
@@ -274,6 +275,8 @@ const loadUserInfo = async () => {
     userInfo.value = res
   } catch (error) {
     console.error(error)
+  } finally {
+    pageLoading.value = false
   }
 }
 
