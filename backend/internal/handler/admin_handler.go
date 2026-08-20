@@ -1173,3 +1173,89 @@ func (h *AdminHandler) GetUserAuthOrders(c *gin.Context) {
 		},
 	})
 }
+
+// ChangePassword 修改管理员密码
+func (h *AdminHandler) ChangePassword(c *gin.Context) {
+	adminIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    401,
+			"message": "unauthorized",
+		})
+		return
+	}
+	adminID, ok := adminIDVal.(int64)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    401,
+			"message": "invalid admin identity",
+		})
+		return
+	}
+
+	var req struct {
+		OldPassword string `json:"old_password" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid request parameters",
+		})
+		return
+	}
+
+	// 查询当前管理员
+	admin, err := h.adminRepo.GetAdminByID(adminID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "admin not found",
+		})
+		return
+	}
+
+	// 校验旧密码
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(req.OldPassword)); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid old password",
+		})
+		return
+	}
+
+	// 校验新密码（与创建管理员一致，至少6位）
+	if len(req.NewPassword) < 6 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "password must be at least 6 characters",
+		})
+		return
+	}
+
+	// 生成新密码哈希
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("Failed to hash new password: %v", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to hash password",
+		})
+		return
+	}
+
+	// 更新密码
+	if err := h.adminRepo.UpdateAdminPassword(adminID, string(hashedPassword)); err != nil {
+		log.Printf("Failed to update admin password: %v", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to change password",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+	})
+}

@@ -48,7 +48,9 @@
             <el-table-column prop="cost" label="金额" width="100">
               <template #default="{ row }">¥{{ row.cost }}</template>
             </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="180" />
+            <el-table-column prop="created_at" label="创建时间" width="180">
+              <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+            </el-table-column>
             <el-table-column label="操作" fixed="right" width="120">
               <template #default="{ row }">
                 <el-button size="small" @click="viewAuthDetail(row)">详情</el-button>
@@ -107,7 +109,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="paid_at" label="支付时间" width="180">
-              <template #default="{ row }">{{ row.paid_at || '-' }}</template>
+              <template #default="{ row }">{{ row.paid_at ? formatDateTime(row.paid_at) : '-' }}</template>
             </el-table-column>
             <el-table-column label="操作" fixed="right" width="120">
               <template #default="{ row }">
@@ -136,6 +138,7 @@
 import { ref, onMounted, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { adminAPI } from '@/api'
+import { formatDateTime } from '@/utils/format'
 
 const loading = ref(false)
 const activeTab = ref('auth')

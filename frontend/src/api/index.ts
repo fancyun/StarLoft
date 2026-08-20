@@ -237,5 +237,10 @@ export const adminAPI = {
   // 获取最近订单
   getRecentOrders: (limit: number) => {
     return request.get(`/admin/orders/recent?limit=${limit}`)
+  },
+
+  // 修改管理员密码
+  changePassword: (data: { old_password: string; new_password: string }) => {
+    return request.post('/admin/change-password', data)
   }
 }

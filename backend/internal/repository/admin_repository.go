@@ -46,3 +46,35 @@ func (r *AdminRepository) UpdateLastLoginTime(adminID int64) error {
 	_, err := r.db.Exec(query, time.Now(), time.Now(), adminID)
 	return err
 }
+
+// GetAdminByID 根据ID查询管理员
+func (r *AdminRepository) GetAdminByID(id int64) (*model.AdminUser, error) {
+	query := `SELECT id, username, password_hash, nickname, status, last_login_at, created_at, updated_at 
+		FROM admin_user WHERE id = ?`
+
+	admin := &model.AdminUser{}
+	err := r.db.QueryRow(query, id).Scan(
+		&admin.ID,
+		&admin.Username,
+		&admin.PasswordHash,
+		&admin.Nickname,
+		&admin.Status,
+		&admin.LastLoginAt,
+		&admin.CreatedAt,
+		&admin.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return admin, nil
+}
+
+// UpdateAdminPassword 更新管理员密码
+func (r *AdminRepository) UpdateAdminPassword(id int64, passwordHash string) error {
+	query := `UPDATE admin_user SET password_hash = ?, updated_at = ? WHERE id = ?`
+	_, err := r.db.Exec(query, passwordHash, time.Now(), id)
+	return err
+}

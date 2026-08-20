@@ -88,7 +88,9 @@
         <el-table-column prop="cost" label="金额" width="100">
           <template #default="{ row }">¥{{ row.cost }}</template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" />
+        <el-table-column prop="created_at" label="创建时间">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -99,6 +101,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { adminAPI } from '@/api'
+import { formatDateTime } from '@/utils/format'
 
 // 在 TS 里读取 CSS 变量，保证图表色和主题同步
 const var_color_primary = computed(() =>

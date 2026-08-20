@@ -62,8 +62,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="注册时间" width="180" />
-        <el-table-column prop="last_login_at" label="最后登录" width="180" />
+        <el-table-column prop="created_at" label="注册时间" width="180">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column prop="last_login_at" label="最后登录" width="180">
+          <template #default="{ row }">{{ row.last_login_at ? formatDateTime(row.last_login_at) : '-' }}</template>
+        </el-table-column>
         <el-table-column label="操作" fixed="right" width="560">
           <template #default="{ row }">
             <el-button size="small" @click="handleViewDetail(row)">详情</el-button>
@@ -109,8 +113,8 @@
         <el-descriptions-item label="API Key" :span="2">
           <el-text type="info" style="font-family: monospace">{{ currentUser.api_key }}</el-text>
         </el-descriptions-item>
-        <el-descriptions-item label="注册时间">{{ currentUser.created_at }}</el-descriptions-item>
-        <el-descriptions-item label="最后登录">{{ currentUser.last_login_at || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="注册时间">{{ formatDateTime(currentUser.created_at) }}</el-descriptions-item>
+        <el-descriptions-item label="最后登录">{{ formatDateTime(currentUser.last_login_at) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
 
@@ -273,7 +277,9 @@
       <el-tabs v-model="financeActiveTab" style="margin-top: 20px">
         <el-tab-pane label="余额流水" name="balance">
           <el-table :data="balanceLogs" style="width: 100%" max-height="400">
-            <el-table-column prop="created_at" label="时间" width="180" />
+            <el-table-column prop="created_at" label="时间" width="180">
+              <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+            </el-table-column>
             <el-table-column prop="type" label="类型" width="100">
               <template #default="{ row }">
                 <el-tag :type="getBalanceTypeTag(row.type)">{{ getBalanceTypeName(row.type) }}</el-tag>
@@ -303,7 +309,9 @@
                 <el-tag :type="getOrderStatusTag(row.status)">{{ getOrderStatusName(row.status) }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="180" />
+            <el-table-column prop="created_at" label="创建时间" width="180">
+              <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+            </el-table-column>
           </el-table>
         </el-tab-pane>
       </el-tabs>
@@ -315,6 +323,7 @@
 import { ref, onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
 import { adminAPI } from '@/api'
+import { formatDateTime } from '@/utils/format'
 
 const loading = ref(false)
 interface User {

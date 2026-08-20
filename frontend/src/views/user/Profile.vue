@@ -22,7 +22,7 @@
           </div>
           <div class="info-item">
             <span class="label">注册时间</span>
-            <span class="value">{{ userInfo.created_at }}</span>
+            <span class="value">{{ formatDateTime(userInfo.created_at) }}</span>
           </div>
         </div>
 
@@ -125,6 +125,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { userAPI } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { verifyCaptcha } from '@/utils/captcha'
+import { formatDateTime } from '@/utils/format'
 
 const router = useRouter()
 const userStore = useUserStore()

@@ -196,6 +196,9 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 				adminAuth.GET("/config", adminHandler.GetSystemConfig)
 				adminAuth.PUT("/config", adminHandler.UpdateSystemConfig)
 
+				// 管理员修改密码
+				adminAuth.POST("/change-password", adminHandler.ChangePassword)
+
 				// Dashboard数据
 				adminAuth.GET("/dashboard", dashboardHandler.GetDashboard)
 
