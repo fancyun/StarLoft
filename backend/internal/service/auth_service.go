@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"starloftrpa/internal/config"
@@ -57,6 +59,7 @@ func (s *AuthService) StartAuth(
 	userID int64,
 	name, idCard, bizNo, returnURL, notifyURL string,
 	bizExtraData string,
+	usePlatformURLs bool,
 ) (*StartAuthResult, error) {
 	// 使用配置中的默认值（如果未传入）
 	if returnURL == "" {
@@ -125,11 +128,19 @@ func (s *AuthService) StartAuth(
 	// 更新订单消费金额
 	order.Cost = kycPrice
 
+	// 传给上游 get_token 的地址：下游调用时使用平台地址（平台中转），否则透传
+	upstreamReturnURL := returnURL
+	upstreamNotifyURL := notifyURL
+	if usePlatformURLs {
+		upstreamReturnURL = s.buildPlatformReturnURL(platformBizNo)
+		upstreamNotifyURL = s.config.NotifyURL
+	}
+
 	// 调用上游 get_token
 	req := &upstream.GetTokenRequest{
 		SignVersion:    upstream.SignVersionHMACSHA256,
-		ReturnURL:      returnURL,
-		NotifyURL:      notifyURL,
+		ReturnURL:      upstreamReturnURL,
+		NotifyURL:      upstreamNotifyURL,
 		BizNo:          platformBizNo,
 		SceneID:        s.config.SceneID,
 		ComparisonType: "1", // 人脸核身模式
@@ -165,6 +176,19 @@ func (s *AuthService) StartAuth(
 	}, nil
 }
 
+// buildPlatformReturnURL 构造平台中转 return 页面地址（/kyc?biz_no=平台流水号）
+func (s *AuthService) buildPlatformReturnURL(platformBizNo string) string {
+	base := s.config.ReturnURL
+	if base == "" {
+		return ""
+	}
+	sep := "?"
+	if strings.Contains(base, "?") {
+		sep = "&"
+	}
+	return base + sep + "biz_no=" + url.QueryEscape(platformBizNo)
+}
+
 // GetAuthResult 查询认证结果
 func (s *AuthService) GetAuthResult(userID int64, bizNo, platformBizNo string) (*model.AuthOrder, error) {
 	var order *model.AuthOrder
@@ -184,6 +208,22 @@ func (s *AuthService) GetAuthResult(userID int64, bizNo, platformBizNo string) (
 		s.syncOrderResult(order)
 		// 重新查询
 		order, _ = s.orderRepo.GetOrderByPlatformBizNo(order.PlatformBizNo)
+	}
+
+	return order, nil
+}
+
+// GetPublicOrderResult 公开查询认证结果（/kyc 中转页按平台流水号查询，处理中时主动同步上游）
+func (s *AuthService) GetPublicOrderResult(platformBizNo string) (*model.AuthOrder, error) {
+	order, err := s.orderRepo.GetOrderByPlatformBizNo(platformBizNo)
+	if err != nil {
+		return nil, err
+	}
+
+	// 如果订单还在处理中，尝试从上游查询最新结果
+	if order.Status == 0 || order.Status == 1 {
+		s.syncOrderResult(order)
+		order, _ = s.orderRepo.GetOrderByPlatformBizNo(platformBizNo)
 	}
 
 	return order, nil

@@ -67,7 +67,7 @@ services:
       FINAUTH_API_SECRET: ${FINAUTH_API_SECRET}
       FINAUTH_SCENE_ID: ${FINAUTH_SCENE_ID:-kyc}
       FINAUTH_BASE_URL: ${FINAUTH_BASE_URL:-https://api.yljz.com}
-      FINAUTH_RETURN_URL: ${FINAUTH_RETURN_URL:-https://kyc.starloft.cn/auth-result}
+      FINAUTH_RETURN_URL: ${FINAUTH_RETURN_URL:-https://kyc.starloft.cn/kyc}
       FINAUTH_NOTIFY_URL: ${FINAUTH_NOTIFY_URL:-https://kyc.starloft.cn/api/v1/callback/finauth}
       
       # 腾讯云配置

@@ -128,6 +128,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		public := v1.Group("/public")
 		{
 			public.GET("/config", publicHandler.GetPublicConfig)
+			public.GET("/kyc/result", authHandler.GetPublicKycResult)
 		}
 
 		// 用户相关路由（Web前端调用，JWT鉴权）

@@ -110,6 +110,7 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		req.ReturnURL,
 		req.NotifyURL,
 		req.BizExtraData,
+		true, // 下游调用：平台中转，向上游传平台地址，平台收到后再通知/跳转下游
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {
@@ -191,6 +192,38 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 			"result_message":  order.ResultMessage,
 			"status":          order.Status,
 			"cost":            order.Cost,
+		},
+	})
+}
+
+// GetPublicKycResult 公开查询认证结果（/kyc 中转页调用，按平台流水号查询）
+func (h *AuthHandler) GetPublicKycResult(c *gin.Context) {
+	bizNo := c.Query("biz_no")
+	if bizNo == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "missing biz_no",
+		})
+		return
+	}
+
+	order, err := h.authService.GetPublicOrderResult(bizNo)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "order not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"status":         order.Status,
+			"result_code":    order.ResultCode,
+			"result_message": order.ResultMessage,
+			"return_url":     order.ReturnURL,
 		},
 	})
 }
@@ -422,6 +455,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		req.ReturnURL,
 		notifyURL,
 		bizExtraData,
+		false, // Web 前端自己实名：透传前端/配置地址
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {

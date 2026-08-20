@@ -36,6 +36,42 @@
       </div>
     </div>
 
+    <!-- biz_no：下游返回，按平台流水号查询结果 -->
+    <div v-else-if="bizNo" class="verify-card">
+      <!-- 加载中 -->
+      <div v-if="checking" class="status-section">
+        <div class="spinner"></div>
+        <h2>正在获取认证结果...</h2>
+      </div>
+
+      <!-- 认证成功（已完成验证） -->
+      <div v-else-if="resultStatus === 2" class="status-section success">
+        <el-icon class="result-icon success-icon"><SuccessFilled /></el-icon>
+        <h2>已完成验证</h2>
+        <p>{{ countdown }} 秒后自动返回</p>
+        <el-button type="primary" size="large" @click="goBack">立即返回</el-button>
+      </div>
+
+      <!-- 认证失败 -->
+      <div v-else-if="resultStatus === 3" class="status-section failed">
+        <el-icon class="result-icon failed-icon"><CircleCloseFilled /></el-icon>
+        <h2>实名认证未通过</h2>
+        <p v-if="resultMessage">原因：{{ resultMessage }}</p>
+        <p>{{ countdown }} 秒后自动返回</p>
+        <el-button type="primary" size="large" @click="goBack">立即返回</el-button>
+      </div>
+
+      <!-- 处理中 -->
+      <div v-else class="status-section">
+        <el-icon class="result-icon"><Clock /></el-icon>
+        <h2>认证处理中</h2>
+        <p>如您已完成人脸验证，请点击下方按钮手动查询结果</p>
+        <el-button type="primary" size="large" :loading="checking" @click="fetchPublicResult">
+          我已完成验证，点击此处
+        </el-button>
+      </div>
+    </div>
+
     <!-- 无 token：返回结果展示 -->
     <div v-else class="verify-card">
       <!-- 加载中 -->
@@ -85,16 +121,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isMobileOrTablet } from '@/utils/device'
-import { userAPI } from '@/api'
+import { userAPI, publicAPI } from '@/api'
 import QRCode from 'qrcode'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const token = ref((route.query.token as string) || '')
+const bizNo = ref((route.query.biz_no as string) || '')
 const isMobile = ref(false)
 const qrCanvas = ref<HTMLCanvasElement>()
 
@@ -105,6 +142,8 @@ const resultIDCard = ref('')
 const resultMessage = ref('')
 const returnUrl = ref('')
 const hasResult = ref(false)
+const countdown = ref(5)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const authUrl = `https://api.yljz.com/finauth/lite/do?token=${token.value}`
 
@@ -214,8 +253,52 @@ async function syncAndShowResult() {
   }
 }
 
+function startCountdown() {
+  countdown.value = 5
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      if (countdownTimer) clearInterval(countdownTimer)
+      goBack()
+    }
+  }, 1000)
+}
+
+async function fetchPublicResult() {
+  checking.value = true
+  try {
+    const res: any = await publicAPI.getKycResult(bizNo.value)
+    if (res.return_url) returnUrl.value = res.return_url
+
+    if (res.status === 2) {
+      resultStatus.value = 2
+    } else if (res.status === 3 || res.status === 4 || res.status === 5) {
+      resultStatus.value = 3
+      resultMessage.value = res.result_message || ''
+    } else {
+      resultStatus.value = 0
+    }
+  } catch (error) {
+    resultStatus.value = 0
+  } finally {
+    checking.value = false
+  }
+
+  // 已有结果，启动倒计时自动返回
+  if (resultStatus.value === 2 || resultStatus.value === 3) {
+    startCountdown()
+  }
+}
+
 onMounted(async () => {
   isMobile.value = isMobileOrTablet()
+
+  // 下游返回场景：按 biz_no 查询上游结果
+  if (bizNo.value) {
+    fetchPublicResult()
+    return
+  }
 
   if (token.value) {
     // 有 token：先同步上游结果
@@ -241,6 +324,10 @@ onMounted(async () => {
     // 无 token：从上游返回，自动回调结果
     fetchResult()
   }
+})
+
+onBeforeUnmount(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
 })
 </script>
 
