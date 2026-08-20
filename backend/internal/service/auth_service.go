@@ -320,6 +320,17 @@ func (s *AuthService) GetUserAuthCallStats(userID int64, days int) ([]string, []
 	return dates, counts, nil
 }
 
+// isInProgressMessage 判断上游返回的 result_message 是否表示「认证尚未开始/进行中」。
+// 该状态下认证流程尚未完结，不应视为失败。
+func isInProgressMessage(msg string) bool {
+	m := strings.ToUpper(strings.TrimSpace(msg))
+	switch m {
+	case "NOT_STARTED", "PROCESSING", "NOT_START", "IN_PROGRESS", "PENDING":
+		return true
+	}
+	return false
+}
+
 // syncOrderResult 同步订单结果（从上游查询）
 func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 	if order.UpBizID == "" {
@@ -334,6 +345,12 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 	result, err := s.finAuthClient.GetResult(req)
 	if err != nil {
 		log.Printf("同步订单结果失败 [biz_id=%s]: %v", order.UpBizID, err)
+		return
+	}
+
+	// 未开始/进行中：认证尚未完结，保持「认证中」，不结束流程
+	if isInProgressMessage(result.ResultMessage) {
+		log.Printf("认证尚未开始或进行中，保持认证中状态 [biz_id=%s, result_message=%s]", order.UpBizID, result.ResultMessage)
 		return
 	}
 
@@ -409,6 +426,12 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 	if err != nil {
 		log.Printf("查找订单失败 [biz_id=%s]: %v", notifyData.BizInfo.BizID, err)
 		return fmt.Errorf("order not found: %w", err)
+	}
+
+	// 未开始/进行中：认证尚未完结，忽略本次回调，保持「认证中」
+	if isInProgressMessage(notifyData.ResultMessage) {
+		log.Printf("回调表示认证尚未开始或进行中，忽略 [biz_id=%s, result_message=%s]", notifyData.BizInfo.BizID, notifyData.ResultMessage)
+		return nil
 	}
 
 	// 4. 判断认证结果
