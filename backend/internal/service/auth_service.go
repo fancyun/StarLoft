@@ -122,6 +122,10 @@ func (s *AuthService) StartAuth(
 	// 扣除余额（使用用户KYC单价）
 	err = s.balanceService.DeductBalance(userID, kycPrice, order.ID, "KYC认证消费")
 	if err != nil {
+		log.Printf("扣除余额失败 [order_id=%d]: %v", order.ID, err)
+		// 余额未扣（事务已回滚），仅将订单和实名记录标记为失败，避免产生悬挂订单
+		_ = s.orderRepo.UpdateOrderResult(order.ID, "DEDUCT_FAILED", "扣费失败", 3)
+		_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 3, "DEDUCT_FAILED", "扣费失败", "", nil)
 		return nil, fmt.Errorf("扣除余额失败: %w", err)
 	}
 
@@ -159,7 +163,10 @@ func (s *AuthService) StartAuth(
 	// 更新订单上游信息
 	err = s.orderRepo.UpdateOrderUpstreamInfo(order.ID, tokenResp.Token, tokenResp.BizID, tokenResp.RequestID)
 	if err != nil {
-		log.Printf("更新订单上游信息失败: %v", err)
+		log.Printf("更新订单上游信息失败 [order_id=%d]: %v", order.ID, err)
+		// 余额已扣但 token 未写入，退还预扣余额并将订单标记为超时退款，避免悬挂
+		s.revertStartAuth(order, kycRecord, userID, "写入token失败退款")
+		return nil, fmt.Errorf("update order upstream info failed: %w", err)
 	}
 
 	// 生成认证 URL（基于配置中的 base_url）

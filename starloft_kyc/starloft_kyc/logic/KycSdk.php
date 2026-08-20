@@ -68,7 +68,12 @@ class KycSdk
         $url = $this->apiUrl . $endpoint;
 
         // 序列化请求体（签名与实际发送必须完全一致）
-        $body = ($method === 'POST') ? json_encode($data) : '';
+        // POST 无参数时发送空 JSON 对象 {}，与文档保持一致（空数组 [] 易被误判为非法 JSON）
+        if ($method === 'POST') {
+            $body = empty($data) ? '{}' : json_encode($data);
+        } else {
+            $body = '';
+        }
 
         // 时间戳：Unix 秒，后端校验允许 ±5 分钟
         $timestamp = (string)time();
@@ -114,21 +119,31 @@ class KycSdk
         }
         
         $result = json_decode($response, true);
-        
-        if (!$result) {
+
+        // 响应体不是合法 JSON：通常是 404/502 等网关或路由返回的 HTML，
+        // 附带 HTTP 状态码与响应片段，便于定位（常见原因：API地址缺少 /api/v1 前缀）
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $snippet = substr(trim((string)$response), 0, 200);
+            $message = 'API响应解析失败 (HTTP ' . $httpCode . ')';
+            if ($snippet !== '') {
+                $message .= ': ' . $snippet;
+            }
+            if ($httpCode == 404) {
+                $message .= ' [提示: 请确认 API地址 包含 /api/v1 前缀]';
+            }
             return [
                 'code' => -1,
-                'message' => 'API响应解析失败'
+                'message' => $message
             ];
         }
-        
+
         if ($httpCode !== 200) {
             return [
                 'code' => $httpCode,
-                'message' => $result['message'] ?? 'HTTP错误: ' . $httpCode
+                'message' => $result['message'] ?? ('HTTP错误: ' . $httpCode)
             ];
         }
-        
+
         return $result;
     }
 

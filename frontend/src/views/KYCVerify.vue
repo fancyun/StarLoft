@@ -97,11 +97,16 @@ function copyLink() {
 }
 
 function goBack() {
-  // 优先跳转到下游的 return_url，否则跳到用户首页
+  // 认证完成/失败后，优先返回下游的 return_url（下游最终用户场景）
   if (returnUrl.value) {
     window.location.href = returnUrl.value
   } else {
-    router.push('/user/kyc')
+    // 下游未提供 return_url 时，退回浏览器上一页，避免错误跳转到平台登录页
+    if (window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/')
+    }
   }
 }
 

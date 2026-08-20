@@ -55,6 +55,16 @@ class StarloftKycPlugin extends Plugin
     public function personal($certifi)
     {
         try {
+            // 防重复发起：刷新页面或重复提交时，若上次认证仍在进行中，直接返回提示，不重复创建订单
+            $uid = \request()->uid;
+            $pendingKey = 'starloft_kyc_pending_' . $uid;
+            $pending = session($pendingKey);
+            if (is_array($pending) && !empty($pending['time']) && (time() - intval($pending['time'])) < 900) {
+                return "<h3 class=\"pt-2 font-weight-bold h2 py-4\" style=\"color: #e6a23c;\">
+                    <i class=\"fa fa-info-circle\"></i> 您有认证正在进行中，请勿重复提交，请点击页面上的“前往认证”按钮继续完成认证
+                </h3>";
+            }
+
             // 获取插件配置
             $config = $this->getConfig();
             
@@ -64,8 +74,7 @@ class StarloftKycPlugin extends Plugin
             // 生成业务订单号
             $bizNo = 'ZJMF' . date('YmdHis') . mt_rand(1000, 9999);
             
-            // 构建回调URL
-            $uid = \request()->uid;
+            // 构建回调URL（$uid 已在防重复检查处获取）
             $notifyUrl = request()->domain() . '/certification/starloft_kyc/callback?uid=' . $uid;
             $returnUrl = request()->domain() . '/certification/starloft_kyc/result?uid=' . $uid;
             
@@ -81,7 +90,10 @@ class StarloftKycPlugin extends Plugin
             
             if ($result['code'] === 0) {
                 $orderData = $result['data'];
-                
+
+                // 记录会话标记，防止刷新页面重复发起（与订单有效期15分钟一致）
+                session($pendingKey, ['biz_no' => $bizNo, 'time' => time()]);
+
                 // 更新认证状态
                 $data = [
                     'status' => 4, // 4: 认证中
@@ -188,11 +200,13 @@ HTML;
                 
                 switch ($orderData['status']) {
                     case 2: // 认证成功
+                        $this->clearPendingMark();
                         return [
                             'status' => 1,
                             'msg' => '实名认证通过'
                         ];
                     case 3: // 认证失败
+                        $this->clearPendingMark();
                         return [
                             'status' => 2,
                             'msg' => $orderData['result_message'] ?? '实名认证失败'
@@ -217,6 +231,19 @@ HTML;
                 'status' => 4,
                 'msg' => '查询中...'
             ];
+        }
+    }
+
+    /**
+     * 清除当前用户“认证进行中”的会话标记
+     * 
+     * 认证有最终结果（成功/失败）后调用，允许用户重新发起认证
+     */
+    private function clearPendingMark()
+    {
+        $uid = \request()->uid;
+        if ($uid) {
+            session('starloft_kyc_pending_' . $uid, null);
         }
     }
 }
