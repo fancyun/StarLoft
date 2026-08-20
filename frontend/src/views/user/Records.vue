@@ -1,0 +1,139 @@
+<template>
+  <div class="records-container">
+    <div class="content">
+      <div class="records-card">
+        <div class="card-header">
+          <h2>认证记录</h2>
+          <div class="filters">
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              size="default"
+            />
+            <el-button @click="loadRecords">查询</el-button>
+          </div>
+        </div>
+
+        <el-table :data="records" style="width: 100%" v-loading="loading">
+          <el-table-column prop="platform_biz_no" label="平台流水号" width="180" />
+          <el-table-column prop="biz_no" label="业务流水号" width="180" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag v-if="row.status === 2" type="success">已完成</el-tag>
+              <el-tag v-else-if="row.status === 3" type="danger">失败</el-tag>
+              <el-tag v-else-if="row.status === 5" type="info">超时</el-tag>
+              <el-tag v-else type="warning">处理中</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="result_message" label="结果" width="120" />
+          <el-table-column prop="cost" label="费用" width="80">
+            <template #default="{ row }">¥{{ row.cost }}</template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="创建时间" width="180" />
+          <el-table-column label="操作" width="100">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewDetail(row)">详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="loadRecords"
+          @size-change="loadRecords"
+          style="margin-top: 20px; justify-content: center"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { userAPI } from '@/api'
+
+const loading = ref(false)
+const records = ref([])
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+const dateRange = ref([])
+
+const loadRecords = async () => {
+  loading.value = true
+  try {
+    const params: any = {
+      page: page.value,
+      page_size: pageSize.value
+    }
+    
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = dateRange.value[0]
+      params.end_date = dateRange.value[1]
+    }
+    
+    const res = await userAPI.getKYCRecords(params)
+    records.value = res.list
+    total.value = res.total
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const viewDetail = (_row: any) => {
+  ElMessage.info('详情功能待实现')
+}
+
+onMounted(() => {
+  loadRecords()
+})
+</script>
+
+<style scoped>
+.records-container {
+  min-height: 100%;
+}
+
+.content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.records-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card-header h2 {
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+</style>

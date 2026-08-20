@@ -1,0 +1,316 @@
+<template>
+  <div class="admin-dashboard">
+    <div class="stats-cards">
+      <el-card class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon users">
+            <el-icon><User /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats.totalUsers }}</div>
+            <div class="stat-label">总用户数</div>
+          </div>
+        </div>
+      </el-card>
+      
+      <el-card class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon orders">
+            <el-icon><Document /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats.todayOrders }}</div>
+            <div class="stat-label">今日订单数</div>
+          </div>
+        </div>
+      </el-card>
+      
+      <el-card class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon revenue">
+            <el-icon><Coin /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">¥{{ stats.todayRevenue }}</div>
+            <div class="stat-label">今日收入</div>
+          </div>
+        </div>
+      </el-card>
+      
+      <el-card class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon monthly">
+            <el-icon><TrendCharts /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">¥{{ stats.monthRevenue }}</div>
+            <div class="stat-label">本月收入</div>
+          </div>
+        </div>
+      </el-card>
+    </div>
+
+    <el-row :gutter="20" class="chart-row">
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <span>订单趋势</span>
+          </template>
+          <div ref="ordersChartRef" style="height: 300px"></div>
+        </el-card>
+      </el-col>
+      
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <span>收入趋势</span>
+          </template>
+          <div ref="revenueChartRef" style="height: 300px"></div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card class="recent-orders">
+      <template #header>
+        <span>最近订单</span>
+      </template>
+      <el-table :data="recentOrders" style="width: 100%">
+        <el-table-column prop="platform_biz_no" label="平台流水号" width="180" />
+        <el-table-column prop="user_phone" label="用户手机号" width="140" />
+        <el-table-column prop="name" label="姓名" width="100">
+          <template #default="{ row }">{{ maskName(row.name) }}</template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="cost" label="金额" width="100">
+          <template #default="{ row }">¥{{ row.cost }}</template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" />
+      </el-table>
+    </el-card>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import * as echarts from 'echarts'
+import { adminAPI } from '@/api'
+
+// 在 TS 里读取 CSS 变量，保证图表色和主题同步
+const var_color_primary = computed(() =>
+  getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#2563EB'
+)
+const var_color_success = computed(() =>
+  getComputedStyle(document.documentElement).getPropertyValue('--color-success').trim() || '#059669'
+)
+
+const stats = ref({
+  totalUsers: 0,
+  todayOrders: 0,
+  todayRevenue: 0,
+  monthRevenue: 0
+})
+
+const recentOrders = ref([])
+const ordersChartRef = ref()
+const revenueChartRef = ref()
+
+let ordersChartInstance: ReturnType<typeof echarts.init> | null = null
+let revenueChartInstance: ReturnType<typeof echarts.init> | null = null
+let disposed = false
+
+onMounted(async () => {
+  await loadStats()
+  await loadCharts()
+  await loadRecentOrders()
+})
+
+onBeforeUnmount(() => {
+  disposed = true
+  ordersChartInstance?.dispose()
+  revenueChartInstance?.dispose()
+})
+
+const loadStats = async () => {
+  try {
+    const response = await adminAPI.getStatsOverview()
+    stats.value = {
+      totalUsers: response.total_users || 0,
+      todayOrders: response.today_orders || 0,
+      todayRevenue: response.today_revenue || 0,
+      monthRevenue: response.month_revenue || 0
+    }
+  } catch (error: any) {
+    console.error('加载统计数据失败:', error)
+    ElMessage.error('加载统计数据失败')
+  }
+}
+
+const loadCharts = async () => {
+  try {
+    const [ordersRes, revenueRes] = await Promise.all([
+      adminAPI.getStatsOrders({ period: '7d' }),
+      adminAPI.getStatsRevenue({ period: '7d' })
+    ])
+
+    // 组件已卸载，则跳过渲染，避免操作已销毁的 DOM
+    if (disposed) return
+    if (!ordersChartRef.value || !revenueChartRef.value) return
+
+    // 订单趋势图
+    ordersChartInstance = echarts.init(ordersChartRef.value)
+    ordersChartInstance.setOption({
+      color: [var_color_primary.value],
+      xAxis: { type: 'category', data: ordersRes.dates, axisLine: { lineStyle: { color: '#E5E7EB' } } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F3F4F6' } } },
+      grid: { left: 40, right: 20, top: 20, bottom: 30 },
+      series: [{ data: ordersRes.counts, type: 'line', smooth: true, symbolSize: 6, lineStyle: { width: 3 } }],
+      tooltip: { trigger: 'axis' }
+    })
+
+    // 收入趋势图
+    revenueChartInstance = echarts.init(revenueChartRef.value)
+    revenueChartInstance.setOption({
+      color: [var_color_success.value],
+      xAxis: { type: 'category', data: revenueRes.dates, axisLine: { lineStyle: { color: '#E5E7EB' } } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F3F4F6' } } },
+      grid: { left: 40, right: 20, top: 20, bottom: 30 },
+      series: [{
+        data: revenueRes.amounts, type: 'line', smooth: true, symbolSize: 6,
+        lineStyle: { width: 3 },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(5, 150, 105, 0.25)' },
+              { offset: 1, color: 'rgba(5, 150, 105, 0.02)' }
+            ]
+          }
+        }
+      }],
+      tooltip: { trigger: 'axis' }
+    })
+  } catch (error: any) {
+    if (disposed) return
+    console.error('加载图表数据失败:', error)
+    ElMessage.error('加载图表数据失败')
+  }
+}
+
+const loadRecentOrders = async () => {
+  try {
+    const response: any = await adminAPI.getRecentOrders(10)
+    recentOrders.value = response.list || response || []
+  } catch (error: any) {
+    console.error('加载最近订单失败:', error)
+    ElMessage.error('加载最近订单失败')
+  }
+}
+
+const maskName = (name: string) => {
+  if (!name || name.length === 0) return ''
+  if (name.length === 1) return name
+  if (name.length === 2) return name[0] + '*'
+  return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
+}
+
+const getStatusType = (status: number) => {
+  const map: Record<number, string> = {
+    0: 'info',
+    1: 'warning',
+    2: 'success',
+    3: 'danger',
+    5: 'info'
+  }
+  return map[status] || 'info'
+}
+
+const getStatusText = (status: number) => {
+  const map: Record<number, string> = {
+    0: '待认证',
+    1: '认证中',
+    2: '已完成',
+    3: '失败',
+    5: '已退款'
+  }
+  return map[status] || '未知'
+}
+</script>
+
+<style scoped>
+.admin-dashboard {
+  padding: var(--gap-lg);
+  background: var(--bg-page);
+  min-height: 100%;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--gap-lg);
+  margin-bottom: var(--gap-lg);
+}
+
+.stat-card {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  flex-shrink: 0;
+}
+
+.stat-icon.users   { color: #6366F1; background: #E0E7FF; }
+.stat-icon.orders  { color: #EC4899; background: #FCE7F3; }
+.stat-icon.revenue { color: var(--color-success); background: var(--color-success-light); }
+.stat-icon.monthly { color: #F59E0B; background: var(--color-warning-light); }
+
+.stat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.chart-row {
+  margin-bottom: var(--gap-lg);
+}
+
+.recent-orders {
+  margin-top: var(--gap-lg);
+}
+</style>

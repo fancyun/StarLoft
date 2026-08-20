@@ -1,0 +1,133 @@
+/* Element Plus 主题覆盖（配合 base.css 浅色系变量） */
+@import './base.css';
+
+/* 全局入口：统一页面容器默认背景（App / router-view 外层） */
+#app {
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+
+/* 覆盖 Element Plus 主色为 --color-primary */
+.el-button--primary {
+  --el-button-bg-color: var(--color-primary);
+  --el-button-border-color: var(--color-primary);
+  --el-button-hover-bg-color: var(--color-primary-hover);
+  --el-button-hover-border-color: var(--color-primary-hover);
+  --el-button-active-bg-color: var(--color-primary-hover);
+  --el-button-active-border-color: var(--color-primary-hover);
+}
+
+/* 链接型按钮/文字 */
+.el-link.el-link--primary {
+  --el-link-color: var(--color-primary);
+  --el-link-hover-color: var(--color-primary-hover);
+}
+
+/* Element 输入框聚焦时的主色 */
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--border-focus) inset !important;
+}
+
+/* 菜单 active 主色 */
+.el-menu {
+  --el-menu-active-color: var(--color-primary);
+  --el-menu-hover-bg-color: var(--bg-hover);
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--text-secondary);
+}
+
+/* Tag 语义色柔和化 */
+.el-tag {
+  --el-tag-border-color: transparent;
+  font-weight: 500;
+}
+
+.el-tag--success {
+  --el-tag-background: var(--color-success-light);
+  --el-tag-text-color: var(--color-success);
+}
+.el-tag--warning {
+  --el-tag-background: var(--color-warning-light);
+  --el-tag-text-color: var(--color-warning);
+}
+.el-tag--danger {
+  --el-tag-background: var(--color-danger-light);
+  --el-tag-text-color: var(--color-danger);
+}
+.el-tag--info {
+  --el-tag-background: var(--color-info-light);
+  --el-tag-text-color: var(--color-info);
+}
+
+/* 卡片统一圆角与阴影 */
+.el-card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.el-card:hover {
+  box-shadow: var(--shadow-md) !important;
+}
+.el-card__header {
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: 16px 20px !important;
+  font-weight: 600;
+}
+.el-card__body {
+  padding: 20px !important;
+}
+
+/* 表格边框与圆角 */
+.el-table {
+  --el-table-border-color: var(--border-light);
+  --el-table-header-bg-color: var(--bg-soft);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #fff;
+}
+
+/* 按钮圆角统一 */
+.el-button {
+  border-radius: var(--radius-sm);
+}
+
+/* Tabs */
+.el-tabs__item.is-active {
+  color: var(--color-primary);
+}
+.el-tabs__active-bar {
+  background-color: var(--color-primary);
+}
+.el-tabs__item:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Dropdown */
+.el-dropdown-menu {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* 通用页面内包装：admin 主区用 */
+.page-wrapper {
+  padding: var(--gap-lg);
+  background: var(--bg-page);
+  min-height: 100%;
+}
+
+/* 通用统计卡片网格（admin dashboard 用） */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap-lg);
+}
+
+/* 通用工具类 */
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.mt-md { margin-top: var(--gap-md); }
+.mb-md { margin-bottom: var(--gap-md); }
+.mb-lg { margin-bottom: var(--gap-lg); }
