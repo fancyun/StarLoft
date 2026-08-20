@@ -323,7 +323,7 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 	}
 
 	// 不计费结果（6000/6100）退还预扣余额
-	s.refundIfNotChargeable(order, result.ResultCode)
+	s.refundIfNotChargeable(order, int(result.ResultCode))
 
 	// 更新 kyc_record 状态
 	if status == 2 {
@@ -395,7 +395,7 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 	}
 
 	// 不计费结果（6000/6100）退还预扣余额
-	s.refundIfNotChargeable(order, notifyData.ResultCode)
+	s.refundIfNotChargeable(order, int(notifyData.ResultCode))
 
 	// 5. 更新 kyc_record 状态
 	if status == 2 {

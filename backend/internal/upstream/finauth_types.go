@@ -1,5 +1,29 @@
 package upstream
 
+import (
+	"strconv"
+	"strings"
+)
+
+// FlexInt 兼容上游返回的 result_code：可能是字符串（如 "1000"）也可能是数字。
+type FlexInt int
+
+// UnmarshalJSON 同时支持字符串和数字两种 JSON 表示。
+func (f *FlexInt) UnmarshalJSON(data []byte) error {
+	s := strings.TrimSpace(string(data))
+	s = strings.Trim(s, `"`)
+	if s == "" || s == "null" {
+		*f = 0
+		return nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	*f = FlexInt(n)
+	return nil
+}
+
 // ========== 请求/响应结构体（对齐 H5 Plus 文档） ==========
 
 // GetTokenRequest get_token 请求参数（multipart/form-data）
@@ -47,7 +71,7 @@ type GetResultRequest struct {
 type GetResultResponse struct {
 	RequestID     string `json:"request_id"`
 	TimeUsed      int    `json:"time_used"`
-	ResultCode    int    `json:"result_code"`
+	ResultCode    FlexInt `json:"result_code"`
 	ResultMessage string `json:"result_message"`
 	BizInfo       struct {
 		BizID        string `json:"biz_id"`
@@ -68,7 +92,7 @@ type GetResultResponse struct {
 type NotifyData struct {
 	RequestID     string `json:"request_id"`
 	TimeUsed      int    `json:"time_used"`
-	ResultCode    int    `json:"result_code"`
+	ResultCode    FlexInt `json:"result_code"`
 	ResultMessage string `json:"result_message"`
 	BizInfo       struct {
 		BizID        string `json:"biz_id"`
