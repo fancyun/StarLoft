@@ -512,6 +512,7 @@ func (h *AdminHandler) GetAuthOrderList(c *gin.Context) {
 			"platform_biz_no": order.PlatformBizNo,
 			"biz_no":          order.BizNo,
 			"user_id":         order.UserID,
+			"user_phone":      order.UserPhone,
 			"status":          order.Status,
 			"cost":            order.Cost,
 			"result_code":     order.ResultCode,

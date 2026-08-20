@@ -37,9 +37,12 @@
             <el-table-column prop="platform_biz_no" label="平台流水号" width="180" />
             <el-table-column prop="biz_no" label="业务流水号" width="180" />
             <el-table-column prop="user_phone" label="用户手机号" width="140" />
-            <el-table-column prop="status" label="状态" width="100">
+            <el-table-column prop="status" label="状态" width="160">
               <template #default="{ row }">
                 <el-tag :type="getAuthStatusType(row.status)">{{ getAuthStatusText(row.status) }}</el-tag>
+                <div v-if="row.status === 3 && (row.result_message || row.result_code)" class="fail-reason">
+                  {{ row.result_message || `结果码 ${row.result_code}` }}
+                </div>
               </template>
             </el-table-column>
             <el-table-column prop="cost" label="金额" width="100">
@@ -271,5 +274,12 @@ const viewPaymentDetail = (_row: any) => {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.fail-reason {
+  font-size: 12px;
+  color: #f56c6c;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 </style>

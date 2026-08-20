@@ -553,30 +553,30 @@ func (r *AuthOrderRepository) GetLatestPendingOrder(userID int64) (*model.AuthOr
 	return order, nil
 }
 
-// GetAllOrders 获取所有认证订单列表（管理员，带分页和筛选）
+// GetAllOrders 获取所有认证订单列表（管理员，带分页和筛选，含用户手机号）
 func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, userID *int64) ([]*model.AuthOrder, int64, error) {
 	offset := (page - 1) * pageSize
 
-	// 构建查询条件
+	// 构建查询条件（带 ao. 前缀，避免与 platform_user 联表后的列名歧义）
 	whereClause := ""
 	args := []interface{}{}
 
 	if status != nil {
-		whereClause = "WHERE status = ?"
+		whereClause = "WHERE ao.status = ?"
 		args = append(args, *status)
 	}
 
 	if userID != nil {
 		if whereClause == "" {
-			whereClause = "WHERE user_id = ?"
+			whereClause = "WHERE ao.user_id = ?"
 		} else {
-			whereClause += " AND user_id = ?"
+			whereClause += " AND ao.user_id = ?"
 		}
 		args = append(args, *userID)
 	}
 
 	// 查询总数
-	countQuery := "SELECT COUNT(*) FROM auth_order " + whereClause
+	countQuery := "SELECT COUNT(*) FROM auth_order ao JOIN platform_user u ON u.id = ao.user_id " + whereClause
 	var total int64
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
@@ -584,13 +584,15 @@ func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, user
 	}
 
 	// 查询列表
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, is_refunded, notify_times, 
-		notify_status, created_at, updated_at, finished_at 
-		FROM auth_order ` + whereClause + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	query := `SELECT ao.id, ao.platform_biz_no, COALESCE(ao.biz_no, ''), ao.user_id, 
+		COALESCE(ao.return_url, ''), COALESCE(ao.notify_url, ''), COALESCE(ao.biz_extra_data, ''), 
+		COALESCE(ao.up_token, ''), COALESCE(ao.up_biz_id, ''), COALESCE(ao.up_request_id, ''), 
+		COALESCE(ao.result_code, ''), COALESCE(ao.result_message, ''),
+		ao.status, ao.cost, ao.is_refunded, ao.notify_times, 
+		ao.notify_status, ao.created_at, ao.updated_at, ao.finished_at, u.phone 
+		FROM auth_order ao 
+		JOIN platform_user u ON u.id = ao.user_id
+		` + whereClause + ` ORDER BY ao.created_at DESC LIMIT ? OFFSET ?`
 
 	args = append(args, pageSize, offset)
 	rows, err := r.db.Query(query, args...)
@@ -623,6 +625,7 @@ func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, user
 			&order.CreatedAt,
 			&order.UpdatedAt,
 			&order.FinishedAt,
+			&order.UserPhone,
 		)
 		if err != nil {
 			return nil, 0, err

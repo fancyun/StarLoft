@@ -54,6 +54,7 @@ type AuthOrder struct {
 	PlatformBizNo string     `json:"platform_biz_no"`  // 平台业务流水号
 	BizNo         string     `json:"biz_no,omitempty"` // 用户业务流水号
 	UserID        int64      `json:"user_id"`
+	UserPhone     string     `json:"user_phone,omitempty"`     // 联表查询时的用户手机号（管理后台订单列表用）
 	ReturnURL     string     `json:"return_url,omitempty"`     // 认证完成后跳转的URL
 	NotifyURL     string     `json:"notify_url,omitempty"`     // 异步通知回调URL
 	BizExtraData  string     `json:"biz_extra_data,omitempty"` // 额外业务数据
