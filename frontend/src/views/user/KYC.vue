@@ -121,7 +121,7 @@ const kycName = ref('')
 const kycIDCard = ref('')
 const balance = ref(0)
 const kycPrice = ref(1.0)
-const pendingToken = ref('')
+const pendingBizNo = ref('')
 
 const form = reactive({
   name: '',
@@ -189,8 +189,8 @@ const handleSubmit = async () => {
 }
 
 const continueAuth = () => {
-  if (pendingToken.value) {
-    router.push({ path: '/kyc', query: { token: pendingToken.value } })
+  if (pendingBizNo.value) {
+    router.push({ path: '/kyc', query: { biz_no: pendingBizNo.value } })
   } else {
     router.push({ path: '/kyc' })
   }
@@ -249,7 +249,7 @@ const loadData = async () => {
 
     const data = statusRes as any
     recordStatus.value = data.record_status ?? -1
-    pendingToken.value = data.pending_token || ''
+    pendingBizNo.value = data.pending_biz_no || ''
 
     if (data.kyc_name) kycName.value = data.kyc_name
     if (data.kyc_id_card) kycIDCard.value = data.kyc_id_card

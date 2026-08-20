@@ -224,6 +224,7 @@ func (h *AuthHandler) GetPublicKycResult(c *gin.Context) {
 			"result_code":    order.ResultCode,
 			"result_message": order.ResultMessage,
 			"return_url":     order.ReturnURL,
+			"up_token":       order.UpToken,
 		},
 	})
 }
@@ -311,6 +312,9 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 		if err == nil && pendingOrder != nil && pendingOrder.UpToken != "" {
 			resp["pending_token"] = pendingOrder.UpToken
 		}
+		if err == nil && pendingOrder != nil && pendingOrder.PlatformBizNo != "" {
+			resp["pending_biz_no"] = pendingOrder.PlatformBizNo
+		}
 		// 返回下游的 return_url（API 调用方传入的，用于结果页跳转回下游）
 		if err == nil && pendingOrder != nil && pendingOrder.ReturnURL != "" {
 			resp["return_url"] = pendingOrder.ReturnURL
@@ -334,7 +338,7 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 	})
 }
 
-// SyncKycResult 同步上游认证结果（/kyc?token=xxx 页面加载时调用）
+// SyncKycResult 同步上游认证结果（保留兼容；/kyc 页面现统一走公开结果查询接口）
 func (h *AuthHandler) SyncKycResult(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 

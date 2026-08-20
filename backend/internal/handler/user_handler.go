@@ -313,6 +313,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"kyc_name":        kycName,
 			"kyc_id_card":     kycIDCard,
 			"balance":         user.Balance,
+			"kyc_price":       user.KYCPrice,
 			"api_key":         user.APIKey,
 			// api_secret 已移除，避免泄露
 			"created_at": user.CreatedAt,

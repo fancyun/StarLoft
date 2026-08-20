@@ -69,41 +69,7 @@ func (s *AuthService) StartAuth(
 		notifyURL = s.config.NotifyURL
 	}
 
-	// 生成平台流水号
-	platformBizNo := fmt.Sprintf("%s_%d_%d", bizNo, userID, time.Now().UnixNano())
-
-	// 创建 KYC 认证记录（保存账户实名信息）
-	kycRecord := &model.KycRecord{
-		UserID: userID,
-		Name:   name,
-		IDCard: idCard,
-		Status: 1, // 认证中
-	}
-	err := s.kycRecordRepo.Create(kycRecord)
-	if err != nil {
-		return nil, fmt.Errorf("create kyc record failed: %w", err)
-	}
-
-	// 创建订单（不保存姓名和身份证号）
-	order := &model.AuthOrder{
-		PlatformBizNo: platformBizNo,
-		BizNo:         bizNo,
-		UserID:        userID,
-		ReturnURL:     returnURL,
-		NotifyURL:     notifyURL,
-		BizExtraData:  bizExtraData,
-		Cost:          1.0,
-		Status:        0, // 待认证
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
-
-	err = s.orderRepo.CreateOrder(order)
-	if err != nil {
-		return nil, fmt.Errorf("create order failed: %w", err)
-	}
-
-	// 检查用户余额是否足够
+	// 检查用户余额并确定 KYC 单价（提前处理，确保订单记录扣费金额正确）
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("获取用户信息失败: %w", err)
@@ -119,14 +85,45 @@ func (s *AuthService) StartAuth(
 		return nil, fmt.Errorf("余额不足，需要%.2f元，当前余额%.2f元", kycPrice, user.Balance)
 	}
 
+	// 生成平台流水号
+	platformBizNo := fmt.Sprintf("%s_%d_%d", bizNo, userID, time.Now().UnixNano())
+
+	// 创建 KYC 认证记录（保存账户实名信息）
+	kycRecord := &model.KycRecord{
+		UserID: userID,
+		Name:   name,
+		IDCard: idCard,
+		Status: 1, // 认证中
+	}
+	err = s.kycRecordRepo.Create(kycRecord)
+	if err != nil {
+		return nil, fmt.Errorf("create kyc record failed: %w", err)
+	}
+
+	// 创建订单（不保存姓名和身份证号，cost 记录用户实际 KYC 单价）
+	order := &model.AuthOrder{
+		PlatformBizNo: platformBizNo,
+		BizNo:         bizNo,
+		UserID:        userID,
+		ReturnURL:     returnURL,
+		NotifyURL:     notifyURL,
+		BizExtraData:  bizExtraData,
+		Cost:          kycPrice,
+		Status:        0, // 待认证
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	err = s.orderRepo.CreateOrder(order)
+	if err != nil {
+		return nil, fmt.Errorf("create order failed: %w", err)
+	}
+
 	// 扣除余额（使用用户KYC单价）
 	err = s.balanceService.DeductBalance(userID, kycPrice, order.ID, "KYC认证消费")
 	if err != nil {
 		return nil, fmt.Errorf("扣除余额失败: %w", err)
 	}
-
-	// 更新订单消费金额
-	order.Cost = kycPrice
 
 	// 传给上游 get_token 的地址：下游调用时使用平台地址（平台中转），否则透传
 	upstreamReturnURL := returnURL
@@ -249,7 +246,7 @@ func (s *AuthService) GetLatestOrder(userID int64) (*model.AuthOrder, error) {
 	return s.orderRepo.GetLatestOrderByUserID(userID)
 }
 
-// SyncOrderByToken 根据 token 同步上游结果（/kyc?token=xxx 页面加载时调用）
+// SyncOrderByToken 根据 token 同步上游结果（保留兼容；/kyc 页面现统一按 biz_no 查询）
 func (s *AuthService) SyncOrderByToken(userID int64) (*model.AuthOrder, error) {
 	order, err := s.orderRepo.GetLatestPendingOrder(userID)
 	if err != nil {
