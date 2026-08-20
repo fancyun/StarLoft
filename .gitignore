@@ -16,6 +16,9 @@ coverage.out
 .env
 ADMIN_CREDENTIALS.md
 
+# SSL 证书（含私钥，严禁提交）
+certs/
+
 # 日志文件
 *.log
 

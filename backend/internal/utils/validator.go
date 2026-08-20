@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var (
@@ -95,13 +96,17 @@ func (v *InputValidator) ValidateIDCard(idCard string) error {
 	return nil
 }
 
-// ValidateName 验证姓名（2-50字符，仅中文、英文字母）
+// ValidateName 验证姓名（2-50字符，仅中文、英文字母、间隔号）
 func (v *InputValidator) ValidateName(name string) error {
-	if len(name) < 2 || len(name) > 50 {
+	name = strings.TrimSpace(name)
+
+	// 按字符数（rune）判断长度，而非字节数
+	if utf8.RuneCountInString(name) < 2 || utf8.RuneCountInString(name) > 50 {
 		return ErrInvalidName
 	}
 
-	matched, _ := regexp.MatchString(`^[\u4e00-\u9fa5a-zA-Z·]+$`, name)
+	// \p{Han} 匹配所有汉字（含扩展区生僻字），同时允许英文字母和间隔号
+	matched, _ := regexp.MatchString(`^[\p{Han}a-zA-Z·]+$`, name)
 	if !matched {
 		return ErrInvalidName
 	}

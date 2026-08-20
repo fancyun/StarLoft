@@ -26,11 +26,34 @@ FROM nginx:alpine
 
 # 复制自定义nginx配置
 COPY <<'EOF' /etc/nginx/conf.d/default.conf
+# HTTP：健康检查 + 自动跳转 HTTPS
 server {
     listen 80;
     server_name _;
+
+    location = /healthz {
+        return 200 'ok';
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS 主服务
+server {
+    listen 443 ssl;
+    server_name _;
     root /usr/share/nginx/html;
     index index.html;
+
+    # SSL 证书（挂载自宿主机 ./certs 目录）
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
 
     # Gzip压缩
     gzip on;
@@ -70,10 +93,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # 暴露端口
 EXPOSE 80
+EXPOSE 443
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost/healthz || exit 1
 
 # 启动nginx
 CMD ["nginx", "-g", "daemon off;"]
