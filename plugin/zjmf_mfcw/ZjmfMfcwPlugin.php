@@ -1,8 +1,8 @@
 <?php
-namespace certification\starloft_kyc;
+namespace certification\zjmf_mfcw;
 
 use app\admin\lib\Plugin;
-use certification\starloft_kyc\logic\KycSdk;
+use certification\zjmf_mfcw\logic\KycSdk;
 
 /**
  * StarLoft KYC 实名认证插件
@@ -20,13 +20,13 @@ use certification\starloft_kyc\logic\KycSdk;
  * @author StarLoft
  * @version 1.1.0
  */
-class StarloftKycPlugin extends Plugin
+class ZjmfMfcwPlugin extends Plugin
 {
     /**
      * 插件基本信息
      */
     public $info = [
-        'name'        => 'StarloftKyc',
+        'name'        => 'ZjmfMfcw',
         'title'       => 'StarLoft KYC实名认证',
         'description' => 'StarLoft KYC 三要素实名认证（姓名+身份证+人脸识别）— 已修复重复创建/余额误报问题',
         'status'      => 1,
@@ -138,8 +138,8 @@ class StarloftKycPlugin extends Plugin
             $bizNo = 'ZJMF' . date('YmdHis') . mt_rand(1000, 9999);
             $uid   = $this->resolveCurrentUid();
             $domain = $this->resolveDomain();
-            $notifyUrl = $domain . '/certification/starloft_kyc/callback?uid=' . $uid;
-            $returnUrl = $domain . '/certification/starloft_kyc/result?uid=' . $uid;
+            $notifyUrl = $domain . '/certification/zjmf_mfcw/callback?uid=' . $uid;
+            $returnUrl = $domain . '/certification/zjmf_mfcw/result?uid=' . $uid;
 
             $result = $sdk->startKyc([
                 'biz_no'        => $bizNo,
@@ -624,7 +624,7 @@ HTML;
         $cid = htmlspecialchars($certifyId, ENT_QUOTES, 'UTF-8');
         // Bug 修复:personal() 走"恢复旧任务"分支时不触发前端轮询钩子会卡死。
         // 这里额外注入一段 JS:优先调用魔方财务/顺戴财务已存在的全局轮询函数,
-        // 否则自己每 3 秒 AJAX POST /certification/starloft_kyc/getStatus
+        // 否则自己每 3 秒 AJAX POST /certification/zjmf_mfcw/getStatus
         return <<<HTML
 <div class="kyc-auth-container" style="text-align:center;padding:20px;">
     <h5 class="pt-2 font-weight-bold h5 py-4">
@@ -659,7 +659,7 @@ HTML;
         };
         if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.ajax === 'function') {
             window.jQuery.ajax({
-                url:  '/certification/starloft_kyc/getStatus',
+                url:  '/certification/zjmf_mfcw/getStatus',
                 type: 'POST',
                 dataType: 'json',
                 data: { certif_id: '{$cid}' },
@@ -668,7 +668,7 @@ HTML;
             });
         } else {
             var x = new XMLHttpRequest();
-            x.open('POST', '/certification/starloft_kyc/getStatus', true);
+            x.open('POST', '/certification/zjmf_mfcw/getStatus', true);
             x.setRequestHeader('Content-Type','application/x-www-form-urlencoded;charset=UTF-8');
             x.onload = function(){ onResp(x.responseText); };
             x.onerror= function(){ say('网络异常,3 秒后重试...'); setTimeout(kycLoop, 3000); };

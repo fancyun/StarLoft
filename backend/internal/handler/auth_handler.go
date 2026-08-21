@@ -437,9 +437,9 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		return
 	}
 
-	// 设置默认回调地址（Web 前端）
+	// 设置默认回调地址（Web 账户实名：认证完成后跳回账户实名页）
 	if req.ReturnURL == "" {
-		req.ReturnURL = "https://yourdomain.com/kyc/result"
+		req.ReturnURL = "/user/kyc"
 	}
 	// notifyURL 留空，由 service 层使用 .env 环境变量中的 FINAUTH_NOTIFY_URL
 	notifyURL := ""
@@ -468,7 +468,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		req.ReturnURL,
 		notifyURL,
 		bizExtraData,
-		false, // Web 前端自己实名：透传前端/配置地址
+		true, // Web 前端实名：经平台 /kyc 中转页处理回调，再跳回 /user/kyc
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {

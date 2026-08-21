@@ -93,25 +93,6 @@ func (h *CallbackHandler) FinAuthCallback(c *gin.Context) {
 	})
 }
 
-// FinAuthReturnCallback 处理 FinAuth 同步回调（return_url，GET 模式）
-// FinAuth 完成认证后以 GET 方式跳转到 return_url，URL 参数携带 biz_id
-func (h *CallbackHandler) FinAuthReturnCallback(c *gin.Context) {
-	bizID := c.Query("biz_id")
-
-	if bizID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "缺少 biz_id 参数",
-		})
-		return
-	}
-
-	log.Printf("收到 FinAuth return_url 回调: BizID=%s", bizID)
-
-	// 转发到前端认证结果页
-	c.Redirect(http.StatusFound, "/kyc/result?biz_id="+bizID)
-}
-
 // PaymentCallback 处理支付回调
 // 银联天满支付异步通知（application/x-www-form-urlencoded）
 func (h *CallbackHandler) PaymentCallback(c *gin.Context) {

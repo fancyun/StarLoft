@@ -24,11 +24,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'KYCVerify',
     component: () => import('@/views/KYCVerify.vue')
   },
-  {
-    path: '/kyc/result',
-    name: 'AuthResult',
-    component: () => import('@/views/user/AuthResult.vue')
-  },
   // 文档中心（公开，无需登录）
   {
     path: '/docs',

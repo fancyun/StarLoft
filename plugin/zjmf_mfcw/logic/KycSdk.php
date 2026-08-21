@@ -1,5 +1,5 @@
 <?php
-namespace certification\starloft_kyc\logic;
+namespace certification\zjmf_mfcw\logic;
 
 /**
  * StarLoft KYC SDK
