@@ -171,7 +171,7 @@
     "biz_no": "ZJMF20260119001",
     "status": 2,
     "result_code": "1000",
-    "result_message": "认证成功",
+    "result_message": "SUCCESS",
     "cost": 1.50
   }
 }</code></pre>
@@ -226,7 +226,141 @@
   }
 }</code></pre>
 
-    <h2>4. 调用示例（curl）</h2>
+    <h2>4. 回调说明（notify_url 与 return_url）</h2>
+    <p>
+      发起认证时需提供 <code>return_url</code>（同步跳转）与 <code>notify_url</code>（异步通知），
+      用于认证结果回流。两者触发时机与数据格式如下。
+    </p>
+
+    <h3>4.1 异步通知（notify_url）</h3>
+    <p>
+      认证产生最终结果（成功或失败）后，平台会以 <strong>POST</strong> 方式向你的
+      <code>notify_url</code> 发送通知，<code>Content-Type: application/json</code>。
+      通知不携带签名，下游可依据 <code>biz_no</code>（业务订单号）关联订单。
+    </p>
+
+    <h4>请求体</h4>
+    <pre><code>{
+  "biz_no": "ZJMF20260119001",
+  "platform_biz_no": "ZJMF20260119001_1001_1234567890",
+  "status": 2,
+  "result_code": "1000",
+  "result_message": "SUCCESS",
+  "cost": 1.50
+}</code></pre>
+
+    <h4>字段说明</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>字段</th>
+          <th>类型</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>biz_no</code></td>
+          <td>string</td>
+          <td>业务订单号（发起认证时你传入的值，用于关联订单）</td>
+        </tr>
+        <tr>
+          <td><code>platform_biz_no</code></td>
+          <td>string</td>
+          <td>平台生成的唯一流水号</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td>
+          <td>int</td>
+          <td>订单状态：<code>2</code> 认证成功 / <code>3</code> 认证失败（详见「status 状态说明」）</td>
+        </tr>
+        <tr>
+          <td><code>result_code</code></td>
+          <td>string</td>
+          <td>上游认证结果码，见下方「result_code 说明」</td>
+        </tr>
+        <tr>
+          <td><code>result_message</code></td>
+          <td>string</td>
+          <td>结果说明（英文常量，如 SUCCESS）</td>
+        </tr>
+        <tr>
+          <td><code>cost</code></td>
+          <td>number</td>
+          <td>本次认证扣费金额（元）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>result_code 说明</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>result_code</th>
+          <th>result_message</th>
+          <th>含义</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>1000</code></td>
+          <td>SUCCESS</td>
+          <td>认证通过</td>
+        </tr>
+        <tr>
+          <td><code>2000</code></td>
+          <td>PASS_LIVING_NOT_THE_SAME</td>
+          <td>活体通过，但与身份证非同一人</td>
+        </tr>
+        <tr>
+          <td><code>3000</code></td>
+          <td>NO_ID_CARD_NUMBER / ID_NUMBER_NAME_NOT_MATCH / NO_FACE_FOUND / NO_ID_PHOTO / PHOTO_FORMAT_ERROR</td>
+          <td>证号、姓名不匹配或未检出人脸等（认证不通过）</td>
+        </tr>
+        <tr>
+          <td><code>3000</code></td>
+          <td>DATA_SOURCE_ERROR / INTERNAL_ERROR</td>
+          <td>数据源或服务器临时异常</td>
+        </tr>
+        <tr>
+          <td><code>4000</code></td>
+          <td>FAIL_LIVING_FACE_ATTACK</td>
+          <td>活体攻击 / 活体检测失败</td>
+        </tr>
+        <tr>
+          <td><code>6000</code></td>
+          <td>FAILED / CANCELLED / TIMEOUT</td>
+          <td>流程异常结束 / 用户取消 / 超时</td>
+        </tr>
+        <tr>
+          <td><code>6100</code></td>
+          <td>SUPPORT_ERROR / PERMISSIONS_ERROR / OTHER_ERROR</td>
+          <td>webRTC / 摄像头权限等问题</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <code>6000</code> / <code>6100</code> 为不计费结果，平台会自动退还预扣金额；
+      <code>NOT_STARTED</code> / <code>PROCESSING</code> 表示认证尚未完结，不会作为最终通知发送。
+    </p>
+
+    <h4>响应要求</h4>
+    <p>下游收到通知后返回 HTTP 200 即可（平台不校验响应体内容）。</p>
+
+    <h3>4.2 同步跳转（return_url）</h3>
+    <p>
+      认证结果确定后，平台会将用户浏览器以 <strong>GET</strong> 方式 302 跳转回你发起认证时填写的
+      <code>return_url</code>，且<strong>不附加任何参数</strong>（跳转地址与你传入的 return_url 完全一致）。
+      下游应在该页面根据自己记录的业务订单号调用「3.2 查询认证结果」接口获取最终状态，再展示结果。
+    </p>
+    <p>示例：</p>
+    <pre><code>https://yourdomain.com/certification/starloft_kyc/result</code></pre>
+    <p>
+      说明：<code>return_url</code> 用于用户侧页面回流，<code>notify_url</code> 用于服务端结果落地，
+      两者配合使用；若 <code>notify_url</code> 未及时到达，可主动调用查询接口兜底。
+    </p>
+
+    <h2>5. 调用示例（curl）</h2>
     <p>以查询余额为例：</p>
     <pre><code>BODY='{}'
 SIGN=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "your_api_secret" | awk '{print $2}')
@@ -240,7 +374,7 @@ curl -X POST "https://kyc.starloft.cn/api/v1/kyc/balance/query" \
   -H "X-Timestamp: $TS" \
   -d "$BODY"</code></pre>
 
-    <h2>5. 错误码</h2>
+    <h2>6. 错误码</h2>
     <table>
       <thead>
         <tr>
