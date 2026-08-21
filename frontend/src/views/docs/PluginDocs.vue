@@ -15,10 +15,10 @@
       </thead>
       <tbody>
         <tr>
-          <td>starloft_kyc</td>
-          <td>智简魔方（ZJMF）3.7.6+</td>
+          <td><code>zjmf_mfcw</code></td>
+          <td>智简魔方·财务版（3.7.6+）</td>
           <td>身份证三要素实名认证（姓名 + 身份证 + 人脸识别）</td>
-          <td><router-link to="/docs/plugin/zjmf">查看教程</router-link></td>
+          <td><router-link to="/docs/plugin/zjmf_mfcw">查看教程</router-link></td>
         </tr>
       </tbody>
     </table>

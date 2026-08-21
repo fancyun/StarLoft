@@ -32,6 +32,12 @@
             "type": "password",
             "required": true
         },
+        "min_age": {
+            "title": "最低实名年龄",
+            "type": "text",
+            "required": false,
+            "default": "16"
+        },
         "auto_deduct": {
             "title": "自动扣费",
             "type": "radio",

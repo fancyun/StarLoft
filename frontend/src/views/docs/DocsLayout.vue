@@ -52,7 +52,7 @@ const navGroups = [
     title: '插件教程',
     items: [
       { label: '插件列表', path: '/docs/plugin' },
-      { label: '智简魔方（ZJMF）', path: '/docs/plugin/zjmf' }
+      { label: '智简魔方·财务版', path: '/docs/plugin/zjmf_mfcw' }
     ]
   }
 ]

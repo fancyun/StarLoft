@@ -55,9 +55,9 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/docs/PluginDocs.vue')
       },
       {
-        path: 'plugin/zjmf',
-        name: 'DocsPluginZjf',
-        component: () => import('@/views/docs/PluginZjf.vue')
+        path: 'plugin/zjmf_mfcw',
+        name: 'DocsPluginZjfMfcw',
+        component: () => import('@/views/docs/PluginZjfMfcw.vue')
       }
     ]
   },

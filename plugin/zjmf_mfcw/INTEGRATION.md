@@ -33,9 +33,9 @@
 │              StarLoft KYC 实名认证系统                           │
 │                                                                 │
 │  API接口:                                                        │
-│  - POST /api/v1/kyc/start          创建认证订单                 │
-│  - POST /api/v1/kyc/result         查询认证结果                 │
-│  - POST /api/v1/kyc/balance/query  查询余额                     │
+│  - POST /kyc/start          创建认证订单                        │
+│  - POST /kyc/result         查询认证结果                        │
+│  - POST /kyc/balance/query  查询余额                            │
 │                                                                 │
 │  ↓ 对接上游                                                      │
 │  FinAuth H5 Plus (三要素实名认证)                                │
@@ -82,7 +82,7 @@ StarloftKycPlugin::personal()
 KycSdk::startKyc()
     ├─ 生成HMAC签名
     ├─ 构建请求参数
-    └─ 发送POST请求到 /api/v1/kyc/start
+    └─ 发送POST请求到 /kyc/start
     ↓
 KYC系统创建订单
     ├─ 验证API Key与HMAC签名
@@ -150,7 +150,7 @@ KycSdk::queryResult()
 
 所有接口均需携带鉴权请求头。以下示例中 `<sign>` 由 `hex(HMAC-SHA256(api_secret, 请求体))` 计算得到。
 
-### 1. 创建认证订单 (POST /api/v1/kyc/start)
+### 1. 创建认证订单 (POST /kyc/start)
 
 **请求头：**
 ```
@@ -187,7 +187,7 @@ X-Timestamp: <unix_timestamp>
 }
 ```
 
-### 2. 查询认证结果 (POST /api/v1/kyc/result)
+### 2. 查询认证结果 (POST /kyc/result)
 
 **请求体：**
 ```json
@@ -212,7 +212,7 @@ X-Timestamp: <unix_timestamp>
 }
 ```
 
-### 3. 查询余额 (POST /api/v1/kyc/balance/query)
+### 3. 查询余额 (POST /kyc/balance/query)
 
 **响应：**
 ```json

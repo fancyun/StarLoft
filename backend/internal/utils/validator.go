@@ -4,14 +4,19 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
+
+// MinKycAge 平台实名认证最低年龄限制（周岁）
+const MinKycAge = 16
 
 var (
 	ErrInvalidPhone    = errors.New("invalid phone number")
 	ErrInvalidPassword = errors.New("password must be 8-32 characters with letters and numbers")
 	ErrInvalidIDCard   = errors.New("invalid ID card number")
+	ErrIDCardUnderage  = errors.New("实名认证需年满16周岁")
 	ErrInvalidName     = errors.New("invalid name")
 	ErrInvalidAmount   = errors.New("invalid amount")
 	ErrSQLInjection    = errors.New("potential SQL injection detected")
@@ -93,6 +98,40 @@ func (v *InputValidator) ValidateIDCard(idCard string) error {
 		return ErrInvalidIDCard
 	}
 
+	return nil
+}
+
+// ageFromIDCard 从18位身份证号中提取出生日期并计算周岁年龄
+// 身份证号第 7-14 位为出生日期（YYYYMMDD）
+func ageFromIDCard(idCard string, now time.Time) (int, error) {
+	if len(idCard) != 18 {
+		return 0, ErrInvalidIDCard
+	}
+	birth, err := time.Parse("20060102", idCard[6:14])
+	if err != nil {
+		return 0, ErrInvalidIDCard
+	}
+
+	age := now.Year() - birth.Year()
+	// 今年生日还未过，则减一岁
+	if now.Month() < birth.Month() || (now.Month() == birth.Month() && now.Day() < birth.Day()) {
+		age--
+	}
+	return age, nil
+}
+
+// ValidateIDCardMinAge 验证身份证号格式与校验码，并校验是否达到最低年龄
+func (v *InputValidator) ValidateIDCardMinAge(idCard string, minAge int) error {
+	if err := v.ValidateIDCard(idCard); err != nil {
+		return err
+	}
+	age, err := ageFromIDCard(idCard, time.Now())
+	if err != nil {
+		return ErrInvalidIDCard
+	}
+	if age < minAge {
+		return ErrIDCardUnderage
+	}
 	return nil
 }
 

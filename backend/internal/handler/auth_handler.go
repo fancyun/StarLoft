@@ -73,10 +73,10 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 	}
 
 	// 验证身份证号
-	if err := authValidator.ValidateIDCard(req.IDCard); err != nil {
+	if err := authValidator.ValidateIDCardMinAge(req.IDCard, utils.MinKycAge); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
-			"message": "invalid ID card number",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -443,6 +443,15 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 	}
 	// notifyURL 留空，由 service 层使用 .env 环境变量中的 FINAUTH_NOTIFY_URL
 	notifyURL := ""
+
+	// 年龄限制：平台实名需年满16周岁
+	if err := authValidator.ValidateIDCardMinAge(req.IDCard, utils.MinKycAge); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": err.Error(),
+		})
+		return
+	}
 
 	// 生成业务流水号（用于标识这是用户实名认证）
 	bizNo := fmt.Sprintf("WEB_%d_%d", userID, time.Now().Unix())
