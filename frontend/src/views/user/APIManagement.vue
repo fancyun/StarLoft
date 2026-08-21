@@ -30,20 +30,8 @@
           <el-icon><Document /></el-icon>
           接口文档
         </h3>
-        <div class="api-doc-item">
-          <span class="doc-label">认证接口</span>
-          <code class="doc-url">POST /api/v1/auth/verify</code>
-        </div>
-        <div class="api-doc-item">
-          <span class="doc-label">结果查询</span>
-          <code class="doc-url">GET /api/v1/auth/result</code>
-        </div>
-        <div class="api-doc-item">
-          <span class="doc-label">认证方式</span>
-          <div class="doc-desc">
-            在请求头中携带 <code>Authorization: Bearer &lt;your_api_key&gt;</code>
-          </div>
-        </div>
+        <p class="doc-tip">完整的接口调用方法与示例请前往文档中心查看。</p>
+        <el-button type="primary" @click="$router.push('/docs/api/v1')">查看 API 文档</el-button>
       </div>
     </div>
   </div>
@@ -165,42 +153,9 @@ onMounted(() => {
   word-break: break-all;
 }
 
-.api-doc-item {
-  padding: 10px 0;
-  border-bottom: 1px dashed var(--border-light);
-}
-
-.api-doc-item:last-child { border-bottom: none; }
-
-.doc-label {
-  display: block;
+.doc-tip {
   color: var(--text-muted);
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.doc-url {
-  padding: 6px 10px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  color: var(--color-primary);
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-}
-
-.doc-desc {
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.doc-desc code {
-  padding: 2px 6px;
-  background: var(--bg-soft);
-  border-radius: var(--radius-sm);
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: var(--color-primary);
+  font-size: 14px;
+  margin-bottom: 16px;
 }
 </style>

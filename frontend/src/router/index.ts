@@ -29,6 +29,38 @@ const routes: Array<RouteRecordRaw> = [
     name: 'AuthResult',
     component: () => import('@/views/user/AuthResult.vue')
   },
+  // 文档中心（公开，无需登录）
+  {
+    path: '/docs',
+    component: () => import('@/views/docs/DocsLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'DocsHome',
+        component: () => import('@/views/docs/DocsHome.vue')
+      },
+      {
+        path: 'api',
+        name: 'DocsApi',
+        component: () => import('@/views/docs/ApiDocs.vue')
+      },
+      {
+        path: 'api/v1',
+        name: 'DocsApiV1',
+        component: () => import('@/views/docs/ApiV1.vue')
+      },
+      {
+        path: 'plugin',
+        name: 'DocsPlugin',
+        component: () => import('@/views/docs/PluginDocs.vue')
+      },
+      {
+        path: 'plugin/zjmf',
+        name: 'DocsPluginZjf',
+        component: () => import('@/views/docs/PluginZjf.vue')
+      }
+    ]
+  },
   // 用户功能（需登录）
   {
     path: '/user',

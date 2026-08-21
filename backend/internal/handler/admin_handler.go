@@ -1056,13 +1056,23 @@ func (h *AdminHandler) GetUserList(c *gin.Context) {
 	// 数据脱敏处理
 	userList := make([]gin.H, 0, len(users))
 	for _, user := range users {
+		// 提取 NullString 的值，避免序列化为 {"String":"...","Valid":true}
+		kycName := ""
+		if user.KYCName.Valid {
+			kycName = user.KYCName.String
+		}
+		kycIDCard := ""
+		if user.KYCIDCard.Valid {
+			kycIDCard = user.KYCIDCard.String
+		}
+
 		userList = append(userList, gin.H{
 			"id":              user.ID,
 			"phone":           user.Phone,
 			"balance":         user.Balance,
 			"is_kyc_verified": user.IsKYCVerified,
-			"kyc_name":        user.KYCName,
-			"kyc_id_card":     user.KYCIDCard,
+			"kyc_name":        kycName,
+			"kyc_id_card":     kycIDCard,
 			"kyc_price":       user.KYCPrice,
 			"api_key":         user.APIKey,
 			"status":          user.Status,
