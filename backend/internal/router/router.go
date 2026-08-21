@@ -222,7 +222,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	}
 
 	// 认证结果中转页面（前端路由）
-	r.GET("/auth-result", func(c *gin.Context) {
+	r.GET("/kyc/result", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "请通过前端访问此页面"})
 	})
 

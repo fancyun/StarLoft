@@ -122,7 +122,7 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
-			"message": "failed to start auth",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -439,7 +439,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 
 	// 设置默认回调地址（Web 前端）
 	if req.ReturnURL == "" {
-		req.ReturnURL = "https://yourdomain.com/auth/result"
+		req.ReturnURL = "https://yourdomain.com/kyc/result"
 	}
 	// notifyURL 留空，由 service 层使用 .env 环境变量中的 FINAUTH_NOTIFY_URL
 	notifyURL := ""
@@ -471,7 +471,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
-			"message": "failed to start auth",
+			"message": err.Error(),
 		})
 		return
 	}

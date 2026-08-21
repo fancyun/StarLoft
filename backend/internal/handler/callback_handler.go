@@ -109,7 +109,7 @@ func (h *CallbackHandler) FinAuthReturnCallback(c *gin.Context) {
 	log.Printf("收到 FinAuth return_url 回调: BizID=%s", bizID)
 
 	// 转发到前端认证结果页
-	c.Redirect(http.StatusFound, "/auth-result?biz_id="+bizID)
+	c.Redirect(http.StatusFound, "/kyc/result?biz_id="+bizID)
 }
 
 // PaymentCallback 处理支付回调

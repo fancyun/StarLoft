@@ -25,7 +25,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/KYCVerify.vue')
   },
   {
-    path: '/auth-result',
+    path: '/kyc/result',
     name: 'AuthResult',
     component: () => import('@/views/user/AuthResult.vue')
   },

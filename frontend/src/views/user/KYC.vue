@@ -130,7 +130,7 @@ const pendingBizNo = ref('')
 const form = reactive({
   name: '',
   id_card: '',
-  return_url: window.location.origin + '/kyc'
+  return_url: window.location.origin + '/kyc/result'
 })
 
 const validateIdCard = (_rule: any, value: string, callback: any) => {
@@ -178,7 +178,7 @@ const handleSubmit = async () => {
     const res = await userAPI.startKYC({
       name: form.name,
       id_card: form.id_card,
-      return_url: window.location.origin + '/user/kyc/result'
+      return_url: window.location.origin + '/kyc/result'
     })
     
     // 跳转到认证页面
