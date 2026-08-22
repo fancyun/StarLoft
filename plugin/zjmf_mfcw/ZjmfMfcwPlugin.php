@@ -15,10 +15,11 @@ use certification\zjmf_mfcw\logic\KycSdk;
  *  - personal(): 对 startKyc 的错误做精准分类(余额不足/签名错误/参数错误),余额不足直接中止,防止用户反复重试导致多扣
  *  - getStatus(): 对 queryResult 的错误做精准分类,余额不足/鉴权失败/参数错误 直接终态失败(status=2),不再"查询中..."无限轮询
  *  - getStatus(): 连续出现 NOT_FOUND 超过阈值后也终态失败,避免 certify_id 错误时卡死
- *  - getStatus(): 引入轮询次数计数,超过最大轮询次数仍在处理中 => 提示用户稍后再查
+ *  - getStatus(): 轮询计数改用文件存储(不再依赖 SESSION),并设置硬性上限,
+ *                 到上限后强制返回 status=2(终态失败),杜绝平台系统以 2s/次无限轮询回调地址
  *
  * @author StarLoft
- * @version 1.1.0
+ * @version 1.1.1
  */
 class ZjmfMfcwPlugin extends Plugin
 {
@@ -28,15 +29,18 @@ class ZjmfMfcwPlugin extends Plugin
     public $info = [
         'name'        => 'ZjmfMfcw',
         'title'       => 'StarLoft KYC实名认证',
-        'description' => 'StarLoft KYC 三要素实名认证（姓名+身份证+人脸识别）— 已修复重复创建/余额误报问题',
+        'description' => 'StarLoft KYC 三要素实名认证（姓名+身份证+人脸识别）— 已修复重复创建/无限轮询问题',
         'status'      => 1,
         'author'      => 'StarLoft',
-        'version'     => '1.1.0',
+        'version'     => '1.1.1',
         'help_url'    => 'https://docs.starloft.cn/kyc/plugin'
     ];
 
-    /** 轮询最大次数(默认前端 3~5s 一次, 120 次约 6~10 分钟)*/
-    const MAX_POLL_COUNT = 120;
+    /** 轮询最大次数(系统按 2s/次轮询, 500 次约 16 分钟, 覆盖上游任务 15 分钟有效期)*/
+    const MAX_POLL_COUNT = 500;
+
+    /** 查询出错(网络/临时错误)时的轮询上限, 60 次约 2 分钟, 防止 KYC 后端不可达时无限轮询 */
+    const MAX_ERROR_COUNT = 60;
 
     /** NOT_FOUND 连续多少次后判终态失败(防止 certify_id 写错或已被平台清理) */
     const MAX_NOT_FOUND = 5;
@@ -135,8 +139,9 @@ class ZjmfMfcwPlugin extends Plugin
             }
 
             // ============ 真正创建新任务 ============
-            $bizNo = 'ZJMF' . date('YmdHis') . mt_rand(1000, 9999);
             $uid   = $this->resolveCurrentUid();
+            // 稳定幂等业务单号：同一用户+同一身份证固定生成，后端据此去重，避免重复创建任务/重复扣费
+            $bizNo = 'ZJMF_' . $uid . '_' . substr(md5($idCard), 0, 8);
             $domain = $this->resolveDomain();
             $notifyUrl = $domain . '/certification/zjmf_mfcw/callback?uid=' . $uid;
             $returnUrl = $domain . '/certification/zjmf_mfcw/result?uid=' . $uid;
@@ -314,11 +319,11 @@ HTML;
                         'OTHER_ERROR'       => 'webRTC 连接异常,请检查网络/摄像头后刷新重试。',
                     ];
                     $tip = $tipMap[$orderMessage] ?? '认证遇到问题,请检查浏览器摄像头权限后重试。';
-                    return ['status' => 4, 'msg' => $tip];
+                    return $this->trackPollAndReturn($certifyId, 4, $tip);
                 }
-                // 3000 DATA_SOURCE_ERROR/INTERNAL_ERROR = 临时错误,继续等
+                // 3000 DATA_SOURCE_ERROR/INTERNAL_ERROR = 临时错误,继续等(出错路径用较短上限,防止无限轮询)
                 if ($orderCode === 3000 && in_array($orderMessage, ['DATA_SOURCE_ERROR','INTERNAL_ERROR'], true)) {
-                    return $this->trackPollAndReturn($certifyId, 4, '服务端临时异常,持续重试中...(' . $orderMessage . ')');
+                    return $this->trackPollAndReturn($certifyId, 4, '服务端临时异常,持续重试中...(' . $orderMessage . ')', 'err', self::MAX_ERROR_COUNT);
                 }
                 // 兜底 -> 继续轮询
                 return $this->trackPollAndReturn($certifyId, 4, '认证处理中,请稍候...(order_code=' . $orderCode . ')');
@@ -348,7 +353,7 @@ HTML;
                     'OTHER_ERROR'       => 'webRTC 连接异常,请检查网络/摄像头后刷新重试。',
                 ];
                 $tip = $tipMap[$rm] ?? ($msg ?: '认证处理中,请稍候...');
-                return ['status' => 4, 'msg' => $tip];
+                return $this->trackPollAndReturn($certifyId, 4, $tip);
             }
 
             // 修复: 余额不足 / 鉴权配置错 / 参数错 => 终态失败,不再继续轮询!
@@ -392,12 +397,12 @@ HTML;
                 return ['status' => 4, 'msg' => '任务查询中,请稍候...(未找到,剩余重试 ' . (self::MAX_NOT_FOUND - $cnt) . ')'];
             }
 
-            // 临时错误 / 未知: 保持 4(继续轮询)
-            return $this->trackPollAndReturn($certifyId, 4, '查询中,请稍候...(' . $msg . ')');
+            // 临时错误 / 未知: 保持 4(继续轮询),但用较短上限强制终止,避免后端不可达时无限轮询
+            return $this->trackPollAndReturn($certifyId, 4, '查询中,请稍候...(' . $msg . ')', 'err', self::MAX_ERROR_COUNT);
 
         } catch (\Exception $e) {
-            // 本地异常: 短暂继续轮询,超过上限再提示
-            return $this->trackPollAndReturn($certifyId, 4, '查询中,请稍候...(异常:' . $e->getMessage() . ')');
+            // 本地异常: 短暂继续轮询,超过上限强制终态失败
+            return $this->trackPollAndReturn($certifyId, 4, '查询中,请稍候...(异常:' . $e->getMessage() . ')', 'err', self::MAX_ERROR_COUNT);
         }
     }
 
@@ -567,16 +572,18 @@ HTML;
     }
 
     // =========================================================
-    // 辅助: 简易 "轮询次数" 跟踪(用 SESSION,避免引入额外表)
+    // 辅助: 简易 "轮询次数" 跟踪
+    // 修复: 改用文件计数(而非 SESSION),避免平台系统轮询与浏览器会话不一致,
+    //       导致计数永远达不到上限而无限轮询; 到上限后强制返回终态失败,保证轮询终止。
     // =========================================================
-    protected function trackPollAndReturn($certifyId, $status, $msg)
+    protected function trackPollAndReturn($certifyId, $status, $msg, $type = 'total', $max = self::MAX_POLL_COUNT)
     {
-        $total = $this->incPollCounter($certifyId, 'total');
-        if ($total >= self::MAX_POLL_COUNT) {
-            // 超最大轮询: 提示用户稍后再看,但不写终态失败(也许任务仍在 KYC 平台处理,只是需要更久)
+        $cnt = $this->incPollCounter($certifyId, $type);
+        if ($cnt >= $max) {
+            // 到达轮询上限仍未出结果 -> 强制终态失败,不再无限轮询
             return [
-                'status' => 4,
-                'msg'    => '认证仍在处理中,但等待时间较长,您可稍后回到此页面自动继续,或联系管理员查询。'
+                'status' => 2,
+                'msg'    => '认证状态查询超时,请稍后重新发起实名认证。',
             ];
         }
         return ['status' => $status, 'msg' => $msg];
@@ -584,26 +591,23 @@ HTML;
 
     protected function incPollCounter($certifyId, $type)
     {
-        if (PHP_SAPI !== 'cli') {
-            if (!isset($_SESSION)) {
-                if (session_status() === PHP_SESSION_NONE) {
-                    @session_start();
-                }
+        // 计数文件存于系统临时目录(24 小时有效),跨请求稳定
+        $dir  = rtrim(sys_get_temp_dir(), '/\\') . '/starloft_kyc_poll';
+        if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
+        $file = $dir . '/' . $type . '_' . md5((string)$certifyId) . '.txt';
+
+        $now  = time();
+        $cnt  = 0;
+        if (is_file($file)) {
+            $raw   = @file_get_contents($file);
+            $parts = explode('|', (string)$raw);
+            if (count($parts) === 2 && (int)$parts[1] >= $now) {
+                $cnt = (int)$parts[0];
             }
         }
-        $key    = 'starloft_poll_' . $type . '_' . md5($certifyId);
-        $expKey = $key . '_exp';
-
-        $now     = time();
-        $expired = empty($_SESSION[$expKey]) || $_SESSION[$expKey] < $now;
-
-        if ($expired) {
-            // 过期:清零计数并重新设 1 小时 TTL(否则计数会越积越多导致永远"超过轮询上限")
-            $_SESSION[$key]    = 0;
-            $_SESSION[$expKey] = $now + 3600;
-        }
-        $_SESSION[$key] = ((int)($_SESSION[$key] ?? 0)) + 1;
-        return (int)$_SESSION[$key];
+        $cnt++;
+        @file_put_contents($file, $cnt . '|' . ($now + 86400));
+        return $cnt;
     }
 
     // =========================================================

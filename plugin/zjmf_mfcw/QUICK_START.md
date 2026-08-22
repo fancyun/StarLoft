@@ -4,9 +4,9 @@
 
 ### 1. 上传插件
 
-将 `starloft_kyc` 文件夹上传到：
+将 `zjmf_mfcw` 文件夹上传到：
 ```
-/public/plugins/certification/starloft_kyc/
+/public/plugins/certification/zjmf_mfcw/
 ```
 
 ### 2. 后台安装
@@ -41,7 +41,7 @@ API Secret: your_api_secret_here
 
 访问地址：
 ```
-https://你的域名/certification/starloft_kyc
+https://你的域名/certification/zjmf_mfcw
 ```
 
 认证流程：

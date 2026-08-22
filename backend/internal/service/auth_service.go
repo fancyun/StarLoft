@@ -69,6 +69,22 @@ func (s *AuthService) StartAuth(
 		notifyURL = s.config.NotifyURL
 	}
 
+	// 幂等去重：同一下游 biz_no 若已存在进行中订单，直接复用，避免重复创建任务/重复扣费
+	if existing, err := s.orderRepo.GetOrderByBizNo(userID, bizNo); err == nil && existing != nil {
+		if existing.Status == 0 || existing.Status == 1 {
+			authURL := ""
+			if existing.UpToken != "" {
+				authURL = fmt.Sprintf("%s/finauth/lite/do?token=%s", s.config.BaseURL, existing.UpToken)
+			}
+			return &StartAuthResult{
+				Order:   existing,
+				AuthURL: authURL,
+				Token:   existing.UpToken,
+				BizID:   existing.UpBizID,
+			}, nil
+		}
+	}
+
 	// 检查用户余额并确定 KYC 单价（提前处理，确保订单记录扣费金额正确）
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {

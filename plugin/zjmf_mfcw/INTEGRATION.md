@@ -11,7 +11,7 @@
 │                      智简魔方 3.7.6 系统                         │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │         StarloftKycPlugin (插件主类)                     │  │
+│  │         ZjmfMfcwPlugin (插件主类)                         │  │
 │  │  - personal()      个人实名认证                          │  │
 │  │  - getStatus()     查询认证状态                          │  │
 │  │  - collectionInfo() 自定义字段                           │  │
@@ -45,8 +45,8 @@
 ## 文件结构
 
 ```
-starloft_kyc/
-├── StarloftKycPlugin.php       # 插件主类
+zjmf_mfcw/
+├── ZjmfMfcwPlugin.php          # 插件主类
 │   ├── install()               # 安装方法
 │   ├── uninstall()             # 卸载方法
 │   ├── personal()              # 个人实名认证
@@ -77,7 +77,7 @@ starloft_kyc/
 ```
 用户提交认证
     ↓
-StarloftKycPlugin::personal()
+ZjmfMfcwPlugin::personal()
     ↓
 KycSdk::startKyc()
     ├─ 生成HMAC签名
@@ -167,8 +167,8 @@ X-Timestamp: <unix_timestamp>
   "biz_no": "ZJMF20260119001",
   "name": "张三",
   "id_card": "110101199001011234",
-  "return_url": "https://yourdomain.com/certification/starloft_kyc/result?uid=1",
-  "notify_url": "https://yourdomain.com/certification/starloft_kyc/callback?uid=1",
+  "return_url": "https://yourdomain.com/certification/zjmf_mfcw/result?uid=1",
+  "notify_url": "https://yourdomain.com/certification/zjmf_mfcw/callback?uid=1",
   "biz_extra_data": "{\"uid\":1}"
 }
 ```
@@ -370,9 +370,9 @@ curl -X POST "https://kyc.starloft.cn/api/v1/kyc/balance/query" \
 
 ```bash
 # 设置文件权限
-chmod 755 starloft_kyc/
-chmod 644 starloft_kyc/*.php
-chmod 644 starloft_kyc/config/*.php
+chmod 755 zjmf_mfcw/
+chmod 644 zjmf_mfcw/*.php
+chmod 644 zjmf_mfcw/config/*.php
 ```
 
 ### 3. 日志配置

@@ -255,7 +255,7 @@ func (r *AuthOrderRepository) GetOrderByBizNo(userID int64, bizNo string) (*mode
 		COALESCE(result_code, ''), COALESCE(result_message, ''),
 		status, cost, is_refunded, notify_times, 
 		notify_status, created_at, updated_at, finished_at 
-		FROM auth_order WHERE user_id = ? AND biz_no = ?`
+		FROM auth_order WHERE user_id = ? AND biz_no = ? ORDER BY id DESC LIMIT 1`
 
 	order := &model.AuthOrder{}
 	err := r.db.QueryRow(query, userID, bizNo).Scan(

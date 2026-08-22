@@ -19,17 +19,17 @@ StarLoft KYC 是一个对接 StarLoft KYC 系统的实名认证插件，适用�
 
 ### 1. 上传插件文件
 
-将 `starloft_kyc` 文件夹上传到以下目录：
+将 `zjmf_mfcw` 文件夹上传到以下目录：
 ```
-/public/plugins/certification/starloft_kyc/
+/public/plugins/certification/zjmf_mfcw/
 ```
 
 ### 2. 确认文件结构
 
 确保以下文件结构完整：
 ```
-starloft_kyc/
-├── StarloftKycPlugin.php       # 插件主类
+zjmf_mfcw/
+├── ZjmfMfcwPlugin.php          # 插件主类
 ├── README.md                   # 本文档
 ├── config/
 │   └── config.php              # 配置文件
@@ -76,7 +76,7 @@ starloft_kyc/
 
 **访问地址：**
 ```
-https://你的域名/certification/starloft_kyc
+https://你的域名/certification/zjmf_mfcw
 ```
 
 **认证流程：**
@@ -137,8 +137,8 @@ X-Timestamp: <unix_timestamp>
     "biz_no": "ZJMF20260119001",           // 业务订单号（唯一）
     "name": "张三",                        // 真实姓名
     "id_card": "110101199001011234",      // 身份证号
-    "return_url": "https://yourdomain.com/certification/starloft_kyc/result",
-    "notify_url": "https://yourdomain.com/certification/starloft_kyc/callback",
+    "return_url": "https://yourdomain.com/certification/zjmf_mfcw/result",
+    "notify_url": "https://yourdomain.com/certification/zjmf_mfcw/callback",
     "biz_extra_data": "{\"uid\":1001}"    // 业务扩展数据
 }
 

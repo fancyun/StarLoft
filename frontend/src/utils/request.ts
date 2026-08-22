@@ -45,8 +45,15 @@ request.interceptors.response.use(
     const backendMsg = error.response?.data?.message
     if (error.response?.status === 401) {
       const userStore = useUserStore()
-      userStore.logout()
-      window.location.href = '/login'
+      // 根据请求路径判断是管理员接口还是用户接口，跳转到对应的登录页
+      const isAdminReq = error.config?.url?.startsWith('/admin/')
+      if (isAdminReq) {
+        userStore.clearAdminInfo()
+        window.location.href = '/admin/login'
+      } else {
+        userStore.logout()
+        window.location.href = '/login'
+      }
       ElMessage.error(backendMsg || '登录已过期，请重新登录')
     } else {
       ElMessage.error(backendMsg || error.message || '网络错误')
