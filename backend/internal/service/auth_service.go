@@ -55,11 +55,13 @@ func NewAuthService(
 }
 
 // StartAuth 发起认证
+// free 为 true 表示账户实名（免费，不扣余额）；false 表示 API 下游业务调用（按 kyc_price 从余额扣费）
 func (s *AuthService) StartAuth(
 	userID int64,
 	name, idCard, bizNo, returnURL, notifyURL string,
 	bizExtraData string,
 	usePlatformURLs bool,
+	free bool,
 ) (*StartAuthResult, error) {
 	// 使用配置中的默认值（如果未传入）
 	if returnURL == "" {
@@ -85,20 +87,23 @@ func (s *AuthService) StartAuth(
 		}
 	}
 
-	// 检查用户余额并确定 KYC 单价（提前处理，确保订单记录扣费金额正确）
+	// 获取用户信息（free 时仅校验用户存在；收费时还需确定 KYC 单价并校验余额）
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("获取用户信息失败: %w", err)
 	}
 
-	// 使用用户的KYC单价
-	kycPrice := user.KYCPrice
-	if kycPrice <= 0 {
-		kycPrice = 1.00 // 默认1元
-	}
+	// 确定扣费金额（仅收费流程生效；账户实名免费）
+	kycPrice := 0.0
+	if !free {
+		kycPrice = user.KYCPrice
+		if kycPrice <= 0 {
+			kycPrice = 1.00 // 默认1元
+		}
 
-	if user.Balance < kycPrice {
-		return nil, fmt.Errorf("余额不足，需要%.2f元，当前余额%.2f元", kycPrice, user.Balance)
+		if user.Balance < kycPrice {
+			return nil, fmt.Errorf("余额不足，需要%.2f元，当前余额%.2f元", kycPrice, user.Balance)
+		}
 	}
 
 	// 生成平台流水号
@@ -135,14 +140,16 @@ func (s *AuthService) StartAuth(
 		return nil, fmt.Errorf("create order failed: %w", err)
 	}
 
-	// 扣除余额（使用用户KYC单价）
-	err = s.balanceService.DeductBalance(userID, kycPrice, order.ID, "KYC认证消费")
-	if err != nil {
-		log.Printf("扣除余额失败 [order_id=%d]: %v", order.ID, err)
-		// 余额未扣（事务已回滚），仅将订单和实名记录标记为失败，避免产生悬挂订单
-		_ = s.orderRepo.UpdateOrderResult(order.ID, "DEDUCT_FAILED", "扣费失败", 3)
-		_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 3, "DEDUCT_FAILED", "扣费失败", "", nil)
-		return nil, fmt.Errorf("扣除余额失败: %w", err)
+	// 扣除余额（仅收费流程；账户实名免费不扣费）
+	if !free {
+		err = s.balanceService.DeductBalance(userID, kycPrice, order.ID, "KYC认证消费")
+		if err != nil {
+			log.Printf("扣除余额失败 [order_id=%d]: %v", order.ID, err)
+			// 余额未扣（事务已回滚），仅将订单和实名记录标记为失败，避免产生悬挂订单
+			_ = s.orderRepo.UpdateOrderResult(order.ID, "DEDUCT_FAILED", "扣费失败", 3)
+			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 3, "DEDUCT_FAILED", "扣费失败", "", nil)
+			return nil, fmt.Errorf("扣除余额失败: %w", err)
+		}
 	}
 
 	// 传给上游 get_token 的地址：下游调用时使用平台地址（平台中转），否则透传
@@ -297,23 +304,6 @@ func (s *AuthService) CancelKycRecord(userID int64) error {
 	return s.kycRecordRepo.Cancel(kycRecord.ID)
 }
 
-// ReplaceKycRecord 更换实名：将最新已实名记录标记为"已更换"，清除用户实名状态
-func (s *AuthService) ReplaceKycRecord(userID int64) error {
-	// 1. 将最新已实名的 kyc_record 标记为"已更换"
-	err := s.kycRecordRepo.Replace(userID)
-	if err != nil {
-		return fmt.Errorf("replace kyc record failed: %w", err)
-	}
-
-	// 2. 清除 platform_user 的实名信息
-	err = s.userRepo.ClearUserKYCInfo(userID)
-	if err != nil {
-		return fmt.Errorf("clear user kyc info failed: %w", err)
-	}
-
-	return nil
-}
-
 // GetUserAuthRecords 查询用户认证记录
 func (s *AuthService) GetUserAuthRecords(userID int64, page, pageSize int) ([]*model.AuthOrder, int64, error) {
 	return s.orderRepo.GetUserOrders(userID, page, pageSize)
@@ -341,6 +331,23 @@ func (s *AuthService) GetUserAuthCallStats(userID int64, days int) ([]string, []
 	}
 
 	return dates, counts, nil
+}
+
+// ensureAPIKey 实名成功后若用户尚未拥有 API Key，则自动生成并下发（开通 API 需先完成实名）
+func (s *AuthService) ensureAPIKey(userID int64) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return
+	}
+	if user.APIKey != "" {
+		return
+	}
+	apiKey := generateRandomKey(32)
+	apiSecret := generateRandomKey(32)
+	if err := s.userRepo.UpdateUserAPIKey(userID, apiKey, apiSecret); err != nil {
+		log.Printf("实名成功后自动生成 API Key 失败 [user_id=%d]: %v", userID, err)
+	}
+	log.Printf("实名成功，已为用户自动生成 API Key [user_id=%d]", userID)
 }
 
 // isInProgressMessage 判断上游返回的 result_message 是否表示「认证尚未开始/进行中」。
@@ -414,6 +421,8 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, result.ResultMessage, "", &now)
 		}
+		// 实名成功后自动下发 API Key（开通 API 需先完成实名）
+		s.ensureAPIKey(order.UserID)
 	} else if status == 3 {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {
@@ -491,6 +500,8 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, notifyData.ResultMessage, "", &now)
 		}
+		// 实名成功后自动下发 API Key（开通 API 需先完成实名）
+		s.ensureAPIKey(order.UserID)
 	} else {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {
@@ -543,10 +554,12 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 	}
 }
 
-// revertStartAuth 发起认证失败时退还预扣余额并将结果标记为连接超时
+// revertStartAuth 发起认证失败时退还预扣余额并将结果标记为连接超时（免费流程不涉及退费）
 func (s *AuthService) revertStartAuth(order *model.AuthOrder, kycRecord *model.KycRecord, userID int64, remark string) {
-	if err := s.balanceService.RefundBalance(userID, order.Cost, order.ID, remark); err != nil {
-		log.Printf("发起认证失败退费失败 [order_id=%d]: %v", order.ID, err)
+	if order.Cost > 0 {
+		if err := s.balanceService.RefundBalance(userID, order.Cost, order.ID, remark); err != nil {
+			log.Printf("发起认证失败退费失败 [order_id=%d]: %v", order.ID, err)
+		}
 	}
 
 	// 不删除订单与实名记录，将结果标记为连接超时（status=5 超时/已退款）
@@ -565,6 +578,9 @@ func (s *AuthService) revertStartAuth(order *model.AuthOrder, kycRecord *model.K
 
 // refundIfNotChargeable 不计费结果（6000/6100）退还预扣余额
 func (s *AuthService) refundIfNotChargeable(order *model.AuthOrder, resultCode int) {
+	if order.Cost <= 0 {
+		return
+	}
 	if resultCode != 6000 && resultCode != 6100 {
 		return
 	}

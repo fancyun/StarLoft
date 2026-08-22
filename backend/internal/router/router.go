@@ -145,7 +145,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 				auth.GET("/kyc/status", authHandler.GetUserAuthStatus)
 				auth.POST("/kyc/sync", authHandler.SyncKycResult)
 				auth.POST("/kyc", authHandler.StartAuthForWeb)
-				auth.POST("/kyc/replace", authHandler.ReplaceKycRecord)
 				auth.DELETE("/kyc", authHandler.CancelKycRecord)
 				auth.GET("/records", authHandler.GetUserAuthRecords)
 				auth.GET("/stats/calls", authHandler.GetUserAuthCallStats)

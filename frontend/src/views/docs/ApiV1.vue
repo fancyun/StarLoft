@@ -25,7 +25,7 @@
       <tbody>
         <tr>
           <td><code>X-Api-Key</code></td>
-          <td>在用户中心「API 密钥管理」中获取的 API Key</td>
+          <td>在用户中心「API 密钥管理」中获取的 API Key（需先完成账户实名认证后方可开通）</td>
         </tr>
         <tr>
           <td><code>X-Sign</code></td>
@@ -42,6 +42,11 @@
       </tbody>
     </table>
 
+    <p class="notice">
+      <strong>开通前提：</strong>账户需先在用户中心完成实名认证（免费，实名成功后永久绑定不可修改）。
+      实名认证成功后系统自动下发 API Key/Secret；未完成实名的账户无法获得 API Key，也无法调用本 API。
+    </p>
+
     <h3>签名算法</h3>
     <p>签名为对<strong>原始请求体</strong>（POST 的 JSON 字符串，与发送内容完全一致）进行 HMAC-SHA256 运算后的小写十六进制字符串：</p>
     <pre><code>sign = hex(HMAC-SHA256(api_secret, 原始请求体))</code></pre>
@@ -53,7 +58,7 @@
 
     <h3>3.1 创建认证订单</h3>
     <p><span class="method post">POST</span><code>/api/v1/kyc/start</code></p>
-    <p>发起一次实名认证。平台将扣取余额、创建订单并返回认证跳转地址。</p>
+    <p>发起一次实名认证（API 业务调用）。平台将按该账户的 KYC 单价从余额扣费、创建订单并返回认证跳转地址。</p>
 
     <h4>请求参数</h4>
     <table>

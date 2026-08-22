@@ -90,7 +90,7 @@ class ZjmfMfcwPlugin extends Plugin
             $existing = $this->getCurrentUserCertiRecord();
             if (!empty($existing)) {
                 $exStatus    = (int)($existing['certify_status'] ?? $existing['status'] ?? 0);
-                $exCertifyId = trim((string)($existing['certify_id'] ?? ''));
+                $exCertifyId = $this->resolveCertifyId($existing);
                 $exNotes     = (string)($existing['notes'] ?? '');
 
                 // status=4 表示已经在认证中,且有平台任务号 -> 直接复用,不重复创建扣费
@@ -263,10 +263,13 @@ HTML;
      *  - 不再一视同仁返回"status=4 查询中...": 余额不足/鉴权错误等硬错误立刻结束(status=2)
      *  - NOT_FOUND 连续超阈值后也结束,避免 certify_id 错误死循环
      *  - 轮询次数上限(超上限给用户提示)
+     *  - 修复: 框架传入的任务号字段名可能为 certify_id/certif_id/certifi_id,
+     *    且该值可能为空导致查询不到订单而误报失败; 这里统一解析并兜底从本地认证记录补齐,
+     *    避免"实名已成功但插件查询不到任务"的误判。
      */
     public function getStatus($certifi)
     {
-        $certifyId = trim((string)($certifi['certify_id'] ?? ''));
+        $certifyId = $this->resolveCertifyId($certifi);
 
         try {
             $config = $this->getConfig();
@@ -458,6 +461,58 @@ HTML;
             }
         } catch (\Throwable $_) {}
         return [];
+    }
+
+    /**
+     * 解析本次查询的认证任务号（平台流水号 platform_biz_no）
+     *
+     * 修复: 魔方财务框架传入 getStatus() 的任务号字段名在不同版本/表结构下可能为
+     *   certify_id / certif_id / certifi_id / certifyId 等，且该值可能为空，
+     *   若只读单一字段会导致查询平台时拿到空任务号而误报「查询不到实名任务」。
+     * 这里统一按候选字段名解析；全部为空时兜底读取本机认证记录里保存的 certify_id
+     * （personal() 创建任务时已把平台流水号写入），保证查询参数始终有效。
+     *
+     * @param mixed $certifi 框架传入的认证数据
+     * @return string 解析出的任务号（可能为空，由调用方继续兜底）
+     */
+    protected function resolveCertifyId($certifi)
+    {
+        $candidateKeys = ['certify_id', 'certif_id', 'certifi_id', 'certifyId', 'certifiId', 'certifId'];
+
+        // 1) 从框架传入数据中按候选字段名取任务号
+        if (is_array($certifi)) {
+            foreach ($candidateKeys as $k) {
+                $v = trim((string)($certifi[$k] ?? ''));
+                if ($v !== '') {
+                    return $v;
+                }
+            }
+            // 兼容框架以嵌套数组包裹记录的场景
+            $nested = $certifi['certifi'] ?? null;
+            if (is_array($nested)) {
+                foreach ($candidateKeys as $k) {
+                    $v = trim((string)($nested[$k] ?? ''));
+                    if ($v !== '') {
+                        return $v;
+                    }
+                }
+            }
+        }
+
+        // 2) 兜底：从本机认证记录取任务号（personal() 创建任务时已把平台流水号写入 certify_id）
+        try {
+            $rec = $this->getCurrentUserCertiRecord();
+            if (!empty($rec) && is_array($rec)) {
+                foreach (array_merge($candidateKeys, ['task_id', 'certification_id']) as $k) {
+                    $v = trim((string)($rec[$k] ?? ''));
+                    if ($v !== '') {
+                        return $v;
+                    }
+                }
+            }
+        } catch (\Throwable $_) {}
+
+        return '';
     }
 
     /**

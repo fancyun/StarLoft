@@ -169,15 +169,6 @@ func (r *UserRepository) UpdateUserKYCInfo(userID int64, name, idCard string) er
 	return err
 }
 
-// ClearUserKYCInfo 清除用户实名信息（更换实名时调用）
-func (r *UserRepository) ClearUserKYCInfo(userID int64) error {
-	query := `UPDATE platform_user 
-		SET is_kyc_verified = 0, kyc_name = NULL, kyc_id_card = NULL, updated_at = ? 
-		WHERE id = ?`
-	_, err := r.db.Exec(query, time.Now(), userID)
-	return err
-}
-
 // UpdateUserBalance 更新用户余额
 func (r *UserRepository) UpdateUserBalance(userID int64, balance float64) error {
 	query := `UPDATE platform_user SET balance = ?, updated_at = ? WHERE id = ?`

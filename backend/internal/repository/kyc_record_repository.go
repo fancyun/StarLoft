@@ -172,21 +172,6 @@ func (r *KycRecordRepository) Cancel(id int64) error {
 	return err
 }
 
-// Replace 将用户最新已实名的记录标记为"已更换"（status=4）
-func (r *KycRecordRepository) Replace(userID int64) error {
-	query := `UPDATE kyc_record SET status = 4, result_message = '用户更换实名', updated_at = ? 
-		WHERE user_id = ? AND status = 2 ORDER BY created_at DESC LIMIT 1`
-	result, err := r.db.Exec(query, time.Now(), userID)
-	if err != nil {
-		return err
-	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return ErrUserNotFound
-	}
-	return nil
-}
-
 // GetAllRecords 管理员查询所有认证记录（分页+筛选）
 func (r *KycRecordRepository) GetAllRecords(page, pageSize int, status *int, userID *int64) ([]*model.KycRecord, int64, error) {
 	offset := (page - 1) * pageSize

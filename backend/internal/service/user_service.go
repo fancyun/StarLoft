@@ -49,9 +49,7 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 		return nil, err
 	}
 
-	// 生成 API Key 和 API Secret
-	apiKey := generateRandomKey(32)
-	apiSecret := generateRandomKey(32)
+	// API Key 不再于注册时生成：开通 API 需先完成账户实名，实名成功后自动下发
 
 	// 获取系统KYC价格（默认1.00）
 	kycPrice := 1.00
@@ -71,10 +69,10 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 		Phone:         phone,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
-		APIKey:        apiKey,
-		APISecret:     apiSecret,
+		APIKey:        "", // 实名成功后自动下发
+		APISecret:     "",
 		IsKYCVerified: 0,
-		KYCPrice:      kycPrice, // 设置KYC单价
+		KYCPrice:      kycPrice, // 设置KYC单价（下游 API 业务调用扣费）
 		Status:        1,
 	}
 

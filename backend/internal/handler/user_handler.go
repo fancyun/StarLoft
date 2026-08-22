@@ -321,9 +321,26 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	})
 }
 
-// ResetAPIKey 重置 API 密钥
+// ResetAPIKey 重置 API 密钥（需先完成账户实名认证）
 func (h *UserHandler) ResetAPIKey(c *gin.Context) {
 	userID := c.GetInt64("user_id")
+
+	// 开通 API 需先完成实名认证
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "user not found",
+		})
+		return
+	}
+	if user.IsKYCVerified != 1 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    403,
+			"message": "请先完成实名认证后开通 API",
+		})
+		return
+	}
 
 	apiKey, apiSecret, err := h.userService.ResetAPIKey(userID)
 	if err != nil {

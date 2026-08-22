@@ -110,7 +110,8 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		req.ReturnURL,
 		req.NotifyURL,
 		req.BizExtraData,
-		true, // 下游调用：平台中转，向上游传平台地址，平台收到后再通知/跳转下游
+		true,  // 下游调用：平台中转，向上游传平台地址，平台收到后再通知/跳转下游
+		false, // 下游 API 业务调用：仍按 kyc_price 从余额扣费
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {
@@ -399,25 +400,6 @@ func (h *AuthHandler) CancelKycRecord(c *gin.Context) {
 	})
 }
 
-// ReplaceKycRecord 更换实名：将最新已实名记录标记为"已更换"
-func (h *AuthHandler) ReplaceKycRecord(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	err := h.authService.ReplaceKycRecord(userID)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "已提交更换实名申请，请重新填写认证信息",
-	})
-}
-
 // StartAuthForWeb Web 端发起 KYC 认证（账户实名）
 func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 	userID := c.GetInt64("user_id")
@@ -469,6 +451,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		notifyURL,
 		bizExtraData,
 		true, // Web 前端实名：经平台 /kyc 中转页处理回调，再跳回 /user/kyc
+		true, // 账户实名：免费
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {

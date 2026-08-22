@@ -68,11 +68,6 @@ export const userAPI = {
     return request.delete('/user/kyc')
   },
 
-  // 更换实名：标记最新实名记录为已更换
-  replaceKYC: () => {
-    return request.post('/user/kyc/replace')
-  },
-
   // 同步上游认证结果
   syncKYC: () => {
     return request.post('/user/kyc/sync')

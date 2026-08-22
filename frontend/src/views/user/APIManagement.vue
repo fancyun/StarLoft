@@ -6,6 +6,18 @@
           <el-icon><Key /></el-icon>
           API 密钥
         </h3>
+        <el-alert
+          v-if="!pageLoading && isKycVerified !== 1"
+          title="请先完成实名认证后再开通 API"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="kyc-alert"
+        >
+          <p>API 需完成账户实名认证后方可开通。实名成功后系统将自动下发 API Key。</p>
+          <el-button type="primary" size="small" @click="$router.push('/user/kyc')">前往实名认证</el-button>
+        </el-alert>
+        <template v-else-if="!pageLoading">
         <div class="api-item">
           <span class="label">API Key</span>
           <div class="api-value">
@@ -23,6 +35,7 @@
           </div>
         </div>
         <el-button @click="handleResetAPIKey" type="warning">重置 API 密钥</el-button>
+        </template>
       </div>
 
       <div class="card">
@@ -38,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { userAPI } from '@/api'
 import { useUserStore } from '@/stores/user'
@@ -48,6 +61,7 @@ const userStore = useUserStore()
 const userInfo = ref<any>({})
 const showSecret = ref(false)
 const pageLoading = ref(true)
+const isKycVerified = computed(() => (userStore.isKYCVerified ? 1 : 0))
 
 const maskSecret = (secret: string) => {
   if (!secret) return ''
@@ -70,8 +84,12 @@ const handleResetAPIKey = async () => {
     userInfo.value.api_key = res.api_key
     userInfo.value.api_secret = res.api_secret
     ElMessage.success('API 密钥已重置')
-  } catch (error) {
-    console.error(error)
+  } catch (error: any) {
+    if (error?.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else if (typeof error === 'string' && error !== 'cancel') {
+      ElMessage.error(error)
+    }
   }
 }
 
@@ -157,5 +175,14 @@ onMounted(() => {
   color: var(--text-muted);
   font-size: 14px;
   margin-bottom: 16px;
+}
+
+.kyc-alert {
+  margin-bottom: 8px;
+}
+.kyc-alert p {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

@@ -227,6 +227,16 @@ const navGroups = [
   margin: 12px 0;
 }
 
+.markdown-body .notice {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: var(--color-primary-light);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 .markdown-body ul,
 .markdown-body ol {
   margin: 12px 0;

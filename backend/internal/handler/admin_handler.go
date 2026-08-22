@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -406,10 +404,6 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		return
 	}
 
-	// 生成 API Key 和 API Secret
-	apiKey := generateRandomKey(32)
-	apiSecret := generateRandomKey(32)
-
 	// 确定KYC单价
 	kycPrice := req.KYCPrice
 	if kycPrice <= 0 {
@@ -425,13 +419,13 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		}
 	}
 
-	// 创建用户
+	// API Key 不在此生成：开通 API 需先完成账户实名，实名成功后自动下发
 	user := &model.PlatformUser{
 		Phone:         req.Phone,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
-		APIKey:        apiKey,
-		APISecret:     apiSecret,
+		APIKey:        "",
+		APISecret:     "",
 		IsKYCVerified: 0,
 		KYCPrice:      kycPrice,
 		Status:        1,
@@ -654,13 +648,6 @@ func (h *AdminHandler) GetPaymentOrderList(c *gin.Context) {
 			"page_size": pageSize,
 		},
 	})
-}
-
-// generateRandomKey 生成随机密钥
-func generateRandomKey(length int) string {
-	b := make([]byte, length)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 // GetUserDetail 获取用户详情

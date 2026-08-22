@@ -12,9 +12,9 @@
             <p>姓名：{{ maskName(kycName) }}</p>
             <p>身份证号：{{ maskIDCard(kycIDCard) }}</p>
           </div>
+          <p class="permanent-tip">实名信息一经认证成功即永久绑定，不可修改。</p>
           <div class="verified-actions">
             <el-button @click="$router.push('/user/dashboard')">返回首页</el-button>
-            <el-button type="warning" @click="replaceAuth">重新实名</el-button>
           </div>
         </div>
 
@@ -29,31 +29,16 @@
           </div>
         </div>
 
-        <!-- 状态 3：无记录 / 认证失败 / 已更换（record_status=-1 / 3 / 4） -->
+        <!-- 状态 3：无记录 / 认证失败（record_status=-1 / 3 / 4） -->
         <div v-if="recordStatus === -1 || recordStatus === 3 || recordStatus === 4" class="auth-form-section">
           <div class="form-header">
             <h2 v-if="recordStatus === -1">账户实名认证</h2>
-            <h2 v-else-if="recordStatus === 4">更换实名认证</h2>
-            <h2 v-else>实名认证失败</h2>
-            <p v-if="recordStatus === -1">完成实名认证后，您可以使用 API 进行业务调用</p>
-            <p v-else-if="recordStatus === 4">请填写新的姓名和身份证号，重新进行实名认证</p>
-            <p v-else>上次实名认证未通过，请重新填写信息后再次认证</p>
+            <h2 v-else-if="recordStatus === 3">实名认证失败</h2>
+            <h2 v-else>账户实名认证</h2>
+            <p v-if="recordStatus === -1">完成实名认证后，将为您自动开通 API，可使用 API 进行业务调用</p>
+            <p v-else-if="recordStatus === 3">上次实名认证未通过，请重新填写信息后再次认证</p>
+            <p v-else>请填写姓名和身份证号，重新完成实名认证</p>
           </div>
-
-          <el-alert
-            v-if="balance < kycPrice"
-            title="余额不足"
-            type="warning"
-            :closable="false"
-            style="margin-bottom: 24px"
-          >
-            <template #default>
-              <p>您的账户余额不足，当前余额：¥{{ balance }}，认证费用：¥{{ kycPrice }}</p>
-              <el-button type="primary" size="small" @click="$router.push('/user/profile')" style="margin-top: 8px">
-                立即充值
-              </el-button>
-            </template>
-          </el-alert>
 
           <el-form
             :model="form"
@@ -66,7 +51,6 @@
               <el-input
                 v-model="form.name"
                 placeholder="请输入真实姓名"
-                :disabled="balance < kycPrice"
               />
             </el-form-item>
             <el-form-item label="身份证号" prop="id_card">
@@ -74,22 +58,16 @@
                 v-model="form.id_card"
                 placeholder="请输入身份证号"
                 maxlength="18"
-                :disabled="balance < kycPrice"
               />
             </el-form-item>
-            <div class="cost-info">
-              <el-icon><InfoFilled /></el-icon>
-              <span>本次认证将从您的账户余额中扣除 ¥{{ kycPrice }}</span>
-            </div>
             <el-button
               type="primary"
               size="large"
               class="submit-btn"
               :loading="loading"
-              :disabled="balance < kycPrice"
               @click="handleSubmit"
             >
-              开始认证
+              免费认证
             </el-button>
           </el-form>
 
@@ -98,9 +76,8 @@
             <ul>
               <li>请确保提供的姓名和身份证号真实有效</li>
               <li>认证过程中需要进行人脸识别，请在光线充足的环境下操作</li>
-              <li>认证费用将从您的账户余额中扣除</li>
-              <li>认证成功后，您将获得 API 密钥，可通过 API 调用认证服务</li>
-              <li>如认证超时未完成，费用将自动退还</li>
+              <li>账户实名认证免费，认证成功后将自动开通 API</li>
+              <li>实名信息一经认证成功即永久绑定，不可修改</li>
             </ul>
           </div>
         </div>
@@ -123,8 +100,6 @@ const pageLoading = ref(true)
 const recordStatus = ref(-1)  // -1=无记录, 1=进行中, 2=已实名, 3=失败
 const kycName = ref('')
 const kycIDCard = ref('')
-const balance = ref(0)
-const kycPrice = ref(1.0)
 const pendingBizNo = ref('')
 
 const form = reactive({
@@ -167,11 +142,6 @@ const maskIDCard = (idCard: string) => {
 
 const handleSubmit = async () => {
   await formRef.value.validate()
-
-  if (balance.value < kycPrice.value) {
-    ElMessage.warning('余额不足，请先充值')
-    return
-  }
 
   loading.value = true
   try {
@@ -217,49 +187,14 @@ const cancelAuth = async () => {
   }
 }
 
-const replaceAuth = async () => {
-  try {
-    await ElMessageBox.confirm('更换实名后，您当前的实名信息将失效，需要重新填写姓名和身份证号进行认证。确定继续吗？', '更换实名', {
-      confirmButtonText: '确定更换',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await userAPI.replaceKYC()
-    ElMessage.success('已提交更换申请，请重新填写认证信息')
-    loadData()
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败，请稍后重试')
-    }
-  }
-}
-
-// Token提取函数（保留供将来使用）
-// const _extractToken = (url: string): string | null => {
-//   try {
-//     return new URL(url).searchParams.get('token')
-//   } catch {
-//     const match = url.match(/token=([^&]+)/)
-//     return match ? match[1] : null
-//   }
-// }
-
 const loadData = async () => {
   try {
-    const [statusRes, profileRes] = await Promise.all([
-      userAPI.getKYCStatus(),
-      userAPI.getProfile()
-    ])
-
-    const data = statusRes as any
+    const data = (await userAPI.getKYCStatus()) as any
     recordStatus.value = data.record_status ?? -1
     pendingBizNo.value = data.pending_biz_no || ''
 
     if (data.kyc_name) kycName.value = data.kyc_name
     if (data.kyc_id_card) kycIDCard.value = data.kyc_id_card
-
-    balance.value = profileRes.balance
-    kycPrice.value = profileRes.kyc_price || 1.0
   } catch (error) {
     console.error(error)
   } finally {
@@ -327,11 +262,6 @@ onMounted(() => {
   justify-content: center;
 }
 
-/* 重新实名 */
-.reauth-section {
-  margin-top: 24px;
-}
-
 /* 进行中 */
 .processing-section {
   text-align: center;
@@ -381,28 +311,10 @@ onMounted(() => {
 .auth-form {
   margin-bottom: 32px;
 }
-.cost-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  background: var(--color-primary-light);
-  border: 1px solid #BFDBFE;
-  border-radius: var(--radius-md);
-  margin-bottom: 24px;
-  color: var(--color-primary);
-  font-size: 14px;
-  font-weight: 500;
-}
 .submit-btn {
   width: 100%;
   height: 48px;
   font-size: 16px;
-}
-.form-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
 }
 .tips {
   padding: 24px;

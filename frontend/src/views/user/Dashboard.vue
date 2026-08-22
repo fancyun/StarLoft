@@ -19,7 +19,7 @@
                 <span class="info-value">{{ userInfo.email || '未设置' }}</span>
               </div>
               <div class="info-row">
-                <span class="info-label">实名单价</span>
+                <span class="info-label">API 认证单价</span>
                 <span class="info-value">¥{{ userInfo.kyc_price }}</span>
               </div>
               <div class="info-row">
