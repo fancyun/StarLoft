@@ -1,6 +1,6 @@
 {
     "name": "StarLoft KYC 实名认证",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "对接 StarLoft KYC 系统的实名认证插件，支持身份证三要素认证（姓名+身份证+人脸识别）；修复状态轮询无限重试（文件计数 + 强制终止上限）",
     "author": "StarLoft",
     "website": "https://docs.starloft.cn",

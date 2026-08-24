@@ -17,9 +17,12 @@ use certification\zjmf_mfcw\logic\KycSdk;
  *  - getStatus(): 连续出现 NOT_FOUND 超过阈值后也终态失败,避免 certify_id 错误时卡死
  *  - getStatus(): 轮询计数改用文件存储(不再依赖 SESSION),并设置硬性上限,
  *                 到上限后强制返回 status=2(终态失败),杜绝平台系统以 2s/次无限轮询回调地址
+ *  - 修复 resolveCurrentUid(): 优先从框架传入的 $certifi 记录提取 uid,并补充 Cookie 与更多 Session 键名,
+ *                 避免 uid 解析为 0 导致"认证中复用"幂等失效、同一用户被重复发单扣费
+ *  - biz_no 改为随机单号: 每次认证唯一,同一用户允许多次实名,不再使用固定单号
  *
  * @author StarLoft
- * @version 1.1.1
+ * @version 1.1.2
  */
 class ZjmfMfcwPlugin extends Plugin
 {
@@ -32,7 +35,7 @@ class ZjmfMfcwPlugin extends Plugin
         'description' => 'StarLoft KYC 三要素实名认证（姓名+身份证+人脸识别）— 已修复重复创建/无限轮询问题',
         'status'      => 1,
         'author'      => 'StarLoft',
-        'version'     => '1.1.1',
+        'version'     => '1.1.2',
         'help_url'    => 'https://docs.starloft.cn/kyc/plugin'
     ];
 
@@ -87,7 +90,7 @@ class ZjmfMfcwPlugin extends Plugin
             }
 
             // ============ 修复1: 幂等检查 — 先拿当前用户已有的实名记录 ============
-            $existing = $this->getCurrentUserCertiRecord();
+            $existing = $this->getCurrentUserCertiRecord($certifi);
             if (!empty($existing)) {
                 $exStatus    = (int)($existing['certify_status'] ?? $existing['status'] ?? 0);
                 $exCertifyId = $this->resolveCertifyId($existing);
@@ -139,9 +142,9 @@ class ZjmfMfcwPlugin extends Plugin
             }
 
             // ============ 真正创建新任务 ============
-            $uid   = $this->resolveCurrentUid();
-            // 稳定幂等业务单号：同一用户+同一身份证固定生成，后端据此去重，避免重复创建任务/重复扣费
-            $bizNo = 'ZJMF_' . $uid . '_' . substr(md5($idCard), 0, 8);
+            $uid   = $this->resolveCurrentUid($certifi);
+            // 随机业务单号：每次认证唯一（同一用户允许多次实名），不再使用固定单号
+            $bizNo = 'ZJMF_' . $uid . '_' . date('YmdHis') . '_' . substr(md5(uniqid((string)mt_rand(), true)), 0, 8);
             $domain = $this->resolveDomain();
             $notifyUrl = $domain . '/certification/zjmf_mfcw/callback?uid=' . $uid;
             $returnUrl = $domain . '/certification/zjmf_mfcw/result?uid=' . $uid;
@@ -414,10 +417,10 @@ HTML;
     //   - 表名依次覆盖:认证系统最常见的 im_host_user_certification / im_certification_personal
     //     以及不带 im_ 前缀的老版本;另外用 Db::query('SHOW TABLES') 做一次模糊匹配兜底
     // =========================================================
-    protected function getCurrentUserCertiRecord()
+    protected function getCurrentUserCertiRecord($certifi = [])
     {
         try {
-            $uid = $this->resolveCurrentUid();
+            $uid = $this->resolveCurrentUid($certifi);
             if ($uid <= 0) return [];
 
             if (class_exists('think\Db')) {
@@ -501,7 +504,7 @@ HTML;
 
         // 2) 兜底：从本机认证记录取任务号（personal() 创建任务时已把平台流水号写入 certify_id）
         try {
-            $rec = $this->getCurrentUserCertiRecord();
+            $rec = $this->getCurrentUserCertiRecord($certifi);
             if (!empty($rec) && is_array($rec)) {
                 foreach (array_merge($candidateKeys, ['task_id', 'certification_id']) as $k) {
                     $v = trim((string)($rec[$k] ?? ''));
@@ -545,36 +548,78 @@ HTML;
 
     /**
      * 魔方财务通用取 UID:
-     *  - 优先 \think\Session::get('user_id') / session('uid') / session('user_id')
-     *  - 再 request()->uid / input('uid/d')
-     *  - 再 auth('user')->id(TP5 auth 惯例)
-     * 至少一个成功就不会让防重检查空跑
+     *  - 优先从框架传入的认证数据($certifi)中取 uid（personal()/getStatus() 传入的记录通常自带 uid/user_id）
+     *  - 再依次尝试 Session / Cookie / session() 辅助函数 / request 参数 / auth('user')
+     *
+     * 修复: 原实现仅从 Session/request 取值, 在部分环境取不到 uid 而返回 0,
+     *       导致按 uid=0 查本地认证记录恒为空、"认证中复用"幂等失效, 同一用户被重复发单扣费。
+     *       现将框架传入的 $certifi 作为最高优先级来源, 并补充 Cookie 与更多 Session 键名。
      */
-    protected function resolveCurrentUid()
+    protected function resolveCurrentUid($certifi = [])
     {
         $uid = 0;
+
+        // 1) 框架传入的认证数据(personal()/getStatus() 的 $certifi)通常自带 uid
+        if (is_array($certifi)) {
+            $uid = (int)($certifi['uid'] ?? $certifi['user_id'] ?? 0);
+            if ($uid <= 0 && is_array($certifi['certifi'] ?? null)) {
+                $uid = (int)($certifi['certifi']['uid'] ?? $certifi['certifi']['user_id'] ?? 0);
+            }
+            if ($uid > 0) return $uid;
+        }
+
+        // 2) ThinkPHP Session 常见键
         try {
             if (class_exists('think\Session')) {
-                $uid = (int)\think\Session::get('user_id');
-                if ($uid <= 0) $uid = (int)\think\Session::get('uid');
-                if ($uid <= 0) $uid = (int)\think\Session::get('user.id');
+                foreach (['user_id', 'uid', 'userid', 'user.id', 'userinfo.id', 'login_uid'] as $k) {
+                    $uid = (int)\think\Session::get($k);
+                    if ($uid > 0) return $uid;
+                }
             }
-            if ($uid <= 0 && isset($_SESSION)) {
-                $uid = (int)($_SESSION['user_id'] ?? $_SESSION['uid'] ?? 0);
-            }
-            if ($uid <= 0 && function_exists('session')) {
-                $uid = (int)(session('user_id') ?: session('uid') ?: 0);
-            }
-            if ($uid <= 0) {
-                $uid = (int)(\request()->uid ?? input('uid/d', 0));
-            }
-            if ($uid <= 0 && function_exists('auth')) {
-                try {
-                    $user = auth('user');
-                    if (is_object($user) && isset($user->id)) $uid = (int)$user->id;
-                } catch (\Throwable $_) {}
+            if (isset($_SESSION)) {
+                foreach (['user_id', 'uid', 'userid', 'userinfo.id'] as $k) {
+                    if (isset($_SESSION[$k])) {
+                        $uid = (int)$_SESSION[$k];
+                        if ($uid > 0) return $uid;
+                    }
+                }
             }
         } catch (\Throwable $_) {}
+
+        // 3) Cookie 兜底(部分环境登录态走 Cookie)
+        try {
+            if (class_exists('think\Cookie')) {
+                foreach (['user_id', 'uid', 'userid'] as $k) {
+                    $uid = (int)\think\Cookie::get($k);
+                    if ($uid > 0) return $uid;
+                }
+            }
+        } catch (\Throwable $_) {}
+
+        // 4) session() 辅助函数
+        if ($uid <= 0 && function_exists('session')) {
+            foreach (['user_id', 'uid', 'userid'] as $k) {
+                $v = session($k);
+                if ($v) {
+                    $uid = (int)$v;
+                    if ($uid > 0) return $uid;
+                }
+            }
+        }
+
+        // 5) request 参数
+        if ($uid <= 0) {
+            $uid = (int)(\request()->uid ?? input('uid/d', 0));
+        }
+
+        // 6) auth('user') TP5 auth 惯例
+        if ($uid <= 0 && function_exists('auth')) {
+            try {
+                $user = auth('user');
+                if (is_object($user) && isset($user->id)) $uid = (int)$user->id;
+            } catch (\Throwable $_) {}
+        }
+
         return $uid;
     }
 
