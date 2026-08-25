@@ -68,13 +68,11 @@
         <el-table-column prop="last_login_at" label="最后登录" width="180">
           <template #default="{ row }">{{ row.last_login_at ? formatDateTime(row.last_login_at) : '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="560">
+        <el-table-column label="操作" fixed="right" width="360">
           <template #default="{ row }">
             <el-button size="small" @click="handleViewDetail(row)">详情</el-button>
             <el-button size="small" type="info" @click="handleViewFinance(row)">财务</el-button>
             <el-button size="small" type="primary" @click="handleRecharge(row)">充值</el-button>
-            <el-button size="small" type="success" @click="handleGift(row)">赠送</el-button>
-            <el-button size="small" @click="handleUpdatePrice(row)">单价</el-button>
             <el-button size="small" type="warning" @click="handleToggleStatus(row)">
               {{ row.status === 1 ? '禁用' : '启用' }}
             </el-button>
@@ -127,20 +125,6 @@
         <el-form-item label="密码" prop="password">
           <el-input v-model="registerForm.password" type="password" placeholder="请输入密码（至少6位）" show-password />
         </el-form-item>
-        <el-form-item label="KYC单价" prop="kyc_price">
-          <el-input-number 
-            v-model="registerForm.kyc_price" 
-            :precision="2" 
-            :step="0.1" 
-            :min="0" 
-            :max="100"
-            placeholder="留空使用系统默认价格"
-            style="width: 100%"
-          />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
-            留空则使用系统默认价格，单位：元
-          </div>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="registerDialogVisible = false">取消</el-button>
@@ -171,6 +155,13 @@
             单位：元，最小0.01元，最大10000元
           </div>
         </el-form-item>
+        <el-form-item label="银行流水单号" prop="bank_serial_no">
+          <el-input 
+            v-model="rechargeForm.bank_serial_no" 
+            placeholder="请输入银行流水单号（必填，用于对账）"
+            maxlength="100"
+          />
+        </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input 
             v-model="rechargeForm.remark" 
@@ -188,81 +179,6 @@
       </template>
     </el-dialog>
 
-    <!-- 余额赠送对话框 -->
-    <el-dialog v-model="giftDialogVisible" title="余额赠送" width="500px">
-      <el-alert
-        title="提示：赠送操作会直接增加用户余额，不会产生充值订单记录"
-        type="warning"
-        :closable="false"
-        style="margin-bottom: 20px;"
-      />
-      <el-form :model="giftForm" :rules="giftRules" ref="giftFormRef" label-width="100px">
-        <el-form-item label="用户手机号">
-          <el-input :value="giftForm.phone" disabled />
-        </el-form-item>
-        <el-form-item label="当前余额">
-          <el-input :value="`¥${giftForm.currentBalance}`" disabled />
-        </el-form-item>
-        <el-form-item label="赠送金额" prop="amount">
-          <el-input-number 
-            v-model="giftForm.amount" 
-            :precision="2" 
-            :step="10" 
-            :min="0.01" 
-            :max="10000"
-            placeholder="请输入赠送金额"
-            style="width: 100%"
-          />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
-            单位：元，最小0.01元，最大10000元
-          </div>
-        </el-form-item>
-        <el-form-item label="赠送原因" prop="reason">
-          <el-input 
-            v-model="giftForm.reason" 
-            type="textarea"
-            :rows="3"
-            placeholder="请输入赠送原因（必填，至少2个字符）"
-            maxlength="200"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="giftDialogVisible = false">取消</el-button>
-        <el-button type="success" @click="handleGiftSubmit" :loading="giftLoading">确定赠送</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 修改实名单价对话框 -->
-    <el-dialog v-model="priceDialogVisible" title="修改实名单价" width="500px">
-      <el-form :model="priceForm" :rules="priceRules" ref="priceFormRef" label-width="100px">
-        <el-form-item label="用户手机号">
-          <el-input :value="priceForm.phone" disabled />
-        </el-form-item>
-        <el-form-item label="当前单价">
-          <el-input :value="`¥${priceForm.currentPrice}`" disabled />
-        </el-form-item>
-        <el-form-item label="新单价" prop="kyc_price">
-          <el-input-number
-            v-model="priceForm.kyc_price"
-            :precision="2"
-            :step="0.1"
-            :min="0.01"
-            :max="100"
-            style="width: 100%"
-          />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
-            单位：元，范围 0.01 - 100.00 元
-          </div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="priceDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdatePriceSubmit" :loading="priceLoading">确定修改</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 财务详情对话框 -->
     <el-dialog v-model="financeDialogVisible" title="用户财务详情" width="900px">
       <el-descriptions :column="2" border>
@@ -271,7 +187,6 @@
         <el-descriptions-item label="总充值金额">¥{{ financeStats.totalRecharge }}</el-descriptions-item>
         <el-descriptions-item label="总消费金额">¥{{ financeStats.totalConsume }}</el-descriptions-item>
         <el-descriptions-item label="总退款金额">¥{{ financeStats.totalRefund }}</el-descriptions-item>
-        <el-descriptions-item label="KYC单价">¥{{ financeUser.kyc_price }}</el-descriptions-item>
       </el-descriptions>
 
       <el-tabs v-model="financeActiveTab" style="margin-top: 20px">
@@ -293,6 +208,9 @@
               </template>
             </el-table-column>
             <el-table-column prop="balance_after" label="余额" width="120" />
+            <el-table-column prop="bank_serial_no" label="银行流水单号" width="180">
+              <template #default="{ row }">{{ row.bank_serial_no || '-' }}</template>
+            </el-table-column>
             <el-table-column prop="remark" label="备注" />
           </el-table>
         </el-tab-pane>
@@ -347,8 +265,7 @@ const registerFormRef = ref<FormInstance>()
 
 const registerForm = reactive({
   phone: '',
-  password: '',
-  kyc_price: undefined as number | undefined
+  password: ''
 })
 
 const registerRules: FormRules = {
@@ -371,6 +288,7 @@ const rechargeForm = reactive({
   phone: '',
   currentBalance: 0,
   amount: undefined as number | undefined,
+  bank_serial_no: '',
   remark: ''
 })
 
@@ -378,48 +296,10 @@ const rechargeRules: FormRules = {
   amount: [
     { required: true, message: '请输入充值金额', trigger: 'blur' },
     { type: 'number', min: 0.01, max: 10000, message: '充值金额范围为0.01-10000元', trigger: 'blur' }
-  ]
-}
-
-const giftDialogVisible = ref(false)
-const giftLoading = ref(false)
-const giftFormRef = ref<FormInstance>()
-
-const giftForm = reactive({
-  userId: 0,
-  phone: '',
-  currentBalance: 0,
-  amount: undefined as number | undefined,
-  reason: ''
-})
-
-const giftRules: FormRules = {
-  amount: [
-    { required: true, message: '请输入赠送金额', trigger: 'blur' },
-    { type: 'number', min: 0.01, max: 10000, message: '赠送金额范围为0.01-10000元', trigger: 'blur' }
   ],
-  reason: [
-    { required: true, message: '请输入赠送原因', trigger: 'blur' },
-    { min: 2, message: '赠送原因至少2个字符', trigger: 'blur' }
-  ]
-}
-
-// 修改实名单价相关
-const priceDialogVisible = ref(false)
-const priceLoading = ref(false)
-const priceFormRef = ref<FormInstance>()
-
-const priceForm = reactive({
-  userId: 0,
-  phone: '',
-  currentPrice: 0,
-  kyc_price: undefined as number | undefined
-})
-
-const priceRules: FormRules = {
-  kyc_price: [
-    { required: true, message: '请输入新的KYC单价', trigger: 'blur' },
-    { type: 'number', min: 0.01, max: 100, message: 'KYC单价范围为0.01-100元', trigger: 'blur' }
+  bank_serial_no: [
+    { required: true, message: '请输入银行流水单号', trigger: 'blur' },
+    { min: 4, message: '银行流水单号至少4个字符', trigger: 'blur' }
   ]
 }
 
@@ -428,8 +308,7 @@ const financeDialogVisible = ref(false)
 const financeActiveTab = ref('balance')
 const financeUser = reactive({
   phone: '',
-  balance: 0,
-  kyc_price: 0
+  balance: 0
 })
 const financeStats = reactive({
   totalRecharge: 0,
@@ -485,7 +364,6 @@ const handleSearch = () => {
 const showRegisterDialog = () => {
   registerForm.phone = ''
   registerForm.password = ''
-  registerForm.kyc_price = undefined
   registerDialogVisible.value = true
   // 清空表单验证
   registerFormRef.value?.clearValidate()
@@ -504,11 +382,6 @@ const handleRegisterSubmit = async () => {
         password: registerForm.password
       }
       
-      // 如果设置了KYC单价，则传递该参数
-      if (registerForm.kyc_price !== undefined && registerForm.kyc_price > 0) {
-        data.kyc_price = registerForm.kyc_price
-      }
-      
       const response: any = await adminAPI.registerUser(data)
       
       ElMessage.success('用户注册成功')
@@ -518,9 +391,8 @@ const handleRegisterSubmit = async () => {
       ElMessageBox.alert(
         `<div style="line-height: 1.8;">
           <p><strong>手机号：</strong>${response.phone}</p>
-          <p><strong>用户ID：</strong>${response.user_id}</p>
-          <p><strong>API Key：</strong><br/><code style="word-break: break-all;">${response.api_key}</code></p>
-          <p><strong>KYC单价：</strong>¥${response.kyc_price}</p>
+          <p><strong>用户ID：</strong>${response.id}</p>
+          <p><strong>API Key：</strong><br/><code style="word-break: break-all;">${response.api_key || '实名认证后自动生成'}</code></p>
         </div>`,
         '注册成功',
         {
@@ -598,6 +470,7 @@ const handleRecharge = (row: any) => {
   rechargeForm.phone = row.phone
   rechargeForm.currentBalance = row.balance
   rechargeForm.amount = undefined
+  rechargeForm.bank_serial_no = ''
   rechargeForm.remark = ''
   rechargeDialogVisible.value = true
   // 清空表单验证
@@ -614,6 +487,7 @@ const handleRechargeSubmit = async () => {
     try {
       const data = {
         amount: rechargeForm.amount!,
+        bank_serial_no: rechargeForm.bank_serial_no.trim(),
         remark: rechargeForm.remark || undefined
       }
       
@@ -632,78 +506,9 @@ const handleRechargeSubmit = async () => {
   })
 }
 
-const handleGift = (row: any) => {
-  giftForm.userId = row.id
-  giftForm.phone = row.phone
-  giftForm.currentBalance = row.balance
-  giftForm.amount = undefined
-  giftForm.reason = ''
-  giftDialogVisible.value = true
-  // 清空表单验证
-  giftFormRef.value?.clearValidate()
-}
-
-const handleGiftSubmit = async () => {
-  if (!giftFormRef.value) return
-  
-  await giftFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    
-    giftLoading.value = true
-    try {
-      const data = {
-        amount: giftForm.amount!,
-        reason: giftForm.reason
-      }
-      
-      await adminAPI.giftUser(giftForm.userId, data)
-      
-      ElMessage.success('赠送成功')
-      giftDialogVisible.value = false
-      
-      // 刷新用户列表
-      loadUsers()
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || '赠送失败')
-    } finally {
-      giftLoading.value = false
-    }
-  })
-}
-
-const handleUpdatePrice = (row: any) => {
-  priceForm.userId = row.id
-  priceForm.phone = row.phone
-  priceForm.currentPrice = row.kyc_price || 0
-  priceForm.kyc_price = row.kyc_price || undefined
-  priceDialogVisible.value = true
-  priceFormRef.value?.clearValidate()
-}
-
-const handleUpdatePriceSubmit = async () => {
-  if (!priceFormRef.value) return
-
-  await priceFormRef.value.validate(async (valid) => {
-    if (!valid) return
-
-    priceLoading.value = true
-    try {
-      await adminAPI.updateUserKycPrice(priceForm.userId, { kyc_price: priceForm.kyc_price! })
-      ElMessage.success('单价修改成功')
-      priceDialogVisible.value = false
-      loadUsers()
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || '单价修改失败')
-    } finally {
-      priceLoading.value = false
-    }
-  })
-}
-
 const handleViewFinance = async (row: any) => {
   financeUser.phone = row.phone
   financeUser.balance = row.balance
-  financeUser.kyc_price = row.kyc_price || 0
   
   financeDialogVisible.value = true
   financeActiveTab.value = 'balance'
@@ -739,8 +544,7 @@ const getBalanceTypeName = (type: number | string) => {
   const names: Record<number, string> = {
     1: '充值',
     2: '消费',
-    3: '退款',
-    4: '赠送'
+    3: '退款'
   }
   return names[Number(type)] || String(type)
 }
@@ -749,14 +553,13 @@ const getBalanceTypeTag = (type: number | string) => {
   const tags: Record<number, string> = {
     1: 'success',
     2: 'danger',
-    3: 'warning',
-    4: 'success'
+    3: 'warning'
   }
   return tags[Number(type)] || 'info'
 }
 
-// 增加余额的类型（充值/退款/赠送）显示为正数，消费显示为负数
-const isIncome = (type: number | string) => [1, 3, 4].includes(Number(type))
+// 增加余额的类型（充值/退款）显示为正数，消费显示为负数
+const isIncome = (type: number | string) => [1, 3].includes(Number(type))
 
 const getOrderStatusName = (status: number) => {
   const names: Record<number, string> = {

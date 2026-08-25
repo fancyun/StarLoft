@@ -3,10 +3,12 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"starloftrpa/internal/repository"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/utils"
 )
@@ -14,14 +16,16 @@ import (
 var authValidator = utils.NewInputValidator()
 
 type AuthHandler struct {
-	authService    *service.AuthService
-	balanceService *service.BalanceService
+	authService      *service.AuthService
+	balanceService   *service.BalanceService
+	resourcePackRepo *repository.ResourcePackRepository
 }
 
-func NewAuthHandler(authService *service.AuthService, balanceService *service.BalanceService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, balanceService *service.BalanceService, resourcePackRepo *repository.ResourcePackRepository) *AuthHandler {
 	return &AuthHandler{
-		authService:    authService,
-		balanceService: balanceService,
+		authService:      authService,
+		balanceService:   balanceService,
+		resourcePackRepo: resourcePackRepo,
 	}
 }
 
@@ -111,7 +115,8 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		req.NotifyURL,
 		req.BizExtraData,
 		true,  // 下游调用：平台中转，向上游传平台地址，平台收到后再通知/跳转下游
-		false, // 下游 API 业务调用：仍按 kyc_price 从余额扣费
+		2,     // API 业务调用
+		false, // API 下游业务调用：始终计费（先扣资源包，再按平台价格扣余额）
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {
@@ -251,8 +256,8 @@ func (h *AuthHandler) QueryBalance(c *gin.Context) {
 		return
 	}
 
-	// 获取用户的实名认证单价（已从用户表的 kyc_price 字段获取）
-	kycPrice := user.KYCPrice
+	// 获取平台认证单价（统一按平台价格扣费，已取消个人单价设置）
+	kycPrice := h.authService.GetPlatformKycPrice()
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
@@ -451,7 +456,8 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		notifyURL,
 		bizExtraData,
 		true, // Web 前端实名：经平台 /kyc 中转页处理回调，再跳回 /user/kyc
-		true, // 账户实名：免费
+		1,    // 账户实名
+		true, // 账户实名免费路径；账号终身累计失败达到上限后自动转为计费（先扣资源包，再扣余额）
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {
@@ -637,6 +643,101 @@ func (h *AuthHandler) GetRechargeResult(c *gin.Context) {
 			"channel":          order.Channel,
 			"channel_trade_no": order.ChannelTradeNo,
 			"paid_at":          order.PaidAt,
+		},
+	})
+}
+
+// ---------- 资源包（Web 用户） ----------
+
+// ListResourcePacks 在售资源包列表
+func (h *AuthHandler) ListResourcePacks(c *gin.Context) {
+	status := 1
+	packs, err := h.resourcePackRepo.ListPacks(&status)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to get resource packs",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"list": packs,
+		},
+	})
+}
+
+// PurchaseResourcePack 使用余额购买资源包（不支持直接为资源包付费，需先充值再购买）
+func (h *AuthHandler) PurchaseResourcePack(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	packID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || packID <= 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid pack id",
+		})
+		return
+	}
+
+	up, err := h.balanceService.PurchaseResourcePack(userID, packID)
+	if err != nil {
+		switch err {
+		case service.ErrInsufficientBalance:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "余额不足，请先充值",
+			})
+		case repository.ErrPackSoldOut:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "资源包已售罄",
+			})
+		case repository.ErrPackOffSale:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "资源包已下架",
+			})
+		case repository.ErrPackNotFound:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    404,
+				"message": "资源包不存在",
+			})
+		default:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    500,
+				"message": "购买资源包失败",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "购买成功",
+		"data": gin.H{
+			"user_pack": up,
+		},
+	})
+}
+
+// MyResourcePacks 我的资源包列表
+func (h *AuthHandler) MyResourcePacks(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	packs, err := h.resourcePackRepo.ListUserPacks(userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to get my resource packs",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"list": packs,
 		},
 	})
 }

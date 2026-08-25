@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"starloftrpa/internal/model"
@@ -19,15 +20,16 @@ import (
 var adminValidator = utils.NewInputValidator()
 
 type AdminHandler struct {
-	adminRepo      *repository.AdminRepository
-	userRepo       *repository.UserRepository
-	authRepo       *repository.AuthOrderRepository
-	paymentRepo    *repository.PaymentOrderRepository
-	configRepo     *repository.SystemConfigRepository
-	balanceLogRepo *repository.BalanceLogRepository
-	balanceSvc     *service.BalanceService
-	authSvc        *service.AuthService
-	jwtSecret      string
+	adminRepo        *repository.AdminRepository
+	userRepo         *repository.UserRepository
+	authRepo         *repository.AuthOrderRepository
+	paymentRepo      *repository.PaymentOrderRepository
+	configRepo       *repository.SystemConfigRepository
+	balanceLogRepo   *repository.BalanceLogRepository
+	resourcePackRepo *repository.ResourcePackRepository
+	balanceSvc       *service.BalanceService
+	authSvc          *service.AuthService
+	jwtSecret        string
 }
 
 func NewAdminHandler(
@@ -37,20 +39,22 @@ func NewAdminHandler(
 	paymentRepo *repository.PaymentOrderRepository,
 	configRepo *repository.SystemConfigRepository,
 	balanceLogRepo *repository.BalanceLogRepository,
+	resourcePackRepo *repository.ResourcePackRepository,
 	balanceSvc *service.BalanceService,
 	authSvc *service.AuthService,
 	jwtSecret string,
 ) *AdminHandler {
 	return &AdminHandler{
-		adminRepo:      adminRepo,
-		userRepo:       userRepo,
-		authRepo:       authRepo,
-		paymentRepo:    paymentRepo,
-		configRepo:     configRepo,
-		balanceLogRepo: balanceLogRepo,
-		balanceSvc:     balanceSvc,
-		authSvc:        authSvc,
-		jwtSecret:      jwtSecret,
+		adminRepo:        adminRepo,
+		userRepo:         userRepo,
+		authRepo:         authRepo,
+		paymentRepo:      paymentRepo,
+		configRepo:       configRepo,
+		balanceLogRepo:   balanceLogRepo,
+		resourcePackRepo: resourcePackRepo,
+		balanceSvc:       balanceSvc,
+		authSvc:          authSvc,
+		jwtSecret:        jwtSecret,
 	}
 }
 
@@ -346,9 +350,8 @@ func (h *AdminHandler) GetRecentAuthOrders(c *gin.Context) {
 // ManualRegisterUser 管理员手动注册用户
 func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 	var req struct {
-		Phone    string  `json:"phone" binding:"required"`
-		Password string  `json:"password" binding:"required"`
-		KYCPrice float64 `json:"kyc_price"` // 可选，不传则使用系统默认价格
+		Phone    string `json:"phone" binding:"required"`
+		Password string `json:"password" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -404,18 +407,12 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		return
 	}
 
-	// 确定KYC单价
-	kycPrice := req.KYCPrice
-	if kycPrice <= 0 {
-		// 使用系统默认价格
-		priceStr, err := h.configRepo.GetConfig("kyc_price")
-		if err == nil && priceStr != "" {
-			if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
-				kycPrice = price
-			}
-		}
-		if kycPrice <= 0 {
-			kycPrice = 1.00 // 兜底默认价格
+	// 使用系统默认KYC单价（已取消个人单价设置，统一按平台价格扣费）
+	kycPrice := 1.00
+	priceStr, err := h.configRepo.GetConfig("kyc_price")
+	if err == nil && priceStr != "" {
+		if price, err := strconv.ParseFloat(priceStr, 64); err == nil && price > 0 {
+			kycPrice = price
 		}
 	}
 
@@ -444,16 +441,14 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 	}
 
 	adminID := c.GetInt64("user_id")
-	log.Printf("Admin %d manually registered user: phone=%s, kyc_price=%.2f", adminID, req.Phone, kycPrice)
+	log.Printf("Admin %d manually registered user: phone=%s", adminID, req.Phone)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "user registered successfully",
 		"data": gin.H{
-			"id":        user.ID,
-			"phone":     user.Phone,
-			"api_key":   user.APIKey,
-			"kyc_price": user.KYCPrice,
+			"id":    user.ID,
+			"phone": user.Phone,
 		},
 	})
 }
@@ -748,59 +743,6 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 	})
 }
 
-// UpdateUserDiscount 更新用户KYC单价（原折扣功能）
-func (h *AdminHandler) UpdateUserDiscount(c *gin.Context) {
-	userIDStr := c.Param("id")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid user id",
-		})
-		return
-	}
-
-	var req struct {
-		KYCPrice float64 `json:"kyc_price" binding:"required"` // KYC单价（元）
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid request parameters",
-		})
-		return
-	}
-
-	// 验证单价范围（0.01 - 100元）
-	if req.KYCPrice < 0.01 || req.KYCPrice > 100.0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "KYC单价必须在0.01-100.00元之间",
-		})
-		return
-	}
-
-	err = h.userRepo.UpdateUserKYCPrice(userID, req.KYCPrice)
-	if err != nil {
-		log.Printf("Failed to update user KYC price: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to update kyc price",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "KYC单价更新成功",
-		"data": gin.H{
-			"user_id":   userID,
-			"kyc_price": req.KYCPrice,
-		},
-	})
-}
-
 // DeleteUser 删除用户
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	userIDStr := c.Param("id")
@@ -842,8 +784,9 @@ func (h *AdminHandler) RechargeUserBalance(c *gin.Context) {
 	}
 
 	var req struct {
-		Amount float64 `json:"amount" binding:"required"`
-		Remark string  `json:"remark"`
+		Amount       float64 `json:"amount" binding:"required"`
+		BankSerialNo string  `json:"bank_serial_no" binding:"required"` // 银行流水单号（必填，用于对账）
+		Remark       string  `json:"remark"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -871,6 +814,16 @@ func (h *AdminHandler) RechargeUserBalance(c *gin.Context) {
 		return
 	}
 
+	// 校验银行流水单号
+	req.BankSerialNo = adminValidator.SanitizeString(strings.TrimSpace(req.BankSerialNo))
+	if len(req.BankSerialNo) < 4 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "请填写有效的银行流水单号（至少4位）",
+		})
+		return
+	}
+
 	// 清理备注中的潜在XSS
 	req.Remark = adminValidator.SanitizeString(req.Remark)
 
@@ -883,7 +836,7 @@ func (h *AdminHandler) RechargeUserBalance(c *gin.Context) {
 	}
 
 	// 人工充值（type=1，增加余额）
-	err = h.balanceSvc.ManualRechargeBalance(userID, req.Amount, remark)
+	err = h.balanceSvc.ManualRechargeBalance(userID, req.Amount, remark, req.BankSerialNo)
 	if err != nil {
 		log.Printf("Failed to recharge user balance: %v", err)
 		c.JSON(http.StatusOK, gin.H{
@@ -897,122 +850,10 @@ func (h *AdminHandler) RechargeUserBalance(c *gin.Context) {
 		"code":    0,
 		"message": "充值成功",
 		"data": gin.H{
-			"user_id": userID,
-			"amount":  req.Amount,
-			"remark":  remark,
-		},
-	})
-}
-
-// GiftUserBalance 赠送用户余额（促销、补偿等）
-func (h *AdminHandler) GiftUserBalance(c *gin.Context) {
-	userIDStr := c.Param("id")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid user id",
-		})
-		return
-	}
-
-	var req struct {
-		Amount float64 `json:"amount" binding:"required"`
-		Reason string  `json:"reason" binding:"required"` // 赠送原因（必填）
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid request parameters",
-		})
-		return
-	}
-
-	if req.Amount <= 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "赠送金额必须大于0",
-		})
-		return
-	}
-
-	// 验证金额范围
-	if err := adminValidator.ValidateAmount(req.Amount); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "amount must be between 0 and 1,000,000",
-		})
-		return
-	}
-
-	// 清理原因中的潜在XSS
-	req.Reason = adminValidator.SanitizeString(req.Reason)
-
-	if len(req.Reason) < 2 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "赠送原因至少2个字符",
-		})
-		return
-	}
-
-	// 验证用户是否存在
-	user, err := h.userRepo.GetUserByID(userID)
-	if err != nil {
-		log.Printf("Failed to get user: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to get user",
-		})
-		return
-	}
-	if user == nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    404,
-			"message": "user not found",
-		})
-		return
-	}
-
-	adminID := c.GetInt64("user_id")
-	remark := fmt.Sprintf("管理员余额赠送(admin_id:%d): %s", adminID, req.Reason)
-
-	// 赠送余额
-	err = h.balanceSvc.GiftBalance(userID, req.Amount, remark)
-	if err != nil {
-		log.Printf("Failed to gift user balance: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "赠送失败",
-		})
-		return
-	}
-
-	// 查询用户最新余额
-	user, err = h.userRepo.GetUserByID(userID)
-	if err != nil {
-		log.Printf("Failed to get user info after gift: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    0,
-			"message": "赠送成功",
-			"data": gin.H{
-				"user_id":     userID,
-				"gift_amount": req.Amount,
-				"reason":      req.Reason,
-			},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "赠送成功",
-		"data": gin.H{
-			"user_id":     userID,
-			"gift_amount": req.Amount,
-			"new_balance": user.Balance,
-			"reason":      req.Reason,
+			"user_id":        userID,
+			"amount":         req.Amount,
+			"bank_serial_no": req.BankSerialNo,
+			"remark":         remark,
 		},
 	})
 }
@@ -1060,7 +901,6 @@ func (h *AdminHandler) GetUserList(c *gin.Context) {
 			"is_kyc_verified": user.IsKYCVerified,
 			"kyc_name":        kycName,
 			"kyc_id_card":     kycIDCard,
-			"kyc_price":       user.KYCPrice,
 			"api_key":         user.APIKey,
 			"status":          user.Status,
 			"last_login_at":   user.LastLoginAt,
@@ -1254,5 +1094,234 @@ func (h *AdminHandler) ChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
+	})
+}
+
+// ---------- 资源包管理（管理后台） ----------
+
+// GetResourcePackList 获取资源包列表（管理后台，含已下架）
+func (h *AdminHandler) GetResourcePackList(c *gin.Context) {
+	packs, err := h.resourcePackRepo.ListPacks(nil)
+	if err != nil {
+		log.Printf("Failed to get resource pack list: %v", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to get resource pack list",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"list": packs,
+		},
+	})
+}
+
+// CreateResourcePack 创建资源包
+func (h *AdminHandler) CreateResourcePack(c *gin.Context) {
+	var req struct {
+		Name        string  `json:"name" binding:"required"`
+		TotalCount  int     `json:"total_count" binding:"required"`
+		Price       float64 `json:"price" binding:"required"`
+		Stock       int     `json:"stock"`  // 库存：-1-不限量，>=0-限量
+		Status      int     `json:"status"` // 1-上架 0-下架
+		Description string  `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid request parameters",
+		})
+		return
+	}
+
+	req.Name = adminValidator.SanitizeString(strings.TrimSpace(req.Name))
+	if len(req.Name) < 1 || len(req.Name) > 100 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "资源包名称长度必须在1-100个字符之间",
+		})
+		return
+	}
+	if req.TotalCount <= 0 || req.TotalCount > 100000 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "认证次数必须大于0且不超过100000",
+		})
+		return
+	}
+	if req.Price <= 0 || req.Price > 100000 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "售价必须大于0且不超过100000",
+		})
+		return
+	}
+	if req.Stock < -1 {
+		req.Stock = -1
+	}
+	if req.Status != 0 && req.Status != 1 {
+		req.Status = 1
+	}
+
+	pack := &model.ResourcePack{
+		Name:        req.Name,
+		TotalCount:  req.TotalCount,
+		Price:       req.Price,
+		Stock:       req.Stock,
+		Status:      req.Status,
+		Description: adminValidator.SanitizeString(req.Description),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := h.resourcePackRepo.CreatePack(pack); err != nil {
+		log.Printf("Failed to create resource pack: %v", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to create resource pack",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "资源包创建成功",
+		"data":    pack,
+	})
+}
+
+// UpdateResourcePack 更新资源包
+func (h *AdminHandler) UpdateResourcePack(c *gin.Context) {
+	packID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid pack id",
+		})
+		return
+	}
+
+	pack, err := h.resourcePackRepo.GetPackByID(packID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "resource pack not found",
+		})
+		return
+	}
+
+	var req struct {
+		Name        string  `json:"name"`
+		TotalCount  int     `json:"total_count"`
+		Price       float64 `json:"price"`
+		Stock       int     `json:"stock"`
+		Status      int     `json:"status"`
+		Description string  `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid request parameters",
+		})
+		return
+	}
+
+	// 仅更新传入的字段
+	if req.Name != "" {
+		req.Name = adminValidator.SanitizeString(strings.TrimSpace(req.Name))
+		if len(req.Name) > 100 {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "资源包名称长度不能超过100个字符",
+			})
+			return
+		}
+		pack.Name = req.Name
+	}
+	if req.TotalCount > 0 {
+		if req.TotalCount > 100000 {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "认证次数不能超过100000",
+			})
+			return
+		}
+		pack.TotalCount = req.TotalCount
+	}
+	if req.Price > 0 {
+		if req.Price > 100000 {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "售价不能超过100000",
+			})
+			return
+		}
+		pack.Price = req.Price
+	}
+	pack.Stock = req.Stock
+	if pack.Stock < -1 {
+		pack.Stock = -1
+	}
+	if req.Status == 0 || req.Status == 1 {
+		pack.Status = req.Status
+	}
+	pack.Description = adminValidator.SanitizeString(req.Description)
+	pack.UpdatedAt = time.Now()
+
+	if err := h.resourcePackRepo.UpdatePack(pack); err != nil {
+		log.Printf("Failed to update resource pack: %v", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to update resource pack",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "资源包更新成功",
+		"data":    pack,
+	})
+}
+
+// DeleteResourcePack 下架资源包（软删除：status=0，保留已售用户资源包记录）
+func (h *AdminHandler) DeleteResourcePack(c *gin.Context) {
+	packID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid pack id",
+		})
+		return
+	}
+
+	pack, err := h.resourcePackRepo.GetPackByID(packID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "resource pack not found",
+		})
+		return
+	}
+
+	pack.Status = 0
+	pack.UpdatedAt = time.Now()
+	if err := h.resourcePackRepo.UpdatePack(pack); err != nil {
+		log.Printf("Failed to delete resource pack: %v", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "failed to delete resource pack",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "资源包已下架",
 	})
 }

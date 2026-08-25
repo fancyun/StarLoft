@@ -61,7 +61,9 @@ const loadConfig = async () => {
 const handleSave = async () => {
   saving.value = true
   try {
-    await adminAPI.updateConfig({ kyc_price: configForm.kyc_price })
+    await adminAPI.updateConfig({
+      kyc_price: configForm.kyc_price
+    })
     ElMessage.success('保存成功')
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || '保存失败')

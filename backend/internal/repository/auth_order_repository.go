@@ -19,9 +19,9 @@ func NewAuthOrderRepository(db *sql.DB) *AuthOrderRepository {
 func (r *AuthOrderRepository) CreateOrder(order *model.AuthOrder) error {
 	query := `INSERT INTO auth_order
 		(platform_biz_no, biz_no, user_id, return_url, notify_url, 
-		biz_extra_data, status, cost, is_refunded, notify_times, 
+		biz_extra_data, status, cost, source, pay_type, user_pack_id, is_refunded, notify_times, 
 			notify_status, created_at, updated_at) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		order.PlatformBizNo,
@@ -32,6 +32,9 @@ func (r *AuthOrderRepository) CreateOrder(order *model.AuthOrder) error {
 		order.BizExtraData,
 		order.Status,
 		order.Cost,
+		order.Source,
+		order.PayType,
+		order.UserPackID,
 		order.IsRefunded,
 		order.NotifyTimes,
 		order.NotifyStatus,
@@ -56,7 +59,7 @@ func (r *AuthOrderRepository) GetOrderByPlatformBizNo(platformBizNo string) (*mo
 		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, is_refunded, notify_times, 
+		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 		notify_status, created_at, updated_at, finished_at 
 		FROM auth_order WHERE platform_biz_no = ?`
 
@@ -76,6 +79,9 @@ func (r *AuthOrderRepository) GetOrderByPlatformBizNo(platformBizNo string) (*mo
 		&order.ResultMessage,
 		&order.Status,
 		&order.Cost,
+		&order.Source,
+		&order.PayType,
+		&order.UserPackID,
 		&order.IsRefunded,
 		&order.NotifyTimes,
 		&order.NotifyStatus,
@@ -98,7 +104,7 @@ func (r *AuthOrderRepository) GetOrderByID(orderID int64) (*model.AuthOrder, err
 		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 		COALESCE(result_code, ''), COALESCE(result_message, ''), COALESCE(result_data, ''),
-		status, cost, is_refunded, notify_times, 
+		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 		notify_status, created_at, updated_at, finished_at 
 		FROM auth_order WHERE id = ?`
 
@@ -119,6 +125,9 @@ func (r *AuthOrderRepository) GetOrderByID(orderID int64) (*model.AuthOrder, err
 		&order.ResultData,
 		&order.Status,
 		&order.Cost,
+		&order.Source,
+		&order.PayType,
+		&order.UserPackID,
 		&order.IsRefunded,
 		&order.NotifyTimes,
 		&order.NotifyStatus,
@@ -253,7 +262,7 @@ func (r *AuthOrderRepository) GetOrderByBizNo(userID int64, bizNo string) (*mode
 		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, is_refunded, notify_times, 
+		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 		notify_status, created_at, updated_at, finished_at 
 		FROM auth_order WHERE user_id = ? AND biz_no = ? ORDER BY id DESC LIMIT 1`
 
@@ -273,6 +282,9 @@ func (r *AuthOrderRepository) GetOrderByBizNo(userID int64, bizNo string) (*mode
 		&order.ResultMessage,
 		&order.Status,
 		&order.Cost,
+		&order.Source,
+		&order.PayType,
+		&order.UserPackID,
 		&order.IsRefunded,
 		&order.NotifyTimes,
 		&order.NotifyStatus,
@@ -304,7 +316,7 @@ func (r *AuthOrderRepository) GetOrderByUpBizID(upBizID string) (*model.AuthOrde
 			COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 			COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 			COALESCE(result_code, ''), COALESCE(result_message, ''),
-			status, cost, is_refunded, notify_times, 
+			status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 			notify_status, created_at, updated_at, finished_at 
 			FROM auth_order WHERE up_biz_id = ?`
 
@@ -324,6 +336,9 @@ func (r *AuthOrderRepository) GetOrderByUpBizID(upBizID string) (*model.AuthOrde
 		&order.ResultMessage,
 		&order.Status,
 		&order.Cost,
+		&order.Source,
+		&order.PayType,
+		&order.UserPackID,
 		&order.IsRefunded,
 		&order.NotifyTimes,
 		&order.NotifyStatus,
@@ -338,6 +353,26 @@ func (r *AuthOrderRepository) GetOrderByUpBizID(upBizID string) (*model.AuthOrde
 		return nil, err
 	}
 	return order, nil
+}
+
+// UpdateOrderPayType 更新订单扣费方式（资源包并发耗尽时回退到余额扣费使用）
+func (r *AuthOrderRepository) UpdateOrderPayType(orderID int64, payType int, userPackID int64) error {
+	query := `UPDATE auth_order SET pay_type = ?, user_pack_id = ?, updated_at = ? WHERE id = ?`
+	_, err := r.db.Exec(query, payType, userPackID, time.Now(), orderID)
+	return err
+}
+
+// CountUserFreeFailures 统计账户实名（source=1）已失败（status=3）的认证次数（账号终身累计）
+// 用于免费实名失败次数限制：累计失败达到上限后，再次发起实名需扣费
+func (r *AuthOrderRepository) CountUserFreeFailures(userID int64) (int, error) {
+	query := `SELECT COUNT(*) FROM auth_order 
+		WHERE user_id = ? AND source = 1 AND status = 3`
+	var count int
+	err := r.db.QueryRow(query, userID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // UpdateOrderResult 更新订单认证结果
@@ -362,7 +397,7 @@ func (r *AuthOrderRepository) GetPendingOrders() ([]*model.AuthOrder, error) {
 		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, is_refunded, notify_times, 
+		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 		notify_status, created_at, updated_at, finished_at 
 		FROM auth_order WHERE status IN (0, 1) AND is_refunded = 0 AND up_biz_id IS NOT NULL AND up_biz_id != ''`
 
@@ -390,6 +425,9 @@ func (r *AuthOrderRepository) GetPendingOrders() ([]*model.AuthOrder, error) {
 			&order.ResultMessage,
 			&order.Status,
 			&order.Cost,
+			&order.Source,
+			&order.PayType,
+			&order.UserPackID,
 			&order.IsRefunded,
 			&order.NotifyTimes,
 			&order.NotifyStatus,
@@ -422,7 +460,7 @@ func (r *AuthOrderRepository) GetUserOrders(userID int64, page, pageSize int) ([
 		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, is_refunded, notify_times, 
+		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 		notify_status, created_at, updated_at, finished_at 
 		FROM auth_order WHERE user_id = ? 
 		ORDER BY created_at DESC LIMIT ? OFFSET ?`
@@ -451,6 +489,9 @@ func (r *AuthOrderRepository) GetUserOrders(userID int64, page, pageSize int) ([
 			&order.ResultMessage,
 			&order.Status,
 			&order.Cost,
+			&order.Source,
+			&order.PayType,
+			&order.UserPackID,
 			&order.IsRefunded,
 			&order.NotifyTimes,
 			&order.NotifyStatus,
@@ -473,7 +514,7 @@ func (r *AuthOrderRepository) GetLatestOrderByUserID(userID int64) (*model.AuthO
 			COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''),
 			COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''),
 			COALESCE(result_code, ''), COALESCE(result_message, ''),
-			status, cost, is_refunded, notify_times,
+			status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times,
 			notify_status, created_at, updated_at, finished_at
 			FROM auth_order WHERE user_id = ?
 			ORDER BY created_at DESC LIMIT 1`
@@ -494,6 +535,9 @@ func (r *AuthOrderRepository) GetLatestOrderByUserID(userID int64) (*model.AuthO
 		&order.ResultMessage,
 		&order.Status,
 		&order.Cost,
+		&order.Source,
+		&order.PayType,
+		&order.UserPackID,
 		&order.IsRefunded,
 		&order.NotifyTimes,
 		&order.NotifyStatus,
@@ -516,7 +560,7 @@ func (r *AuthOrderRepository) GetLatestPendingOrder(userID int64) (*model.AuthOr
 			COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 			COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 			COALESCE(result_code, ''), COALESCE(result_message, ''), 
-			status, cost, is_refunded, notify_times, 
+			status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
 			notify_status, created_at, updated_at, finished_at 
 			FROM auth_order WHERE user_id = ? AND status IN (0, 1) 
 			ORDER BY created_at DESC LIMIT 1`
@@ -537,6 +581,9 @@ func (r *AuthOrderRepository) GetLatestPendingOrder(userID int64) (*model.AuthOr
 		&order.ResultMessage,
 		&order.Status,
 		&order.Cost,
+		&order.Source,
+		&order.PayType,
+		&order.UserPackID,
 		&order.IsRefunded,
 		&order.NotifyTimes,
 		&order.NotifyStatus,
@@ -652,7 +699,7 @@ func (r *AuthOrderRepository) GetUserAuthOrders(userID int64, page, pageSize int
 		id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
 		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''), status, cost, is_refunded, 
+		COALESCE(result_code, ''), COALESCE(result_message, ''), status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, 
 		notify_times, notify_status, created_at, updated_at, finished_at
 		FROM auth_order 
 		WHERE user_id = ?
@@ -683,6 +730,9 @@ func (r *AuthOrderRepository) GetUserAuthOrders(userID int64, page, pageSize int
 			&order.ResultMessage,
 			&order.Status,
 			&order.Cost,
+			&order.Source,
+			&order.PayType,
+			&order.UserPackID,
 			&order.IsRefunded,
 			&order.NotifyTimes,
 			&order.NotifyStatus,

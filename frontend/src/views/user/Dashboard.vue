@@ -19,10 +19,6 @@
                 <span class="info-value">{{ userInfo.email || '未设置' }}</span>
               </div>
               <div class="info-row">
-                <span class="info-label">API 认证单价</span>
-                <span class="info-value">¥{{ userInfo.kyc_price }}</span>
-              </div>
-              <div class="info-row">
                 <span class="info-label">注册时间</span>
                 <span class="info-value">{{ formatDate(userInfo.created_at) }}</span>
               </div>

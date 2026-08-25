@@ -106,6 +106,21 @@ export const userAPI = {
   // 修改密码
   changePassword: (data: { sms_code: string; new_password: string; captcha_ticket: string; captcha_randstr: string }) => {
     return request.post('/user/change-password', data)
+  },
+
+  // 获取在售资源包列表
+  listPacks: () => {
+    return request.get('/user/packs')
+  },
+
+  // 使用余额购买资源包
+  purchasePack: (id: number) => {
+    return request.post(`/user/packs/${id}/purchase`)
+  },
+
+  // 我的资源包列表
+  myPacks: () => {
+    return request.get('/user/packs/mine')
   }
 }
 
@@ -155,23 +170,13 @@ export const adminAPI = {
   },
 
   // 手动注册用户
-  registerUser: (data: { phone: string; password: string; kyc_price?: number }) => {
+  registerUser: (data: { phone: string; password: string }) => {
     return request.post('/admin/users/register', data)
   },
 
-  // 修改用户KYC单价
-  updateUserKycPrice: (id: number, data: { kyc_price: number }) => {
-    return request.put(`/admin/users/${id}/discount`, data)
-  },
-
-  // 为用户手动充值
-  rechargeUser: (id: number, data: { amount: number; remark?: string }) => {
+  // 为用户手动充值（需银行流水单号）
+  rechargeUser: (id: number, data: { amount: number; bank_serial_no: string; remark?: string }) => {
     return request.post(`/admin/users/${id}/recharge`, data)
-  },
-
-  // 为用户赠送余额
-  giftUser: (id: number, data: { amount: number; reason: string }) => {
-    return request.post(`/admin/users/${id}/gift`, data)
   },
 
   // 获取用户财务统计
@@ -237,5 +242,25 @@ export const adminAPI = {
   // 修改管理员密码
   changePassword: (data: { old_password: string; new_password: string }) => {
     return request.post('/admin/change-password', data)
+  },
+
+  // 获取资源包列表
+  getPacks: () => {
+    return request.get('/admin/packs')
+  },
+
+  // 创建资源包
+  createPack: (data: { name: string; total_count: number; price: number; stock?: number; status?: number; description?: string }) => {
+    return request.post('/admin/packs', data)
+  },
+
+  // 更新资源包
+  updatePack: (id: number, data: any) => {
+    return request.put(`/admin/packs/${id}`, data)
+  },
+
+  // 删除（下架）资源包
+  deletePack: (id: number) => {
+    return request.delete(`/admin/packs/${id}`)
   }
 }

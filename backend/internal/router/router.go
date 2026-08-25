@@ -31,6 +31,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	adminRepo := repository.NewAdminRepository(db)
 	configRepo := repository.NewSystemConfigRepository(db)
 	kycRecordRepo := repository.NewKycRecordRepository(db)
+	resourcePackRepo := repository.NewResourcePackRepository(db)
 
 	// 初始化上游服务客户端
 	finAuthClient := upstream.NewFinAuthClient(
@@ -70,7 +71,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 
 	// 初始化 Service
 	userService := service.NewUserService(userRepo, configRepo)
-	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, configRepo, db)
+	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, configRepo, db)
 	callbackService := service.NewCallbackService(authRepo)
 
 	authService := service.NewAuthService(
@@ -78,7 +79,9 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		authRepo,
 		userRepo,
 		kycRecordRepo,
+		resourcePackRepo,
 		balanceService,
+		configRepo,
 		&cfg.FinAuth,
 	)
 
@@ -96,7 +99,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		jwtManager,
 	)
 
-	authHandler := handler.NewAuthHandler(authService, balanceService)
+	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo)
 
 	adminHandler := handler.NewAdminHandler(adminRepo,
 		userRepo,
@@ -104,6 +107,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		paymentRepo,
 		configRepo,
 		balanceLogRepo,
+		resourcePackRepo,
 		balanceService,
 		authService,
 		cfg.JWT.AdminSecret,
@@ -152,6 +156,10 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 				auth.GET("/recharge/result", authHandler.GetRechargeResult)
 				auth.POST("/api-key/reset", userHandler.ResetAPIKey)
 				auth.POST("/change-password", userHandler.ChangePassword)
+				// 资源包（使用余额购买，不支持直接为资源包付费）
+				auth.GET("/packs", authHandler.ListResourcePacks)                  // 在售资源包列表
+				auth.POST("/packs/:id/purchase", authHandler.PurchaseResourcePack) // 使用余额购买资源包
+				auth.GET("/packs/mine", authHandler.MyResourcePacks)               // 我的资源包
 			}
 		}
 
@@ -176,14 +184,18 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 				adminAuth.GET("/users", adminHandler.GetUserList)
 				adminAuth.GET("/users/:id", adminHandler.GetUserDetail)
 				adminAuth.PUT("/users/:id/status", adminHandler.UpdateUserStatus)
-				adminAuth.PUT("/users/:id/discount", adminHandler.UpdateUserDiscount) // 更新KYC单价
 				adminAuth.DELETE("/users/:id", adminHandler.DeleteUser)
-				adminAuth.POST("/users/:id/recharge", adminHandler.RechargeUserBalance)     // 人工充值
-				adminAuth.POST("/users/:id/gift", adminHandler.GiftUserBalance)             // 余额赠送
+				adminAuth.POST("/users/:id/recharge", adminHandler.RechargeUserBalance)     // 人工充值（需银行流水单号）
 				adminAuth.GET("/users/:id/finance/stats", adminHandler.GetUserFinanceStats) // 用户财务统计
 				adminAuth.GET("/users/:id/balance-logs", adminHandler.GetUserBalanceLogs)   // 用户余额流水
 				adminAuth.GET("/users/:id/auth-orders", adminHandler.GetUserAuthOrders)     // 用户认证订单
 				adminAuth.POST("/users/register", adminHandler.ManualRegisterUser)          // 人工注册账号
+
+				// 资源包管理
+				adminAuth.GET("/packs", adminHandler.GetResourcePackList)
+				adminAuth.POST("/packs", adminHandler.CreateResourcePack)
+				adminAuth.PUT("/packs/:id", adminHandler.UpdateResourcePack)
+				adminAuth.DELETE("/packs/:id", adminHandler.DeleteResourcePack)
 
 				// 订单管理
 				adminAuth.GET("/orders", adminHandler.GetAuthOrderList)

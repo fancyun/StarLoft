@@ -22,6 +22,10 @@
             <el-icon><Document /></el-icon>
             <span>订单管理</span>
           </el-menu-item>
+          <el-menu-item index="/admin/packs">
+            <el-icon><Box /></el-icon>
+            <span>资源包管理</span>
+          </el-menu-item>
           <el-menu-item index="/admin/config">
             <el-icon><Setting /></el-icon>
             <span>系统配置</span>
@@ -111,6 +115,7 @@ import {
   Odometer, 
   User, 
   Document, 
+  Box, 
   Setting, 
   UserFilled, 
   ArrowDown, 

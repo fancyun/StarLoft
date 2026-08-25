@@ -78,6 +78,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/user/Balance.vue')
       },
       {
+        path: 'packs',
+        name: 'ResourcePacks',
+        component: () => import('@/views/user/ResourcePacks.vue')
+      },
+      {
         path: 'records',
         name: 'Records',
         component: () => import('@/views/user/Records.vue')
@@ -120,6 +125,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'orders',
         name: 'AdminOrders',
         component: () => import('@/views/admin/Orders.vue')
+      },
+      {
+        path: 'packs',
+        name: 'AdminResourcePacks',
+        component: () => import('@/views/admin/ResourcePacks.vue')
       },
       {
         path: 'config',

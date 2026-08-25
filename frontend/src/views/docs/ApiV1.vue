@@ -58,7 +58,7 @@
 
     <h3>3.1 创建认证订单</h3>
     <p><span class="method post">POST</span><code>/api/v1/kyc/start</code></p>
-    <p>发起一次实名认证（API 业务调用）。平台将按该账户的 KYC 单价从余额扣费、创建订单并返回认证跳转地址。</p>
+    <p>发起一次实名认证（API 业务调用）。平台优先扣除该账户资源包次数，无资源包或资源包耗尽时按平台 KYC 单价从余额扣费，创建订单并返回认证跳转地址。</p>
 
     <h4>请求参数</h4>
     <table>
@@ -215,7 +215,7 @@
 
     <h3>3.3 查询余额</h3>
     <p><span class="method post">POST</span><code>/api/v1/kyc/balance/query</code></p>
-    <p>查询当前 API Key 所属账户的余额与实名认证单价。</p>
+    <p>查询当前 API Key 所属账户的余额与平台实名认证单价（已取消个人单价，统一按平台价格扣费）。</p>
 
     <h4>请求示例</h4>
     <p>请求体为空 JSON：</p>

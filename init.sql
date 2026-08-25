@@ -81,6 +81,9 @@ CREATE TABLE `auth_order` (
   `result_data` text COMMENT '认证结果完整数据（JSON）',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态：0-待认证 1-认证中 2-已完成 3-失败 4-已取消 5-超时（已退款）',
   `cost` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '本次认证消耗金额',
+  `source` tinyint(1) NOT NULL DEFAULT '2' COMMENT '来源：1-账户实名 2-API调用',
+  `pay_type` tinyint(1) NOT NULL DEFAULT '0' COMMENT '扣费方式：0-免费 1-余额 2-资源包',
+  `user_pack_id` bigint(20) DEFAULT NULL COMMENT '使用的用户资源包ID（pay_type=2 时）',
   `is_refunded` tinyint(1) NOT NULL DEFAULT '0' COMMENT '超时是否已退款：0-否 1-是',
   `notify_times` int(11) NOT NULL DEFAULT '0' COMMENT '回调用户次数',
   `notify_status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '回调用户状态：0-待通知 1-通知成功 2-通知失败',
@@ -107,6 +110,7 @@ CREATE TABLE `balance_log` (
   `amount` decimal(10,2) NOT NULL COMMENT '变动金额',
   `balance_before` decimal(10,2) NOT NULL COMMENT '变动前余额',
   `balance_after` decimal(10,2) NOT NULL COMMENT '变动后余额',
+  `bank_serial_no` varchar(100) DEFAULT NULL COMMENT '银行流水单号（人工充值）',
   `remark` varchar(255) DEFAULT NULL COMMENT '备注',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
@@ -227,5 +231,42 @@ CREATE TABLE `kyc_api_record` (
   KEY `idx_api_type` (`api_type`),
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户API调用记录表';
+
+-- ----------------------------
+-- 10. 资源包定义表
+-- ----------------------------
+DROP TABLE IF EXISTS `resource_pack`;
+CREATE TABLE `resource_pack` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(100) NOT NULL COMMENT '资源包名称',
+  `total_count` int(11) NOT NULL COMMENT '认证次数',
+  `price` decimal(10,2) NOT NULL COMMENT '售价（元）',
+  `stock` int(11) NOT NULL DEFAULT '-1' COMMENT '库存：-1-不限量，>=0-限量剩余库存',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1-上架 0-下架',
+  `description` varchar(255) DEFAULT NULL COMMENT '描述',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='资源包定义表';
+
+-- ----------------------------
+-- 11. 用户资源包表
+-- ----------------------------
+DROP TABLE IF EXISTS `user_resource_pack`;
+CREATE TABLE `user_resource_pack` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `pack_id` bigint(20) NOT NULL COMMENT '资源包ID',
+  `pack_name` varchar(100) NOT NULL COMMENT '资源包名称（快照）',
+  `total_count` int(11) NOT NULL COMMENT '总次数',
+  `remaining_count` int(11) NOT NULL COMMENT '剩余次数',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1-有效 0-已耗尽/禁用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_user_status` (`user_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户资源包表';
 
 SET FOREIGN_KEY_CHECKS = 1;

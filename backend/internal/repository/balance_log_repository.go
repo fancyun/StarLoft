@@ -18,8 +18,8 @@ func NewBalanceLogRepository(db *sql.DB) *BalanceLogRepository {
 // CreateLog 创建余额流水记录
 func (r *BalanceLogRepository) CreateLog(log *model.BalanceLog) error {
 	query := `INSERT INTO balance_log 
-		(user_id, order_id, type, amount, balance_before, balance_after, remark, created_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+		(user_id, order_id, type, amount, balance_before, balance_after, bank_serial_no, remark, created_at) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		log.UserID,
@@ -28,6 +28,7 @@ func (r *BalanceLogRepository) CreateLog(log *model.BalanceLog) error {
 		log.Amount,
 		log.BalanceBefore,
 		log.BalanceAfter,
+		log.BankSerialNo,
 		log.Remark,
 		time.Now(),
 	)
@@ -46,8 +47,8 @@ func (r *BalanceLogRepository) CreateLog(log *model.BalanceLog) error {
 // CreateLogTx 在事务中创建余额流水记录
 func (r *BalanceLogRepository) CreateLogTx(tx *sql.Tx, log *model.BalanceLog) error {
 	query := `INSERT INTO balance_log 
-		(user_id, order_id, type, amount, balance_before, balance_after, remark, created_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+		(user_id, order_id, type, amount, balance_before, balance_after, bank_serial_no, remark, created_at) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := tx.Exec(query,
 		log.UserID,
@@ -56,6 +57,7 @@ func (r *BalanceLogRepository) CreateLogTx(tx *sql.Tx, log *model.BalanceLog) er
 		log.Amount,
 		log.BalanceBefore,
 		log.BalanceAfter,
+		log.BankSerialNo,
 		log.Remark,
 		time.Now(),
 	)
@@ -83,7 +85,7 @@ func (r *BalanceLogRepository) GetUserBalanceLogs(userID int64, page, pageSize i
 
 	// 查询流水列表
 	offset := (page - 1) * pageSize
-	query := `SELECT id, user_id, order_id, type, amount, balance_before, balance_after, remark, created_at 
+	query := `SELECT id, user_id, order_id, type, amount, balance_before, balance_after, COALESCE(bank_serial_no, ''), remark, created_at 
 		FROM balance_log WHERE user_id = ? 
 		ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
@@ -104,6 +106,7 @@ func (r *BalanceLogRepository) GetUserBalanceLogs(userID int64, page, pageSize i
 			&log.Amount,
 			&log.BalanceBefore,
 			&log.BalanceAfter,
+			&log.BankSerialNo,
 			&log.Remark,
 			&log.CreatedAt,
 		)

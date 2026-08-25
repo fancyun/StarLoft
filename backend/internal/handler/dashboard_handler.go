@@ -253,16 +253,7 @@ func (h *DashboardHandler) GetFinanceStats(c *gin.Context) {
 		WHERE status = 2 AND DATE(finished_at) BETWEEN ? AND ?
 	`, startDate, endDate).Scan(&consumeStats.KYCConsumeAmount, &consumeStats.KYCConsumeCount)
 
-	// 3. 余额赠送统计
-	var giftAmount float64
-	var giftCount int64
-	h.db.QueryRow(`
-		SELECT COALESCE(SUM(amount), 0), COUNT(*) 
-		FROM balance_log 
-		WHERE type = 4 AND DATE(created_at) BETWEEN ? AND ?
-	`, startDate, endDate).Scan(&giftAmount, &giftCount)
-
-	// 4. 每日统计
+	// 3. 每日统计
 	rows, err := h.db.Query(`
 		SELECT 
 			DATE(paid_at) as date,
@@ -309,12 +300,8 @@ func (h *DashboardHandler) GetFinanceStats(c *gin.Context) {
 				"start_date": startDate,
 				"end_date":   endDate,
 			},
-			"recharge": rechargeStats,
-			"consume":  consumeStats,
-			"gift": gin.H{
-				"total_amount": giftAmount,
-				"total_count":  giftCount,
-			},
+			"recharge":    rechargeStats,
+			"consume":     consumeStats,
 			"daily_stats": dailyStats,
 		},
 	})

@@ -16,7 +16,7 @@ type PlatformUser struct {
 	IsKYCVerified int            `json:"is_kyc_verified"`
 	KYCName       sql.NullString `json:"kyc_name,omitempty"`
 	KYCIDCard     sql.NullString `json:"kyc_id_card,omitempty"`
-	KYCPrice      float64        `json:"kyc_price"` // KYC认证单价（元），默认为系统价格，可单独调整
+	KYCPrice      float64        `json:"-"` // 已废弃的个人KYC单价（资源包上线后统一按平台价格扣费），仅保留字段以兼容数据库列
 	Status        int            `json:"status"`
 	LastLoginAt   *time.Time     `json:"last_login_at,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
@@ -40,10 +40,11 @@ type BalanceLog struct {
 	ID            int64     `json:"id"`
 	UserID        int64     `json:"user_id"`
 	OrderID       int64     `json:"order_id,omitempty"` // 关联订单ID（认证订单或支付订单）
-	Type          int       `json:"type"`               // 类型：1-充值 2-消费 3-退款 4-赠送
+	Type          int       `json:"type"`               // 类型：1-充值 2-消费 3-退款
 	Amount        float64   `json:"amount"`             // 变动金额
 	BalanceBefore float64   `json:"balance_before"`     // 变动前余额
 	BalanceAfter  float64   `json:"balance_after"`      // 变动后余额
+	BankSerialNo  string    `json:"bank_serial_no,omitempty"` // 银行流水单号（人工充值）
 	Remark        string    `json:"remark,omitempty"`   // 备注
 	CreatedAt     time.Time `json:"created_at"`
 }
@@ -66,6 +67,9 @@ type AuthOrder struct {
 	ResultData    string     `json:"result_data,omitempty"`    // 认证结果完整数据（JSON）
 	Status        int        `json:"status"`                   // 0-待认证 1-认证中 2-已完成 3-失败 4-已取消 5-超时（已退款）
 	Cost          float64    `json:"cost"`                     // 本次认证消耗金额
+	Source        int        `json:"source"`                   // 来源：1-账户实名 2-API调用
+	PayType       int        `json:"pay_type"`                 // 扣费方式：0-免费 1-余额 2-资源包
+	UserPackID    int64      `json:"user_pack_id,omitempty"`   // 使用的用户资源包ID（pay_type=2 时）
 	IsRefunded    int        `json:"is_refunded"`              // 超时是否已退款：0-否 1-是
 	NotifyTimes   int        `json:"notify_times"`             // 回调用户次数
 	NotifyStatus  int        `json:"notify_status"`            // 回调用户状态：0-待通知 1-通知成功 2-通知失败
