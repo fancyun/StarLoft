@@ -9,14 +9,12 @@ RUN apk add --no-cache git ca-certificates tzdata
 # 设置工作目录
 WORKDIR /app
 
-# 复制 go mod 文件
-COPY go.mod go.sum ./
-
-# 下载依赖
-RUN go mod download
-
 # 复制源代码
 COPY . .
+
+# 下载依赖（在源码就绪后执行，go mod download 会把新增模块校验和写入 go.sum，
+# 避免 COPY 覆盖导致 go build 报 missing go.sum entry）
+RUN go mod download
 
 # 编译应用（禁用CGO以获得静态二进制）
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
