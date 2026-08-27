@@ -114,7 +114,6 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		req.ReturnURL,
 		req.NotifyURL,
 		req.BizExtraData,
-		true,  // 下游调用：平台中转，向上游传平台地址，平台收到后再通知/跳转下游
 		2,     // API 业务调用
 		false, // API 下游业务调用：始终计费（先扣资源包，再按平台价格扣余额）
 	)
@@ -202,39 +201,6 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 	})
 }
 
-// GetPublicKycResult 公开查询认证结果（/kyc 中转页调用，按平台流水号查询）
-func (h *AuthHandler) GetPublicKycResult(c *gin.Context) {
-	bizNo := c.Query("biz_no")
-	if bizNo == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "missing biz_no",
-		})
-		return
-	}
-
-	order, err := h.authService.GetPublicOrderResult(bizNo)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    404,
-			"message": "order not found",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"status":         order.Status,
-			"result_code":    order.ResultCode,
-			"result_message": order.ResultMessage,
-			"return_url":     order.ReturnURL,
-			"up_token":       order.UpToken,
-		},
-	})
-}
-
 // QueryBalance 查询余额
 func (h *AuthHandler) QueryBalance(c *gin.Context) {
 	userID := c.GetInt64("user_id")
@@ -312,11 +278,12 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 		resp["record_status"] = -1 // 无记录
 	}
 
-	// 如果状态为进行中，返回关联的认证订单 token（用于继续认证）
+	// 如果状态为进行中，返回关联的认证订单 token 与认证地址（用于继续认证，直接跳转上游）
 	if kycRecord != nil && kycRecord.Status == 1 {
 		pendingOrder, err := h.authService.GetLatestPendingOrder(userID)
 		if err == nil && pendingOrder != nil && pendingOrder.UpToken != "" {
 			resp["pending_token"] = pendingOrder.UpToken
+			resp["pending_auth_url"] = h.authService.BuildAuthURL(pendingOrder.UpToken)
 		}
 		if err == nil && pendingOrder != nil && pendingOrder.PlatformBizNo != "" {
 			resp["pending_biz_no"] = pendingOrder.PlatformBizNo
@@ -446,7 +413,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 	// 标记这是用户实名认证
 	bizExtraData := fmt.Sprintf(`{"type":"user_auth","user_id":%d}`, userID)
 
-	// 发起认证
+	// 发起认证（return_url 透传至上游，认证完成后浏览器直接回到 /user/kyc）
 	result, err := h.authService.StartAuth(
 		userID,
 		req.Name,
@@ -455,9 +422,8 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		req.ReturnURL,
 		notifyURL,
 		bizExtraData,
-		true, // Web 前端实名：经平台 /kyc 中转页处理回调，再跳回 /user/kyc
 		1,    // 账户实名
-		true, // 账户实名免费路径；账号终身累计失败达到上限后自动转为计费（先扣资源包，再扣余额）
+		true, // 账户实名免费路径；账号终身累计失败达到上限（写死3次）后自动转为计费（先扣资源包，再扣余额）
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"starloftrpa/internal/model"
 	"starloftrpa/internal/repository"
 	"starloftrpa/internal/upstream"
+	"starloftrpa/internal/utils"
 )
 
 // StartAuthResult StartAuth 返回结果
@@ -66,12 +66,11 @@ func NewAuthService(
 
 // StartAuth 发起认证
 // source: 1-账户实名（Web） 2-API调用
-// free: true 表示账户实名免费路径（近24小时内失败次数达到上限后转为计费）
+// free: true 表示账户实名免费路径（账号终身累计失败次数达到上限（写死3次）后转为计费）
 func (s *AuthService) StartAuth(
 	userID int64,
 	name, idCard, bizNo, returnURL, notifyURL string,
 	bizExtraData string,
-	usePlatformURLs bool,
 	source int,
 	free bool,
 ) (*StartAuthResult, error) {
@@ -86,10 +85,7 @@ func (s *AuthService) StartAuth(
 	// 幂等去重：同一下游 biz_no 若已存在进行中订单，直接复用，避免重复创建任务/重复扣费
 	if existing, err := s.orderRepo.GetOrderByBizNo(userID, bizNo); err == nil && existing != nil {
 		if existing.Status == 0 || existing.Status == 1 {
-			authURL := ""
-			if existing.UpToken != "" {
-				authURL = fmt.Sprintf("%s/finauth/lite/do?token=%s", s.config.BaseURL, existing.UpToken)
-			}
+			authURL := s.BuildAuthURL(existing.UpToken)
 			return &StartAuthResult{
 				Order:   existing,
 				AuthURL: authURL,
@@ -191,13 +187,11 @@ func (s *AuthService) StartAuth(
 		}
 	}
 
-	// 传给上游 get_token 的地址：下游调用时使用平台地址（平台中转），否则透传
+	// 传给上游 get_token 的地址：
+	// - return_url 透传用户/下游地址：用户在上游完成认证后浏览器直接回到其 return_url，不再经平台 /kyc 中转页
+	// - notify_url 始终为平台回调地址：认证结果由平台异步接收并落地（更新订单、扣费/退款、下发 API Secret、通知下游）
 	upstreamReturnURL := returnURL
-	upstreamNotifyURL := notifyURL
-	if usePlatformURLs {
-		upstreamReturnURL = s.buildPlatformReturnURL(platformBizNo)
-		upstreamNotifyURL = s.config.NotifyURL
-	}
+	upstreamNotifyURL := s.config.NotifyURL
 
 	// 调用上游 get_token
 	req := &upstream.GetTokenRequest{
@@ -232,7 +226,7 @@ func (s *AuthService) StartAuth(
 	}
 
 	// 生成认证 URL（基于配置中的 base_url）
-	authURL := fmt.Sprintf("%s/finauth/lite/do?token=%s", s.config.BaseURL, tokenResp.Token)
+	authURL := s.BuildAuthURL(tokenResp.Token)
 
 	return &StartAuthResult{
 		Order:   order,
@@ -318,17 +312,12 @@ func (s *AuthService) refundOrderCharge(order *model.AuthOrder, remark string) e
 	return nil
 }
 
-// buildPlatformReturnURL 构造平台中转 return 页面地址（/kyc?biz_no=平台流水号）
-func (s *AuthService) buildPlatformReturnURL(platformBizNo string) string {
-	base := s.config.ReturnURL
-	if base == "" {
+// BuildAuthURL 根据上游 token 构造认证页面地址（用于跳转上游完成认证）
+func (s *AuthService) BuildAuthURL(token string) string {
+	if token == "" {
 		return ""
 	}
-	sep := "?"
-	if strings.Contains(base, "?") {
-		sep = "&"
-	}
-	return base + sep + "biz_no=" + url.QueryEscape(platformBizNo)
+	return fmt.Sprintf("%s/finauth/lite/do?token=%s", s.config.BaseURL, token)
 }
 
 // GetAuthResult 查询认证结果
@@ -350,22 +339,6 @@ func (s *AuthService) GetAuthResult(userID int64, bizNo, platformBizNo string) (
 		s.syncOrderResult(order)
 		// 重新查询
 		order, _ = s.orderRepo.GetOrderByPlatformBizNo(order.PlatformBizNo)
-	}
-
-	return order, nil
-}
-
-// GetPublicOrderResult 公开查询认证结果（/kyc 中转页按平台流水号查询，处理中时主动同步上游）
-func (s *AuthService) GetPublicOrderResult(platformBizNo string) (*model.AuthOrder, error) {
-	order, err := s.orderRepo.GetOrderByPlatformBizNo(platformBizNo)
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果订单还在处理中，尝试从上游查询最新结果
-	if order.Status == 0 || order.Status == 1 {
-		s.syncOrderResult(order)
-		order, _ = s.orderRepo.GetOrderByPlatformBizNo(platformBizNo)
 	}
 
 	return order, nil
@@ -448,21 +421,31 @@ func (s *AuthService) GetUserAuthCallStats(userID int64, days int) ([]string, []
 	return dates, counts, nil
 }
 
-// ensureAPIKey 实名成功后若用户尚未拥有 API Key，则自动生成并下发（开通 API 需先完成实名）
-func (s *AuthService) ensureAPIKey(userID int64) {
+// ensureAPISecret 实名成功后生成并下发 API Secret（API Key 已于注册时自动生成）
+// 仅对历史存量用户（注册时未生成 Key）一并补全 API Key
+func (s *AuthService) ensureAPISecret(userID int64) {
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
 		return
 	}
-	if user.APIKey != "" {
+	// 已有 Secret 则不重复生成
+	if user.APISecret != "" {
 		return
 	}
-	apiKey := generateRandomKey(32)
-	apiSecret := generateRandomKey(32)
-	if err := s.userRepo.UpdateUserAPIKey(userID, apiKey, apiSecret); err != nil {
-		log.Printf("实名成功后自动生成 API Key 失败 [user_id=%d]: %v", userID, err)
+	// 历史存量用户可能在注册时未生成 API Key（此前设计注册不生成 Key），实名成功后一并补全
+	if user.APIKey == "" {
+		apiKey := utils.GenerateRandomKey(32)
+		if err := s.userRepo.UpdateUserAPIKey(userID, apiKey, ""); err != nil {
+			log.Printf("实名成功后补发 API Key 失败 [user_id=%d]: %v", userID, err)
+			return
+		}
 	}
-	log.Printf("实名成功，已为用户自动生成 API Key [user_id=%d]", userID)
+	apiSecret := utils.GenerateRandomKey(32)
+	if err := s.userRepo.UpdateUserAPISecret(userID, apiSecret); err != nil {
+		log.Printf("实名成功后生成 API Secret 失败 [user_id=%d]: %v", userID, err)
+		return
+	}
+	log.Printf("实名成功，已为用户生成 API Secret [user_id=%d]", userID)
 }
 
 // isInProgressMessage 判断上游返回的 result_message 是否表示「认证尚未开始/进行中」。
@@ -536,8 +519,8 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, result.ResultMessage, "", &now)
 		}
-		// 实名成功后自动下发 API Key（开通 API 需先完成实名）
-		s.ensureAPIKey(order.UserID)
+		// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
+		s.ensureAPISecret(order.UserID)
 	} else if status == 3 {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {
@@ -615,8 +598,8 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, notifyData.ResultMessage, "", &now)
 		}
-		// 实名成功后自动下发 API Key（开通 API 需先完成实名）
-		s.ensureAPIKey(order.UserID)
+		// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
+		s.ensureAPISecret(order.UserID)
 	} else {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {

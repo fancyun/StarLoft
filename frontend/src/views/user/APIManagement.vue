@@ -14,27 +14,30 @@
           show-icon
           class="kyc-alert"
         >
-          <p>API 需完成账户实名认证后方可开通。实名成功后系统将自动下发 API Key。</p>
+          <p>API Key 已随注册自动生成；API Secret 需完成账户实名认证后自动下发，实名通过后即可调用 API。</p>
           <el-button type="primary" size="small" @click="$router.push('/user/kyc')">前往实名认证</el-button>
         </el-alert>
-        <template v-else-if="!pageLoading">
-        <div class="api-item">
-          <span class="label">API Key</span>
-          <div class="api-value">
-            <code>{{ userInfo.api_key }}</code>
-            <el-button link @click="copyText(userInfo.api_key)">复制</el-button>
+        <template v-if="!pageLoading">
+          <div class="api-item">
+            <span class="label">API Key</span>
+            <div class="api-value">
+              <code>{{ userInfo.api_key }}</code>
+              <el-button link @click="copyText(userInfo.api_key)">复制</el-button>
+            </div>
           </div>
-        </div>
-        <div class="api-item">
-          <span class="label">API Secret</span>
-          <div class="api-value">
-            <code>{{ maskSecret(userInfo.api_secret) }}</code>
-            <el-button link @click="showSecret = !showSecret">
-              {{ showSecret ? '隐藏' : '显示' }}
-            </el-button>
-          </div>
-        </div>
-        <el-button @click="handleResetAPIKey" type="warning">重置 API 密钥</el-button>
+          <template v-if="isKycVerified === 1">
+            <div class="api-item">
+              <span class="label">API Secret</span>
+              <div class="api-value">
+                <code>{{ maskSecret(userInfo.api_secret) }}</code>
+                <el-button link @click="showSecret = !showSecret">
+                  {{ showSecret ? '隐藏' : '显示' }}
+                </el-button>
+                <el-button link @click="copyText(userInfo.api_secret)">复制</el-button>
+              </div>
+            </div>
+            <el-button @click="handleResetAPIKey" type="warning">重置 API 密钥</el-button>
+          </template>
         </template>
       </div>
 
@@ -69,6 +72,10 @@ const maskSecret = (secret: string) => {
 }
 
 const copyText = (text: string) => {
+  if (!text) {
+    ElMessage.warning('暂无内容可复制')
+    return
+  }
   navigator.clipboard.writeText(text)
   ElMessage.success('已复制到剪贴板')
 }

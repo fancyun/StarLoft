@@ -31,6 +31,7 @@ CREATE TABLE `platform_user` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_phone` (`phone`),
+  UNIQUE KEY `uk_api_key` (`api_key`),
   KEY `idx_status` (`status`),
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='平台用户表';
@@ -54,12 +55,12 @@ CREATE TABLE `admin_user` (
 
 -- 插入默认管理员账号
 -- 用户名: admin
--- 密码: Admin@2026KYC (请在首次登录后立即修改！)
+-- 密码: kigga9aj (请在首次登录后立即修改！)
 -- 密码哈希算法: bcrypt (cost=10)
 
 -- 使用 REPLACE INTO 避免重复键冲突
 REPLACE INTO `admin_user` (`username`, `password_hash`, `nickname`, `status`) 
-VALUES ('admin', '$2a$10$J98RpDuJVy4nNUN7LLjNgu0mEYQmO.z5yZy29LwVyFaWwg8JjprRW', '管理员', 1);
+VALUES ('admin', '$2a$10$U8urafJV5ggvfeHunkalMuH4Wkdq7gWK1kI5X2q076ZWEJwGn5Dce', '管理员', 1);
 
 -- ----------------------------
 -- 3. 认证订单表

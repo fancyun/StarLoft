@@ -43,8 +43,7 @@
     </table>
 
     <p class="notice">
-      <strong>开通前提：</strong>账户需先在用户中心完成实名认证（免费，实名成功后永久绑定不可修改）。
-      实名认证成功后系统自动下发 API Key/Secret；未完成实名的账户无法获得 API Key，也无法调用本 API。
+      <strong>开通前提：</strong>API Key 已随账户注册自动生成（唯一，可在用户中心「API 管理」查看）；账户需先在用户中心完成实名认证（免费，实名成功后永久绑定不可修改），实名成功后系统自动下发 API Secret，此时方可调用本 API；未完成实名的账户无法调用 API。
     </p>
 
     <h3>签名算法</h3>
@@ -58,7 +57,7 @@
 
     <h3>3.1 创建认证订单</h3>
     <p><span class="method post">POST</span><code>/api/v1/kyc/start</code></p>
-    <p>发起一次实名认证（API 业务调用）。平台优先扣除该账户资源包次数，无资源包或资源包耗尽时按平台 KYC 单价从余额扣费，创建订单并返回认证跳转地址。</p>
+    <p>发起一次实名认证（API 业务调用）。平台优先扣除该账户资源包次数，无资源包或资源包耗尽时按平台 KYC 单价从余额扣费，创建订单并返回认证跳转地址（<code>auth_url</code>）。认证完成后用户浏览器将直接跳转回你填写的 <code>return_url</code>，不再经过平台中转页。</p>
 
     <h4>请求参数</h4>
     <table>
@@ -93,7 +92,7 @@
           <td><code>return_url</code></td>
           <td>string</td>
           <td>是</td>
-          <td>认证完成后前端跳转地址</td>
+          <td>认证完成后用户浏览器直接跳转地址（原样透传至上游）</td>
         </tr>
         <tr>
           <td><code>notify_url</code></td>

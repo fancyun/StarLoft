@@ -416,12 +416,12 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		}
 	}
 
-	// API Key 不在此生成：开通 API 需先完成账户实名，实名成功后自动下发
+	// API Key 创建时自动生成（唯一），API Secret 需完成账户实名后再生成下发
 	user := &model.PlatformUser{
 		Phone:         req.Phone,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
-		APIKey:        "",
+		APIKey:        utils.GenerateRandomKey(32),
 		APISecret:     "",
 		IsKYCVerified: 0,
 		KYCPrice:      kycPrice,

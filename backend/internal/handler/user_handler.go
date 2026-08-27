@@ -314,7 +314,8 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"kyc_id_card":     kycIDCard,
 			"balance":         user.Balance,
 			"api_key":         user.APIKey,
-			// api_secret 已移除，避免泄露
+			// api_secret 仅返回给用户本人（用于 API 管理页展示/复制）；实名前为空字符串
+			"api_secret": user.APISecret,
 			"created_at": user.CreatedAt,
 		},
 	})

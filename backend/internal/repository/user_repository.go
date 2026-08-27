@@ -153,10 +153,17 @@ func (r *UserRepository) UpdateUserPassword(userID int64, passwordHash string) e
 	return err
 }
 
-// UpdateUserAPIKey 更新用户API密钥
+// UpdateUserAPIKey 更新用户API密钥（Key 与 Secret 一并更新）
 func (r *UserRepository) UpdateUserAPIKey(userID int64, apiKey, apiSecret string) error {
 	query := `UPDATE platform_user SET api_key = ?, api_secret = ?, updated_at = ? WHERE id = ?`
 	_, err := r.db.Exec(query, apiKey, apiSecret, time.Now(), userID)
+	return err
+}
+
+// UpdateUserAPISecret 更新用户API Secret（实名成功后单独生成下发）
+func (r *UserRepository) UpdateUserAPISecret(userID int64, apiSecret string) error {
+	query := `UPDATE platform_user SET api_secret = ?, updated_at = ? WHERE id = ?`
+	_, err := r.db.Exec(query, apiSecret, time.Now(), userID)
 	return err
 }
 

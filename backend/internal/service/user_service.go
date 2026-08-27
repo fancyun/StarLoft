@@ -1,8 +1,6 @@
 package service
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"log"
 	"strconv"
@@ -11,6 +9,7 @@ import (
 
 	"starloftrpa/internal/model"
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/utils"
 )
 
 var (
@@ -49,7 +48,7 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 		return nil, err
 	}
 
-	// API Key 不再于注册时生成：开通 API 需先完成账户实名，实名成功后自动下发
+	// API Key 注册时自动生成（唯一），API Secret 需完成账户实名后再生成下发
 
 	// 获取系统KYC价格（默认1.00）
 	kycPrice := 1.00
@@ -64,12 +63,12 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 
 	log.Printf("新用户注册，设置KYC单价: %.2f元", kycPrice)
 
-	// 创建用户
+	// 创建用户（API Key 注册时自动生成；API Secret 实名成功后生成）
 	user := &model.PlatformUser{
 		Phone:         phone,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
-		APIKey:        "", // 实名成功后自动下发
+		APIKey:        utils.GenerateRandomKey(32),
 		APISecret:     "",
 		IsKYCVerified: 0,
 		KYCPrice:      kycPrice, // 设置KYC单价（下游 API 业务调用扣费）
@@ -138,10 +137,10 @@ func (s *UserService) ChangePassword(userID int64, newPassword string) error {
 	return s.userRepo.UpdateUserPassword(userID, string(passwordHash))
 }
 
-// ResetAPIKey 重置API密钥
+// ResetAPIKey 重置API密钥（需先完成账户实名认证，Key 与 Secret 一并重新生成）
 func (s *UserService) ResetAPIKey(userID int64) (string, string, error) {
-	apiKey := generateRandomKey(32)
-	apiSecret := generateRandomKey(32)
+	apiKey := utils.GenerateRandomKey(32)
+	apiSecret := utils.GenerateRandomKey(32)
 
 	err := s.userRepo.UpdateUserAPIKey(userID, apiKey, apiSecret)
 	if err != nil {
@@ -156,11 +155,4 @@ func (s *UserService) UpdateKYCInfo(userID int64, name, idCard string) error {
 	// 注：身份证号的加密在 AuthService.CreateAuth 中已实现
 	// 此方法用于更新已认证用户的信息，建议生产环境禁用或添加严格权限控制
 	return s.userRepo.UpdateUserKYCInfo(userID, name, idCard)
-}
-
-// generateRandomKey 生成随机密钥
-func generateRandomKey(length int) string {
-	b := make([]byte, length)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }

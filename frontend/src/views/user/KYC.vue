@@ -18,13 +18,14 @@
           </div>
         </div>
 
-        <!-- 状态 2：进行中（record_status=1）→ 跳转到 /kyc -->
+        <!-- 状态 2：进行中（record_status=1）→ 在页内查询结果/继续认证（不再跳转 /kyc） -->
         <div v-if="recordStatus === 1" class="processing-section">
           <el-icon class="processing-icon"><Clock /></el-icon>
           <h2>认证进行中</h2>
-          <p>您有一个实名认证正在进行中，请继续完成认证</p>
+          <p>如您已完成人脸验证，请点击「查询认证结果」；未完成可继续认证</p>
           <div class="processing-actions">
-            <el-button type="primary" size="large" @click="continueAuth">继续认证</el-button>
+            <el-button type="primary" size="large" :loading="syncing" @click="syncResult">查询认证结果</el-button>
+            <el-button v-if="pendingAuthUrl" size="large" @click="continueAuth">继续认证</el-button>
             <el-button size="large" @click="cancelAuth">取消认证</el-button>
           </div>
         </div>
@@ -89,18 +90,16 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { userAPI } from '@/api'
 
-const router = useRouter()
-
 const loading = ref(false)
+const syncing = ref(false)
 const pageLoading = ref(true)
 const recordStatus = ref(-1)  // -1=无记录, 1=进行中, 2=已实名, 3=失败
 const kycName = ref('')
 const kycIDCard = ref('')
-const pendingBizNo = ref('')
+const pendingAuthUrl = ref('')
 
 const form = reactive({
   name: '',
@@ -163,10 +162,23 @@ const handleSubmit = async () => {
 }
 
 const continueAuth = () => {
-  if (pendingBizNo.value) {
-    router.push({ path: '/kyc', query: { biz_no: pendingBizNo.value } })
+  if (pendingAuthUrl.value) {
+    window.location.href = pendingAuthUrl.value
   } else {
-    router.push({ path: '/kyc' })
+    ElMessage.warning('暂无认证地址，请稍后重试')
+  }
+}
+
+const syncResult = async () => {
+  syncing.value = true
+  try {
+    await userAPI.syncKYC()
+    await loadData()
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('查询失败，请稍后重试')
+  } finally {
+    syncing.value = false
   }
 }
 
@@ -191,7 +203,7 @@ const loadData = async () => {
   try {
     const data = (await userAPI.getKYCStatus()) as any
     recordStatus.value = data.record_status ?? -1
-    pendingBizNo.value = data.pending_biz_no || ''
+    pendingAuthUrl.value = data.pending_auth_url || ''
 
     if (data.kyc_name) kycName.value = data.kyc_name
     if (data.kyc_id_card) kycIDCard.value = data.kyc_id_card

@@ -1,12 +1,18 @@
 <template>
   <div class="packs-container">
     <div class="content" v-loading="pageLoading">
-      <!-- 余额概览 -->
+      <!-- 资源包概览 + 购买入口 -->
       <div class="card">
-        <h3 class="section-title">
-          <el-icon><Wallet /></el-icon>
-          资源包
-        </h3>
+        <div class="card-head">
+          <h3 class="section-title">
+            <el-icon><Wallet /></el-icon>
+            资源包
+          </h3>
+          <el-button type="primary" @click="$router.push('/user/packs/buy')">
+            <el-icon><ShoppingCart /></el-icon>
+            <span class="buy-btn-text">购买资源包</span>
+          </el-button>
+        </div>
         <div class="balance-display">
           <span class="balance-label">当前余额</span>
           <span class="balance-amount">¥{{ userInfo.balance }}</span>
@@ -15,12 +21,12 @@
       </div>
 
       <!-- 我的资源包 -->
-      <div class="card" v-if="myPacks.length">
+      <div class="card">
         <h3 class="section-title">
           <el-icon><Box /></el-icon>
           我的资源包
         </h3>
-        <div class="my-pack-list">
+        <div v-if="myPacks.length" class="my-pack-list">
           <div
             v-for="pack in myPacks"
             :key="pack.id"
@@ -38,36 +44,7 @@
             </el-tag>
           </div>
         </div>
-      </div>
-
-      <!-- 在售资源包 -->
-      <div class="card" v-if="packs.length">
-        <h3 class="section-title">
-          <el-icon><ShoppingCart /></el-icon>
-          在售资源包
-        </h3>
-        <div class="pack-grid">
-          <div v-for="pack in packs" :key="pack.id" class="pack-card">
-            <div class="pack-header">
-              <div class="pack-name">{{ pack.name }}</div>
-              <el-tag v-if="pack.stock === -1" type="info" size="small">不限量</el-tag>
-              <el-tag v-else type="warning" size="small">库存 {{ pack.stock }}</el-tag>
-            </div>
-            <div class="pack-count">{{ pack.total_count }} 次认证</div>
-            <div class="pack-desc">{{ pack.description || 'KYC 实名认证次数' }}</div>
-            <div class="pack-footer">
-              <span class="pack-price">¥{{ pack.price }}</span>
-              <el-button
-                type="primary"
-                size="small"
-                :loading="purchasingId === pack.id"
-                @click="handlePurchase(pack)"
-              >
-                购买
-              </el-button>
-            </div>
-          </div>
-        </div>
+        <el-empty v-else description="暂无资源包，点击右上角「购买资源包」前往购买" />
       </div>
     </div>
   </div>
@@ -75,47 +52,28 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
 import { Wallet, Box, ShoppingCart } from '@element-plus/icons-vue'
 import { userAPI } from '@/api'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const userInfo = ref<any>({})
-const packs = ref<any[]>([])
 const myPacks = ref<any[]>([])
-const purchasingId = ref<number | null>(null)
 const pageLoading = ref(true)
 
 const loadData = async () => {
   try {
-    const [profile, onSale, mine] = await Promise.all([
+    const [profile, mine] = await Promise.all([
       userAPI.getProfile(),
-      userAPI.listPacks(),
       userAPI.myPacks()
     ])
     userInfo.value = profile
     userStore.setUserInfo(profile)
-    packs.value = onSale.list || []
     myPacks.value = mine.list || []
   } catch (error) {
     console.error(error)
   } finally {
     pageLoading.value = false
-  }
-}
-
-const handlePurchase = async (pack: any) => {
-  purchasingId.value = pack.id
-  try {
-    await userAPI.purchasePack(pack.id)
-    ElMessage.success('购买成功')
-    await loadData()
-  } catch (error: any) {
-    const msg = error?.response?.data?.message || '购买失败'
-    ElMessage.error(msg)
-  } finally {
-    purchasingId.value = null
   }
 }
 
@@ -145,6 +103,16 @@ onMounted(() => {
   box-shadow: var(--shadow-sm);
 }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.buy-btn-text {
+  margin-left: 4px;
+}
+
 .section-title {
   display: flex;
   align-items: center;
@@ -156,6 +124,12 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-light);
 }
 
+.card-head .section-title {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
 .balance-display {
   display: flex;
   flex-direction: column;
@@ -163,6 +137,7 @@ onMounted(() => {
   padding: 24px;
   background: linear-gradient(135deg, var(--color-primary-light) 0%, #E0E7FF 100%);
   border-radius: var(--radius-md);
+  margin-top: 20px;
 }
 
 .balance-label {
@@ -213,67 +188,5 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-secondary);
   margin-top: 4px;
-}
-
-/* 在售资源包 */
-.pack-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.pack-card {
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: 20px;
-  background: var(--bg-page);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: box-shadow 0.15s;
-}
-
-.pack-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.pack-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pack-name {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-size: 16px;
-}
-
-.pack-count {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.pack-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  min-height: 36px;
-}
-
-.pack-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-light);
-}
-
-.pack-price {
-  font-size: 18px;
-  font-weight: 700;
-  color: #F56C6C;
 }
 </style>

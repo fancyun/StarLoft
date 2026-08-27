@@ -18,12 +18,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Register',
     component: () => import('@/views/user/Register.vue')
   },
-  // KYC 认证中转页（公开，无需登录）
-  {
-    path: '/kyc',
-    name: 'KYCVerify',
-    component: () => import('@/views/KYCVerify.vue')
-  },
   // 文档中心（公开，无需登录）
   {
     path: '/docs',
@@ -81,6 +75,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'packs',
         name: 'ResourcePacks',
         component: () => import('@/views/user/ResourcePacks.vue')
+      },
+      {
+        path: 'packs/buy',
+        name: 'PurchasePacks',
+        component: () => import('@/views/user/PurchasePacks.vue')
       },
       {
         path: 'records',

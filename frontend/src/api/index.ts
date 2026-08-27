@@ -23,11 +23,6 @@ export const publicAPI = {
   // 获取系统配置
   getConfig: () => {
     return request.get('/public/config')
-  },
-
-  // 公开查询认证结果（/kyc 中转页按平台流水号查询，处理中时触发上游同步）
-  getKycResult: (bizNo: string) => {
-    return request.get('/public/kyc/result', { params: { biz_no: bizNo } })
   }
 }
 
