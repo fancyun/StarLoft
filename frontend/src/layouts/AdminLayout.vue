@@ -257,6 +257,9 @@ const handleCommand = (command: string) => {
   border-radius: var(--radius-md);
   height: 44px;
   line-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 :deep(.el-menu-item:hover) {
@@ -271,6 +274,9 @@ const handleCommand = (command: string) => {
 }
 
 :deep(.el-menu-item .el-icon) {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
   margin-right: 12px;
 }
 
@@ -289,6 +295,7 @@ const handleCommand = (command: string) => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .collapse-icon {
