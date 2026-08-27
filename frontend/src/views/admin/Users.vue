@@ -151,7 +151,7 @@
             placeholder="请输入充值金额"
             style="width: 100%"
           />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
             单位：元，最小0.01元，最大10000元
           </div>
         </el-form-item>
@@ -202,7 +202,7 @@
             </el-table-column>
             <el-table-column prop="amount" label="金额" width="120">
               <template #default="{ row }">
-                <span :style="{ color: isIncome(row.type) ? '#67C23A' : '#F56C6C' }">
+                <span :style="{ color: isIncome(row.type) ? 'var(--color-success)' : 'var(--color-danger)' }">
                   {{ isIncome(row.type) ? '+' : '-' }}¥{{ row.amount }}
                 </span>
               </template>

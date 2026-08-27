@@ -6,7 +6,7 @@
         <div class="banner-logo">
           <div class="logo-icon">
             <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="48" height="48" rx="12" fill="white" fill-opacity="0.2"/>
+              <rect width="48" height="48" rx="12" fill="#006EFF"/>
               <path d="M24 12L30 18L28 24L34 28L26 32L20 28L24 24L18 18L24 12Z" fill="white"/>
               <circle cx="24" cy="24" r="3" fill="white" fill-opacity="0.6"/>
             </svg>
@@ -254,11 +254,11 @@ const sendCode = async () => {
   background: var(--bg-page);
 }
 
-/* ========== 左侧品牌区 ========== */
+/* ========== 左侧品牌区（浅色腾讯云风格） ========== */
 .auth-banner {
   flex: 1;
   position: relative;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2563EB 40%, #3b82f6 70%, #60a5fa 100%);
+  background: linear-gradient(135deg, #E8F3FF 0%, #DCEBFF 50%, #C2DEFF 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -270,8 +270,8 @@ const sendCode = async () => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.06) 0%, transparent 50%);
+    radial-gradient(circle at 20% 30%, rgba(0,110,255,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(0,110,255,0.04) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -283,7 +283,7 @@ const sendCode = async () => {
   width: 600px;
   height: 600px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(0,110,255,0.08);
 }
 
 .banner-bg-pattern::after {
@@ -294,14 +294,14 @@ const sendCode = async () => {
   width: 400px;
   height: 400px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(0,110,255,0.06);
 }
 
 .banner-content {
   position: relative;
   z-index: 1;
   max-width: 440px;
-  color: white;
+  color: var(--text-primary);
 }
 
 .banner-logo {
@@ -319,14 +319,14 @@ const sendCode = async () => {
 .logo-text h2 {
   font-size: 22px;
   font-weight: 700;
-  color: white;
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.5px;
 }
 
 .logo-text span {
   font-size: 11px;
-  color: rgba(255,255,255,0.65);
+  color: var(--text-muted);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -334,14 +334,14 @@ const sendCode = async () => {
 .banner-desc h1 {
   font-size: 32px;
   font-weight: 700;
-  color: white;
+  color: var(--color-primary-active);
   line-height: 1.3;
   margin-bottom: 16px;
 }
 
 .banner-desc p {
   font-size: 15px;
-  color: rgba(255,255,255,0.75);
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 48px;
 }
@@ -357,7 +357,7 @@ const sendCode = async () => {
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: rgba(255,255,255,0.85);
+  color: var(--text-secondary);
 }
 
 .feature-icon {
@@ -366,8 +366,9 @@ const sendCode = async () => {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(0,110,255,0.08);
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
@@ -446,14 +447,14 @@ const sendCode = async () => {
 }
 
 :deep(.auth-form .el-input__wrapper) {
-  border-radius: 10px;
+  border-radius: 6px;
   box-shadow: 0 0 0 1px var(--border-color);
   padding: 0 16px;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 :deep(.auth-form .el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #94a3b8;
+  box-shadow: 0 0 0 1px #C9CDD4;
 }
 
 :deep(.auth-form .el-input__wrapper.is-focus) {
@@ -497,7 +498,7 @@ const sendCode = async () => {
   flex-shrink: 0;
   min-width: 110px;
   height: 46px;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
 }
@@ -506,7 +507,7 @@ const sendCode = async () => {
 .submit-btn {
   width: 100%;
   height: 48px;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 2px;
@@ -516,7 +517,7 @@ const sendCode = async () => {
 
 .submit-btn:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 110, 255, 0.35);
 }
 
 /* ========== 底部链接 ========== */

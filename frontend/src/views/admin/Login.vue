@@ -104,8 +104,8 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 20% 0%, #E0E7FF 0%, transparent 55%),
-    radial-gradient(circle at 100% 80%, #C7D2FE 0%, transparent 45%),
+    radial-gradient(circle at 20% 0%, #E8F3FF 0%, transparent 55%),
+    radial-gradient(circle at 100% 80%, #D6E8FF 0%, transparent 45%),
     var(--bg-page);
   padding: 20px;
 }
@@ -115,7 +115,7 @@ const handleLogin = async () => {
   padding: 40px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
 

@@ -3,6 +3,7 @@
     <el-container>
       <el-aside width="220px">
         <div class="logo">
+          <span class="logo-mark">管</span>
           <h2>管理后台</h2>
         </div>
         <el-menu
@@ -234,9 +235,22 @@ const handleCommand = (command: string) => {
   background: var(--bg-card);
 }
 
+.logo-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .logo h2 {
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: 17px;
   margin: 0;
   font-weight: 700;
   white-space: nowrap;

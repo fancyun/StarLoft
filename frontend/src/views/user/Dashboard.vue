@@ -79,7 +79,7 @@ let disposed = false
 
 // 在 TS 里读取 CSS 变量，保证图表色和主题同步
 const var_color_primary = computed(() =>
-  getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#2563EB'
+  getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#006EFF'
 )
 
 // ===== 工具函数 =====
@@ -130,8 +130,8 @@ const loadCallsChart = async () => {
     callChartInstance = echarts.init(callChartRef.value)
     callChartInstance.setOption({
       color: [var_color_primary.value],
-      xAxis: { type: 'category', data: stats.dates, axisLine: { lineStyle: { color: '#E5E7EB' } } },
-      yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F3F4F6' } } },
+      xAxis: { type: 'category', data: stats.dates, axisLine: { lineStyle: { color: '#E5E6EB' } } },
+      yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F2F3F5' } } },
       grid: { left: 40, right: 20, top: 20, bottom: 30 },
       series: [{
         data: stats.counts, type: 'line', smooth: true, symbolSize: 6,

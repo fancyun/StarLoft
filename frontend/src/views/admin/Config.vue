@@ -10,7 +10,7 @@
       <el-form :model="configForm" label-width="150px" style="max-width: 600px">
         <el-form-item label="实名认证单价">
           <el-input-number v-model="configForm.kyc_price" :min="0" :precision="2" :step="0.1" />
-          <span style="margin-left: 10px; color: #909399">元/次</span>
+          <span style="margin-left: 10px; color: var(--text-muted)">元/次</span>
         </el-form-item>
 
         <el-alert

@@ -209,7 +209,7 @@
   top: 0;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
   z-index: 100;
   padding: 1rem 0;
 }
@@ -225,13 +225,13 @@
 
 .logo h1 {
   font-size: 1.5rem;
-  color: #1f2937;
+  color: #1d2129;
   margin-bottom: 0.25rem;
 }
 
 .logo .subtitle {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #86909c;
 }
 
 .nav {
@@ -248,26 +248,26 @@
 }
 
 .nav-btn.primary {
-  background: #3b82f6;
+  background: #006eff;
   color: white;
 }
 
 .nav-btn.primary:hover {
-  background: #2563eb;
+  background: #0052d9;
 }
 
 .nav-btn:not(.primary) {
-  color: #4b5563;
-  border: 1px solid #d1d5db;
+  color: #4e5969;
+  border: 1px solid #e5e6eb;
 }
 
 .nav-btn:not(.primary):hover {
-  background: #f3f4f6;
+  background: #f2f3f5;
 }
 
 /* 主横幅 */
 .hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0052d9 0%, #006eff 55%, #3a8dff 100%);
   color: white;
   padding: 6rem 2rem;
   text-align: center;
@@ -310,7 +310,7 @@
 
 .btn-large.primary {
   background: white;
-  color: #667eea;
+  color: #006eff;
 }
 
 .btn-large.primary:hover {
@@ -360,19 +360,19 @@
   font-size: 2.5rem;
   text-align: center;
   margin-bottom: 1rem;
-  color: #1f2937;
+  color: #1d2129;
 }
 
 .section-subtitle {
   text-align: center;
-  color: #6b7280;
+  color: #86909c;
   font-size: 1.1rem;
   margin-bottom: 3rem;
 }
 
 /* 功能特性 */
 .features {
-  background: #f9fafb;
+  background: #f5f7fa;
 }
 
 .feature-grid {
@@ -384,14 +384,14 @@
 .feature-card {
   background: white;
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: all 0.3s;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .feature-icon {
@@ -402,11 +402,11 @@
 .feature-card h3 {
   font-size: 1.25rem;
   margin-bottom: 1rem;
-  color: #1f2937;
+  color: #1d2129;
 }
 
 .feature-card p {
-  color: #6b7280;
+  color: #4e5969;
   line-height: 1.6;
 }
 
@@ -427,7 +427,7 @@
 .step-number {
   width: 60px;
   height: 60px;
-  background: #3b82f6;
+  background: #006eff;
   color: white;
   border-radius: 50%;
   display: flex;
@@ -441,45 +441,45 @@
 .step h3 {
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
-  color: #1f2937;
+  color: #1d2129;
 }
 
 .step p {
-  color: #6b7280;
+  color: #4e5969;
   font-size: 0.9rem;
 }
 
 .step-arrow {
   font-size: 2rem;
-  color: #d1d5db;
+  color: #c9cdd4;
   flex: 0 0 auto;
 }
 
 /* 价格方案 */
 .pricing {
-  background: #f9fafb;
+  background: #f5f7fa;
 }
 
 .pricing-card {
   max-width: 500px;
   margin: 0 auto;
   background: white;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 3rem;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06);
 }
 
 .price-header {
   text-align: center;
   margin-bottom: 2rem;
   padding-bottom: 2rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .price-header h3 {
   font-size: 1.5rem;
   margin-bottom: 1.5rem;
-  color: #1f2937;
+  color: #1d2129;
 }
 
 .price {
@@ -492,12 +492,12 @@
 .price-number {
   font-size: 3.5rem;
   font-weight: 700;
-  color: #3b82f6;
+  color: #006eff;
 }
 
 .price-unit {
   font-size: 1.2rem;
-  color: #6b7280;
+  color: #86909c;
 }
 
 .price-features {
@@ -507,13 +507,13 @@
 
 .price-features li {
   padding: 0.75rem 0;
-  color: #4b5563;
+  color: #4e5969;
   font-size: 1rem;
 }
 
 .price-note {
   text-align: center;
-  color: #9ca3af;
+  color: #86909c;
   font-size: 0.875rem;
 }
 

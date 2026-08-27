@@ -67,7 +67,8 @@ const navGroups = [
 
 .docs-header {
   height: 56px;
-  background: #1a1a2e;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -88,7 +89,7 @@ const navGroups = [
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #fff;
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: 700;
   font-size: 16px;
@@ -107,14 +108,14 @@ const navGroups = [
 }
 
 .home-link {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
   text-decoration: none;
   font-size: 13px;
   transition: color 0.2s;
 }
 
 .home-link:hover {
-  color: #fff;
+  color: var(--color-primary);
 }
 
 .docs-body {
@@ -305,12 +306,12 @@ const navGroups = [
 }
 
 .markdown-body .method.post {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .markdown-body .method.get {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 </style>

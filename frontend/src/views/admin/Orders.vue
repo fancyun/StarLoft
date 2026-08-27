@@ -281,7 +281,7 @@ const viewPaymentDetail = (_row: any) => {
 
 .fail-reason {
   font-size: 12px;
-  color: #f56c6c;
+  color: var(--color-danger);
   margin-top: 4px;
   line-height: 1.4;
 }

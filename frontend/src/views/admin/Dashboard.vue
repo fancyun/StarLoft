@@ -105,10 +105,10 @@ import { formatDateTime } from '@/utils/format'
 
 // 在 TS 里读取 CSS 变量，保证图表色和主题同步
 const var_color_primary = computed(() =>
-  getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#2563EB'
+  getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#006EFF'
 )
 const var_color_success = computed(() =>
-  getComputedStyle(document.documentElement).getPropertyValue('--color-success').trim() || '#059669'
+  getComputedStyle(document.documentElement).getPropertyValue('--color-success').trim() || '#00A870'
 )
 
 const stats = ref({
@@ -168,8 +168,8 @@ const loadCharts = async () => {
     ordersChartInstance = echarts.init(ordersChartRef.value)
     ordersChartInstance.setOption({
       color: [var_color_primary.value],
-      xAxis: { type: 'category', data: ordersRes.dates, axisLine: { lineStyle: { color: '#E5E7EB' } } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F3F4F6' } } },
+      xAxis: { type: 'category', data: ordersRes.dates, axisLine: { lineStyle: { color: '#E5E6EB' } } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F2F3F5' } } },
       grid: { left: 40, right: 20, top: 20, bottom: 30 },
       series: [{ data: ordersRes.counts, type: 'line', smooth: true, symbolSize: 6, lineStyle: { width: 3 } }],
       tooltip: { trigger: 'axis' }
@@ -179,8 +179,8 @@ const loadCharts = async () => {
     revenueChartInstance = echarts.init(revenueChartRef.value)
     revenueChartInstance.setOption({
       color: [var_color_success.value],
-      xAxis: { type: 'category', data: revenueRes.dates, axisLine: { lineStyle: { color: '#E5E7EB' } } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F3F4F6' } } },
+      xAxis: { type: 'category', data: revenueRes.dates, axisLine: { lineStyle: { color: '#E5E6EB' } } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F2F3F5' } } },
       grid: { left: 40, right: 20, top: 20, bottom: 30 },
       series: [{
         data: revenueRes.amounts, type: 'line', smooth: true, symbolSize: 6,
@@ -189,8 +189,8 @@ const loadCharts = async () => {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(5, 150, 105, 0.25)' },
-              { offset: 1, color: 'rgba(5, 150, 105, 0.02)' }
+              { offset: 0, color: 'rgba(0, 168, 112, 0.25)' },
+              { offset: 1, color: 'rgba(0, 168, 112, 0.02)' }
             ]
           }
         }
@@ -286,10 +286,10 @@ const getStatusText = (status: number) => {
   flex-shrink: 0;
 }
 
-.stat-icon.users   { color: #6366F1; background: #E0E7FF; }
-.stat-icon.orders  { color: #EC4899; background: #FCE7F3; }
+.stat-icon.users   { color: #006EFF; background: #E8F3FF; }
+.stat-icon.orders  { color: #FF9D00; background: #FFF7E8; }
 .stat-icon.revenue { color: var(--color-success); background: var(--color-success-light); }
-.stat-icon.monthly { color: #F59E0B; background: var(--color-warning-light); }
+.stat-icon.monthly { color: #F54A45; background: #FFECE8; }
 
 .stat-info {
   flex: 1;

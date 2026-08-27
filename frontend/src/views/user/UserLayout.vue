@@ -5,7 +5,7 @@
       <div class="header-left">
         <router-link to="/user/dashboard" class="header-title">
           <svg class="title-icon" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="white" fill-opacity="0.2"/>
+            <rect width="32" height="32" rx="8" fill="#006EFF"/>
             <path d="M16 8L20 12L18 16L22 20L18 22L14 18L16 16L12 12L16 8Z" fill="white"/>
           </svg>
           <span>星楼KYC</span>
@@ -149,17 +149,17 @@ function handleLogout() {
   overflow: hidden;
 }
 
-/* ========== 顶部蓝色 Header ========== */
+/* ========== 顶部 Header（腾讯云控制台风格：白底+下边框） ========== */
 .layout-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
+  height: 60px;
   padding: 0 24px;
-  background: linear-gradient(135deg, #1e3a5f, #2563EB);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .header-left {
@@ -172,7 +172,7 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: white;
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -193,29 +193,30 @@ function handleLogout() {
   align-items: center;
   gap: 8px;
   text-decoration: none;
-  color: rgba(255,255,255,0.9);
+  color: var(--text-secondary);
   font-size: 14px;
   padding: 6px 14px;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: background 0.2s;
 }
 
 .user-name:hover {
-  background: rgba(255,255,255,0.12);
-  color: white;
+  background: var(--bg-hover);
+  color: var(--color-primary);
 }
 
-/* ========== 左侧黑色侧边栏 ========== */
+/* ========== 主体 ========== */
 .layout-body {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* ========== 左侧黑色侧边栏 ========== */
+/* ========== 左侧白色侧边栏 ========== */
 .layout-sidebar {
   width: 200px;
-  background: #1a1a2e;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -234,24 +235,25 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px;
+  padding: 11px 16px;
   margin: 0 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   text-decoration: none;
-  color: rgba(255,255,255,0.55);
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s;
 }
 
 .sidebar-item:hover {
-  color: rgba(255,255,255,0.85);
-  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .sidebar-item.active {
-  color: white;
-  background: rgba(37, 99, 235, 0.35);
+  color: var(--color-primary);
+  background: var(--bg-active);
+  font-weight: 600;
 }
 
 .sidebar-icon {
@@ -262,7 +264,7 @@ function handleLogout() {
 
 .sidebar-footer {
   padding: 8px 0 16px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--border-light);
   margin: 0 8px;
 }
 
@@ -272,18 +274,18 @@ function handleLogout() {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  color: rgba(255,255,255,0.45);
+  color: var(--text-muted);
 }
 
 .logout-btn:hover {
-  color: rgba(255,255,255,0.75);
-  background: rgba(255,255,255,0.06);
+  color: var(--color-danger);
+  background: var(--color-danger-light);
 }
 
-/* ========== 右侧白色主内容 ========== */
+/* ========== 右侧主内容区 ========== */
 .layout-main {
   flex: 1;
-  background: #f5f6fa;
+  background: var(--bg-page);
   overflow-y: auto;
   padding: 24px;
 }

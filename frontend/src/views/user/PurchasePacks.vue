@@ -210,6 +210,6 @@ onMounted(() => {
 .pack-price {
   font-size: 18px;
   font-weight: 700;
-  color: #F56C6C;
+  color: var(--color-danger);
 }
 </style>

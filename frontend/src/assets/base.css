@@ -1,56 +1,52 @@
 /* ========================================
-   全局主题变量 - 统一浅色系
+   全局主题变量 - 腾讯云官网设计风格
+   （主色 腾讯云蓝 #006EFF，中性灰阶，小圆角）
    ======================================== */
 :root {
-  /* 主色（统一品牌蓝） */
-  --color-primary: #2563EB;
-  --color-primary-hover: #1D4ED8;
-  --color-primary-light: #DBEAFE;
+  /* 主色（腾讯云品牌蓝） */
+  --color-primary: #006EFF;
+  --color-primary-hover: #3A8DFF;
+  --color-primary-active: #0052D9;
+  --color-primary-light: #E8F3FF;
 
-  /* 语义色 */
-  --color-success: #059669;
-  --color-success-light: #D1FAE5;
-  --color-warning: #D97706;
-  --color-warning-light: #FEF3C7;
-  --color-danger: #DC2626;
-  --color-danger-light: #FEE2E2;
-  --color-info: #0EA5E9;
-  --color-info-light: #E0F2FE;
+  /* 语义色（腾讯云规范色） */
+  --color-success: #00A870;
+  --color-success-light: #E3F9E9;
+  --color-warning: #FF9D00;
+  --color-warning-light: #FFF7E8;
+  --color-danger: #F54A45;
+  --color-danger-light: #FFECE8;
+  --color-info: #2E7FFF;
+  --color-info-light: #E8F3FF;
 
-  /* 文字 */
-  --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --text-muted: #6B7280;
+  /* 文字（腾讯云中性灰阶） */
+  --text-primary: #1D2129;
+  --text-secondary: #4E5969;
+  --text-muted: #86909C;
   --text-invert: #FFFFFF;
 
   /* 背景 */
-  --bg-page: #F6F8FB;        /* 页面背景 */
+  --bg-page: #F5F7FA;        /* 页面背景 */
   --bg-card: #FFFFFF;        /* 卡片背景 */
-  --bg-soft: #F3F4F6;        /* 次级背景（表格斑马纹等） */
-  --bg-hover: #F9FAFB;       /* hover 背景 */
-  --bg-active: #EFF6FF;      /* 激活/选中背景 */
+  --bg-soft: #F2F3F5;        /* 次级背景（表格斑马纹等） */
+  --bg-hover: #F7F8FA;       /* hover 背景 */
+  --bg-active: #E8F3FF;      /* 激活/选中背景 */
 
   /* 边框 */
-  --border-color: #E5E7EB;
-  --border-light: #F3F4F6;
-  --border-focus: #2563EB;
+  --border-color: #E5E6EB;
+  --border-light: #F2F3F5;
+  --border-focus: #006EFF;
 
-  /* 圆角 */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* 圆角（腾讯云偏小圆角） */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 
-  /* 阴影 */
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
-  --shadow-md: 0 4px 12px rgba(17, 24, 39, 0.06);
-  --shadow-lg: 0 12px 32px rgba(17, 24, 39, 0.08);
-
-  /* 间距 */
-  --gap-sm: 8px;
-  --gap-md: 16px;
-  --gap-lg: 24px;
-  --gap-xl: 32px;
+  /* 阴影（更轻盈克制） */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 *,
@@ -105,10 +101,10 @@ p {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
+  background: #C9CDD4;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: #A9AEB8;
 }

@@ -57,7 +57,7 @@
             :step="10"
             style="width: 100%"
           />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
             每个资源包包含的 KYC 认证次数
           </div>
         </el-form-item>
@@ -70,7 +70,7 @@
             :max="100000"
             style="width: 100%"
           />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
             单位：元，购买时从用户余额扣费
           </div>
         </el-form-item>
@@ -81,7 +81,7 @@
             :max="1000000"
             style="width: 100%"
           />
-          <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
             -1 表示不限量，>= 0 表示限量剩余库存
           </div>
         </el-form-item>

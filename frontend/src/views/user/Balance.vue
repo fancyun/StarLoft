@@ -128,7 +128,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   padding: 24px;
-  background: linear-gradient(135deg, var(--color-primary-light) 0%, #E0E7FF 100%);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, #D6E8FF 100%);
   border-radius: var(--radius-md);
   margin-bottom: 24px;
 }
