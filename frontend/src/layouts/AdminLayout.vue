@@ -1,6 +1,36 @@
 <template>
   <div class="admin-layout">
-    <el-container>
+    <!-- 顶部 Header（一级，全宽置顶，与用户端一致） -->
+    <el-header>
+      <div class="header-left">
+        <el-icon class="collapse-icon" @click="toggleCollapse">
+          <Fold v-if="!isCollapse" />
+          <Expand v-else />
+        </el-icon>
+        <router-link to="/admin/dashboard" class="header-title">
+          <span class="brand-logo">SL</span>
+          <span>管理后台</span>
+        </router-link>
+      </div>
+      <div class="header-right">
+        <el-dropdown @command="handleCommand">
+          <span class="user-dropdown">
+            <el-icon><UserFilled /></el-icon>
+            <span>{{ adminName }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
+              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+    </el-header>
+
+    <div class="layout-body">
+      <!-- 左侧侧边栏（二级，位于 Header 下方，与用户端一致） -->
       <el-aside width="200px">
         <el-menu
           :default-active="activeMenu"
@@ -30,40 +60,11 @@
         </el-menu>
       </el-aside>
 
-      <el-container>
-        <el-header>
-          <div class="header-left">
-            <el-icon class="collapse-icon" @click="toggleCollapse">
-              <Fold v-if="!isCollapse" />
-              <Expand v-else />
-            </el-icon>
-            <router-link to="/admin/dashboard" class="header-title">
-              <span class="logo-mark">管</span>
-              <span>管理后台</span>
-            </router-link>
-          </div>
-          <div class="header-right">
-            <el-dropdown @command="handleCommand">
-              <span class="user-dropdown">
-                <el-icon><UserFilled /></el-icon>
-                <span>{{ adminName }}</span>
-                <el-icon><ArrowDown /></el-icon>
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
-                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-        </el-header>
-
-        <el-main>
-          <router-view />
-        </el-main>
-      </el-container>
-    </el-container>
+      <!-- 右侧主内容区 -->
+      <el-main>
+        <router-view />
+      </el-main>
+    </div>
 
     <!-- 修改密码对话框 -->
     <el-dialog v-model="passwordDialogVisible" title="修改密码" width="420px" :close-on-click-modal="false">
@@ -211,17 +212,25 @@ const handleCommand = (command: string) => {
 
 <style scoped>
 .admin-layout {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
+  overflow: hidden;
 }
 
-.el-container {
-  height: 100%;
+/* 主体（Header 下方：左侧边栏 + 右侧内容区，与用户端 layout-body 一致） */
+.layout-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 .el-aside {
   background: var(--bg-card);
   border-right: 1px solid var(--border-color);
   transition: width 0.2s;
+  flex-shrink: 0;
+  overflow-y: auto;
 }
 
 /* 头部品牌标识（与用户端 header-title 一致） */
@@ -234,20 +243,6 @@ const handleCommand = (command: string) => {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.5px;
-}
-
-.logo-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .el-menu {
@@ -288,6 +283,7 @@ const handleCommand = (command: string) => {
   padding: 0 24px;
   height: 60px;
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .header-left {
@@ -334,5 +330,6 @@ const handleCommand = (command: string) => {
   background: var(--bg-page);
   padding: 24px;
   overflow-y: auto;
+  flex: 1;
 }
 </style>

@@ -4,13 +4,7 @@
     <div class="auth-banner">
       <div class="banner-content">
         <div class="banner-logo">
-          <div class="logo-icon">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="48" height="48" rx="12" fill="#006EFF"/>
-              <path d="M24 12L30 18L28 24L34 28L26 32L20 28L24 24L18 18L24 12Z" fill="white"/>
-              <circle cx="24" cy="24" r="3" fill="white" fill-opacity="0.6"/>
-            </svg>
-          </div>
+          <span class="brand-logo lg">SL</span>
           <div class="logo-text">
             <h2>StarLoft</h2>
             <span>KYC Authentication</span>
@@ -323,11 +317,6 @@ const handleRegister = async () => {
   align-items: center;
   gap: 14px;
   margin-bottom: 48px;
-}
-
-.logo-icon svg {
-  width: 48px;
-  height: 48px;
 }
 
 .logo-text h2 {

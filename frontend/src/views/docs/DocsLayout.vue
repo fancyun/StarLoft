@@ -3,7 +3,7 @@
     <header class="docs-header">
       <div class="docs-header-inner">
         <router-link to="/docs" class="brand">
-          <span class="brand-mark">K</span>
+          <span class="brand-logo">SL</span>
           <span class="brand-text">星楼KYC 文档中心</span>
         </router-link>
         <a href="/" class="home-link">返回首页</a>
@@ -93,18 +93,6 @@ const navGroups = [
   text-decoration: none;
   font-weight: 700;
   font-size: 16px;
-}
-
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
 }
 
 .home-link {

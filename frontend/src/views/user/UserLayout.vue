@@ -4,10 +4,7 @@
     <header class="layout-header">
       <div class="header-left">
         <router-link to="/user/dashboard" class="header-title">
-          <svg class="title-icon" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="#006EFF"/>
-            <path d="M16 8L20 12L18 16L22 20L18 22L14 18L16 16L12 12L16 8Z" fill="white"/>
-          </svg>
+          <span class="brand-logo">SL</span>
           <span>星楼KYC</span>
         </router-link>
       </div>
@@ -176,11 +173,6 @@ function handleLogout() {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.5px;
-}
-
-.title-icon {
-  width: 28px;
-  height: 28px;
 }
 
 .header-right {

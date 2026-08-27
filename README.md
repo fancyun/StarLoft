@@ -1,6 +1,6 @@
 # StarLoft KYC 实名认证系统
 
-[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](https://github.com/starloft/kyc)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](https://github.com/starloft/kyc)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.20+-00ADD8.svg)](https://golang.org/)
 [![Docker](https://img.shields.io/badge/docker-20.10+-2496ED.svg)](https://www.docker.com/)
@@ -159,6 +159,6 @@ StarLoftKYC/
 
 ---
 
-**版本**: v1.4.1  
+**版本**: v1.4.3  
 **更新日期**: 2026-08-27  
 **开发团队**: StarLoft Tech Team

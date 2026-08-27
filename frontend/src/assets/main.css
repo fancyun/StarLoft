@@ -112,6 +112,31 @@
   padding: 20px !important;
 }
 
+/* ========== 全局统一品牌标（蓝底白字 SL） ========== */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* 大号品牌标（登录/注册页横幅） */
+.brand-logo.lg {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 24px;
+}
+
 /* ========== 全局统一卡片（用户端/管理端通用） ========== */
 .card {
   background: var(--bg-card);

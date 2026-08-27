@@ -4,8 +4,11 @@
     <header class="header">
       <div class="header-content">
         <div class="logo">
-          <h1>星楼KYC</h1>
-          <span class="subtitle">KYC Authentication Platform</span>
+          <span class="brand-logo">SL</span>
+          <div class="logo-text">
+            <h1>星楼KYC</h1>
+            <span class="subtitle">KYC Authentication Platform</span>
+          </div>
         </div>
         <nav class="nav">
           <router-link to="/login" class="nav-btn primary">登录</router-link>
@@ -221,6 +224,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .logo h1 {
@@ -533,9 +542,16 @@
   gap: 3rem;
 }
 
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
 .footer-info h3 {
   color: white;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .footer-links {
