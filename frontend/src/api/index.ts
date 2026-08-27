@@ -262,10 +262,5 @@ export const adminAPI = {
   // 删除（下架）资源包
   deletePack: (id: number) => {
     return request.delete(`/admin/packs/${id}`)
-  },
-
-  // 获取管理员操作日志
-  getLogs: (params: any) => {
-    return request.get('/admin/logs', { params })
   }
 }

@@ -30,7 +30,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	paymentRepo := repository.NewPaymentOrderRepository(db)
 	balanceLogRepo := repository.NewBalanceLogRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
-	adminLogRepo := repository.NewAdminOperationLogRepository(db)
 	configRepo := repository.NewSystemConfigRepository(db)
 	kycRecordRepo := repository.NewKycRecordRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
@@ -113,7 +112,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo)
 
 	adminHandler := handler.NewAdminHandler(adminRepo,
-		adminLogRepo,
 		userRepo,
 		authRepo,
 		paymentRepo,
@@ -220,9 +218,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 
 				// 管理员修改密码
 				adminAuth.POST("/change-password", adminHandler.ChangePassword)
-
-				// 管理员操作日志
-				adminAuth.GET("/logs", adminHandler.GetOperationLogs)
 
 				// Dashboard数据
 				adminAuth.GET("/dashboard", dashboardHandler.GetDashboard)

@@ -22,7 +22,6 @@ var adminValidator = utils.NewInputValidator()
 
 type AdminHandler struct {
 	adminRepo        *repository.AdminRepository
-	adminLogRepo     *repository.AdminOperationLogRepository
 	userRepo         *repository.UserRepository
 	authRepo         *repository.AuthOrderRepository
 	paymentRepo      *repository.PaymentOrderRepository
@@ -36,7 +35,6 @@ type AdminHandler struct {
 
 func NewAdminHandler(
 	adminRepo *repository.AdminRepository,
-	adminLogRepo *repository.AdminOperationLogRepository,
 	userRepo *repository.UserRepository,
 	authRepo *repository.AuthOrderRepository,
 	paymentRepo *repository.PaymentOrderRepository,
@@ -49,7 +47,6 @@ func NewAdminHandler(
 ) *AdminHandler {
 	return &AdminHandler{
 		adminRepo:        adminRepo,
-		adminLogRepo:     adminLogRepo,
 		userRepo:         userRepo,
 		authRepo:         authRepo,
 		paymentRepo:      paymentRepo,
@@ -62,7 +59,7 @@ func NewAdminHandler(
 	}
 }
 
-// logAdminOperation 记录管理员操作日志（写入文件 admin.log + 数据库 admin_operation_log）
+// logAdminOperation 记录管理员操作日志（仅写入 admin.log 文件，不额外建表）
 func (h *AdminHandler) logAdminOperation(c *gin.Context, operation, resourceType string, resourceID int64, details string) {
 	adminID, _ := c.Get("user_id")
 	adminIDInt, _ := adminID.(int64)
@@ -70,78 +67,6 @@ func (h *AdminHandler) logAdminOperation(c *gin.Context, operation, resourceType
 	// 写入文件日志
 	utils.AdminLogger.Printf("admin_id=%d operation=%s resource_type=%s resource_id=%d ip=%s details=%s",
 		adminIDInt, operation, resourceType, resourceID, c.ClientIP(), details)
-
-	// 写入数据库（失败不影响主流程，仅记录）
-	if h.adminLogRepo != nil && adminIDInt > 0 {
-		log := &model.AdminOperationLog{
-			AdminID:      adminIDInt,
-			Operation:    operation,
-			ResourceType: resourceType,
-			ResourceID:   resourceID,
-			Details:      details,
-			IPAddress:    c.ClientIP(),
-		}
-		if err := h.adminLogRepo.InsertOperationLog(log); err != nil {
-			utils.ErrorLogger.Printf("记录管理员操作日志失败: %v", err)
-		}
-	}
-}
-
-// GetOperationLogs 获取管理员操作日志列表
-func (h *AdminHandler) GetOperationLogs(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	adminIDStr := c.Query("admin_id")
-	operation := strings.TrimSpace(c.Query("operation"))
-	adminName := strings.TrimSpace(c.Query("admin_name"))
-
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-
-	var adminID int64
-	if adminIDStr != "" {
-		adminID, _ = strconv.ParseInt(adminIDStr, 10, 64)
-	}
-
-	logs, total, err := h.adminLogRepo.GetOperationLogs(page, pageSize, adminID, operation, adminName)
-	if err != nil {
-		utils.ErrorLogger.Printf("查询管理员操作日志失败: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to get operation logs",
-		})
-		return
-	}
-
-	logList := make([]gin.H, 0, len(logs))
-	for _, l := range logs {
-		logList = append(logList, gin.H{
-			"id":            l.ID,
-			"admin_id":      l.AdminID,
-			"admin_name":    l.AdminName,
-			"operation":     l.Operation,
-			"resource_type": l.ResourceType,
-			"resource_id":   l.ResourceID,
-			"details":       l.Details,
-			"ip_address":    l.IPAddress,
-			"created_at":    l.CreatedAt,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"list":      logList,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		},
-	})
 }
 
 // AdminLogin 管理员登录
