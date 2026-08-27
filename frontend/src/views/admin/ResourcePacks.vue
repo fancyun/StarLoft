@@ -1,12 +1,13 @@
 <template>
   <div class="admin-packs">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>资源包管理</span>
-          <el-button type="primary" @click="handleCreate">新增资源包</el-button>
-        </div>
-      </template>
+    <div class="card">
+      <div class="card-head">
+        <h3 class="section-title">
+          <el-icon><Box /></el-icon>
+          资源包管理
+        </h3>
+        <el-button type="primary" @click="handleCreate">新增资源包</el-button>
+      </div>
 
       <el-table :data="packs" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="70" />
@@ -41,7 +42,7 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+    </div>
 
     <!-- 新增/编辑资源包对话框 -->
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑资源包' : '新增资源包'" width="520px">
@@ -244,12 +245,6 @@ const handleDelete = async (row: any) => {
 
 <style scoped>
 .admin-packs {
-  padding: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  min-height: 100%;
 }
 </style>

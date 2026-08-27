@@ -185,27 +185,6 @@ onBeforeUnmount(() => {
   gap: 20px;
 }
 
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.15s;
-}
-.card:hover { box-shadow: var(--shadow-md); }
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 18px;
-  color: var(--text-primary);
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-light);
-}
-
 .card-header {
   display: flex;
   align-items: center;

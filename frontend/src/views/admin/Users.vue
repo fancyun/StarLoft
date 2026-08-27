@@ -1,12 +1,13 @@
 <template>
   <div class="admin-users">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>用户管理</span>
-          <el-button type="primary" @click="showRegisterDialog">手动注册用户</el-button>
-        </div>
-      </template>
+    <div class="card">
+      <div class="card-head">
+        <h3 class="section-title">
+          <el-icon><User /></el-icon>
+          用户管理
+        </h3>
+        <el-button type="primary" @click="showRegisterDialog">手动注册用户</el-button>
+      </div>
 
       <div class="filter-bar">
         <el-input
@@ -91,7 +92,7 @@
         @size-change="loadUsers"
         style="margin-top: 20px; justify-content: flex-end"
       />
-    </el-card>
+    </div>
 
     <!-- 用户详情对话框 -->
     <el-dialog v-model="detailDialogVisible" title="用户详情" width="800px">
@@ -585,21 +586,3 @@ const getOrderStatusTag = (status: number) => {
   return tags[status] || 'info'
 }
 </script>
-
-<style scoped>
-.admin-users {
-  padding: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.filter-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-</style>

@@ -4,7 +4,10 @@
       <div class="profile-grid">
         <!-- 个人信息 -->
         <div class="card">
-          <h3>个人信息</h3>
+          <h3 class="section-title">
+            <el-icon><User /></el-icon>
+            个人信息
+          </h3>
           <div class="info-item">
             <span class="label">手机号</span>
             <span class="value">{{ maskPhone(userInfo.phone) }}</span>
@@ -81,7 +84,10 @@
 
         <!-- 安全设置 -->
         <div class="card">
-          <h3>安全设置</h3>
+          <h3 class="section-title">
+            <el-icon><Lock /></el-icon>
+            安全设置
+          </h3>
           <el-button @click="dialogVisible = true">修改密码</el-button>
           <el-button @click="dialogVisible = false" type="danger">退出登录</el-button>
         </div>
@@ -300,22 +306,6 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: var(--gap-lg);
-}
-
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  box-shadow: var(--shadow-sm);
-}
-
-.card h3 {
-  font-size: 18px;
-  color: var(--text-primary);
-  margin-bottom: 24px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-light);
 }
 
 .info-item {

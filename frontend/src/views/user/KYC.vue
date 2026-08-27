@@ -1,7 +1,7 @@
 <template>
   <div class="kyc-container">
     <div class="content">
-      <div class="kyc-card">
+      <div class="card kyc-card">
         <el-skeleton v-if="pageLoading" :rows="8" animated />
         <template v-else>
         <!-- 状态 1：已实名（record_status=2） -->
@@ -228,11 +228,7 @@ onMounted(() => {
   margin: 0 auto;
 }
 .kyc-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
   padding: 40px;
-  box-shadow: var(--shadow-sm);
 }
 
 /* 已实名 */

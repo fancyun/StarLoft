@@ -112,6 +112,58 @@
   padding: 20px !important;
 }
 
+/* ========== 全局统一卡片（用户端/管理端通用） ========== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s;
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ========== 全局统一卡片标题（带图标 + 下边框） ========== */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* 标题与右侧操作按钮/过滤项同行：由 .card-head 提供下边框，标题本身去边框 */
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+.card-head .section-title {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/* ========== 全局统一页头筛选行 ========== */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
 /* ========== 表格 ========== */
 .el-table {
   --el-table-border-color: var(--border-light);

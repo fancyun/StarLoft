@@ -1,9 +1,12 @@
 <template>
   <div class="records-container">
     <div class="content">
-      <div class="records-card">
-        <div class="card-header">
-          <h2>认证记录</h2>
+      <div class="card">
+        <div class="card-head">
+          <h3 class="section-title">
+            <el-icon><Document /></el-icon>
+            认证记录
+          </h3>
           <div class="filters">
             <el-date-picker
               v-model="dateRange"
@@ -110,28 +113,6 @@ onMounted(() => {
 .content {
   max-width: 1400px;
   margin: 0 auto;
-}
-
-.records-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.card-header h2 {
-  font-size: 20px;
-  color: var(--text-primary);
 }
 
 .filters {

@@ -1,11 +1,10 @@
 <template>
   <div class="admin-orders">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>订单管理</span>
-        </div>
-      </template>
+    <div class="card">
+      <h3 class="section-title">
+        <el-icon><Document /></el-icon>
+        订单管理
+      </h3>
 
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="认证订单" name="auth">
@@ -130,7 +129,7 @@
           />
         </el-tab-pane>
       </el-tabs>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -264,19 +263,7 @@ const viewPaymentDetail = (_row: any) => {
 
 <style scoped>
 .admin-orders {
-  padding: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.filter-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  min-height: 100%;
 }
 
 .fail-reason {

@@ -52,28 +52,31 @@
 
     <el-row :gutter="20" class="chart-row">
       <el-col :span="12">
-        <el-card>
-          <template #header>
-            <span>订单趋势</span>
-          </template>
+        <div class="card">
+          <h3 class="section-title">
+            <el-icon><TrendCharts /></el-icon>
+            订单趋势
+          </h3>
           <div ref="ordersChartRef" style="height: 300px"></div>
-        </el-card>
+        </div>
       </el-col>
       
       <el-col :span="12">
-        <el-card>
-          <template #header>
-            <span>收入趋势</span>
-          </template>
+        <div class="card">
+          <h3 class="section-title">
+            <el-icon><Coin /></el-icon>
+            收入趋势
+          </h3>
           <div ref="revenueChartRef" style="height: 300px"></div>
-        </el-card>
+        </div>
       </el-col>
     </el-row>
 
-    <el-card class="recent-orders">
-      <template #header>
-        <span>最近订单</span>
-      </template>
+    <div class="card recent-orders">
+      <h3 class="section-title">
+        <el-icon><Document /></el-icon>
+        最近订单
+      </h3>
       <el-table :data="recentOrders" style="width: 100%">
         <el-table-column prop="platform_biz_no" label="平台流水号" width="180" />
         <el-table-column prop="user_phone" label="用户手机号" width="140" />
@@ -92,7 +95,7 @@
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
       </el-table>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -246,8 +249,6 @@ const getStatusText = (status: number) => {
 
 <style scoped>
 .admin-dashboard {
-  padding: var(--gap-lg);
-  background: var(--bg-page);
   min-height: 100%;
 }
 

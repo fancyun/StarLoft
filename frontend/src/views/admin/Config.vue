@@ -1,11 +1,10 @@
 <template>
   <div class="admin-config">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>系统配置</span>
-        </div>
-      </template>
+    <div class="card">
+      <h3 class="section-title">
+        <el-icon><Setting /></el-icon>
+        系统配置
+      </h3>
 
       <el-form :model="configForm" label-width="150px" style="max-width: 600px">
         <el-form-item label="实名认证单价">
@@ -30,7 +29,7 @@
           <el-button @click="loadConfig" size="large">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -75,12 +74,6 @@ const handleSave = async () => {
 
 <style scoped>
 .admin-config {
-  padding: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  min-height: 100%;
 }
 </style>

@@ -337,7 +337,7 @@ const handleCommand = (command: string) => {
 
 .el-main {
   background: var(--bg-page);
-  padding: 0;
+  padding: 24px;
   overflow-y: auto;
 }
 </style>
