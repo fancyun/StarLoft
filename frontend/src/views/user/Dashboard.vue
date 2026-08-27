@@ -75,7 +75,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { userAPI } from '@/api'
+import { userAPI, publicAPI } from '@/api'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -83,6 +83,8 @@ const userStore = useUserStore()
 const userInfo = ref<any>({})
 const callChartRef = ref()
 const pageLoading = ref(true)
+// 平台实名认证单价（从公开配置读取）
+const kycPrice = ref<number | null>(null)
 
 let callChartInstance: ReturnType<typeof echarts.init> | null = null
 let disposed = false
@@ -115,6 +117,15 @@ const formatDate = (dateStr: string) => {
 const copyAPIKey = () => {
   navigator.clipboard.writeText(userInfo.value.api_key)
   ElMessage.success('API Key 已复制到剪贴板')
+}
+
+const loadKycPrice = async () => {
+  try {
+    const config = await publicAPI.getConfig()
+    kycPrice.value = config.kyc_price ?? null
+  } catch (error) {
+    console.error('加载实名认证单价失败:', error)
+  }
 }
 
 const loadData = async () => {
@@ -166,6 +177,7 @@ const loadCallsChart = async () => {
 
 onMounted(() => {
   loadData()
+  loadKycPrice()
   loadCallsChart()
 })
 

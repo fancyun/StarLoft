@@ -139,7 +139,7 @@
           <div class="price-header">
             <h3>实名认证服务</h3>
             <div class="price">
-              <span class="price-number">0.50</span>
+              <span class="price-number">{{ kycPrice === null ? '--' : kycPrice }}</span>
               <span class="price-unit">元/次</span>
             </div>
           </div>
