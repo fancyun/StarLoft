@@ -79,7 +79,7 @@ func (r *ResourcePackRepository) ListPacks(status *int) ([]*model.ResourcePack, 
 		query += ` WHERE status = ?`
 		args = append(args, *status)
 	}
-	query += ` ORDER BY id DESC`
+	query += ` ORDER BY id ASC`
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {

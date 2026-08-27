@@ -71,7 +71,7 @@ const handlePurchase = (pack: any) => {
     `确认使用余额 ¥${pack.price} 购买「${pack.name}」？购买后将获得 ${pack.total_count} 次认证次数。`,
     '确认购买',
     {
-      confirmButtonText: '确认购买',
+      confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     }

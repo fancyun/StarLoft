@@ -6,7 +6,7 @@
         <div class="card-head">
           <h3 class="section-title">
             <el-icon><Wallet /></el-icon>
-            资源包
+            我的资源
           </h3>
           <el-button type="primary" @click="$router.push('/user/packs/buy')">
             <el-icon><ShoppingCart /></el-icon>
