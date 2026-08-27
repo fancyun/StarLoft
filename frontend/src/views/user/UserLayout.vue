@@ -235,7 +235,7 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 16px;
+  padding: 12px 16px;
   margin: 0 8px;
   border-radius: 6px;
   text-decoration: none;

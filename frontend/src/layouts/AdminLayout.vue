@@ -1,11 +1,7 @@
 <template>
   <div class="admin-layout">
     <el-container>
-      <el-aside width="220px">
-        <div class="logo">
-          <span class="logo-mark">管</span>
-          <h2>管理后台</h2>
-        </div>
+      <el-aside width="200px">
         <el-menu
           :default-active="activeMenu"
           router
@@ -41,6 +37,10 @@
               <Fold v-if="!isCollapse" />
               <Expand v-else />
             </el-icon>
+            <router-link to="/admin/dashboard" class="header-title">
+              <span class="logo-mark">管</span>
+              <span>管理后台</span>
+            </router-link>
           </div>
           <div class="header-right">
             <el-dropdown @command="handleCommand">
@@ -221,24 +221,25 @@ const handleCommand = (command: string) => {
 .el-aside {
   background: var(--bg-card);
   border-right: 1px solid var(--border-color);
-  box-shadow: 2px 0 6px rgba(17, 24, 39, 0.03);
   transition: width 0.2s;
 }
 
-.logo {
-  height: 60px;
+/* 头部品牌标识（与用户端 header-title 一致） */
+.header-title {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
-  border-bottom: 1px solid var(--border-light);
-  background: var(--bg-card);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .logo-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: var(--color-primary);
   color: #fff;
   font-size: 14px;
@@ -246,25 +247,19 @@ const handleCommand = (command: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.logo h2 {
-  color: var(--text-primary);
-  font-size: 17px;
-  margin: 0;
-  font-weight: 700;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .el-menu {
   border-right: none;
   background: transparent;
+  padding: 12px 0;
 }
 
 :deep(.el-menu-item) {
   color: var(--text-secondary);
-  margin: 4px 10px;
-  border-radius: var(--radius-sm);
+  margin: 0 8px 2px;
+  border-radius: var(--radius-md);
   height: 44px;
   line-height: 44px;
 }
@@ -281,18 +276,18 @@ const handleCommand = (command: string) => {
 }
 
 :deep(.el-menu-item .el-icon) {
-  margin-right: 10px;
+  margin-right: 12px;
 }
 
 .el-header {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 1px 4px rgba(17, 24, 39, 0.03);
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
   height: 60px;
+  z-index: 100;
 }
 
 .header-left {
