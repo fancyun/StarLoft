@@ -45,8 +45,10 @@ WORKDIR /app
 # 从builder复制二进制文件
 COPY --from=builder /app/kyc_server .
 
-# 修改文件所有者
-RUN chown -R app:app /app
+# 创建日志目录并修改所有者为 app 用户
+# 关键：镜像中若不存在 /app/logs，Docker 挂载命名卷时会以 root 属主创建该目录，
+# 导致以非 root 用户（app）运行时无法写入日志（permission denied）。
+RUN mkdir -p /app/logs && chown -R app:app /app
 
 # 切换到非root用户
 USER app
