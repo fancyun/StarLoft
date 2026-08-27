@@ -240,7 +240,8 @@
     <p>
       认证产生最终结果（成功或失败）后，平台会以 <strong>POST</strong> 方式向你的
       <code>notify_url</code> 发送通知，<code>Content-Type: application/json</code>。
-      通知不携带签名，下游可依据 <code>biz_no</code>（业务订单号）关联订单。
+      通知携带 <code>sign</code>（HMAC-SHA256 签名，基于你的 API Secret 生成），
+      下游应校验签名后再落地结果，防止伪造回调；同时可依据 <code>biz_no</code>（业务订单号）关联订单。
     </p>
 
     <h4>请求体</h4>
@@ -250,7 +251,8 @@
   "status": 2,
   "result_code": "1000",
   "result_message": "SUCCESS",
-  "cost": 1.50
+  "cost": 1.50,
+  "sign": "a1b2c3d4e5f6..."
 }</code></pre>
 
     <h4>字段说明</h4>
@@ -293,8 +295,23 @@
           <td>number</td>
           <td>本次认证扣费金额（元）</td>
         </tr>
+        <tr>
+          <td><code>sign</code></td>
+          <td>string</td>
+          <td>回调签名，用于防止伪造回调（算法见下方「签名算法」）</td>
+        </tr>
       </tbody>
     </table>
+
+    <h4>签名算法</h4>
+    <p>
+      取 <code>biz_no</code>、<code>cost</code>、<code>platform_biz_no</code>、
+      <code>result_code</code>、<code>result_message</code>、<code>status</code> 六个字段，
+      按 key 字典序拼接为原始字符串（不做 URL 编码），以 API Secret 计算 HMAC-SHA256：
+    </p>
+    <pre><code>canonical = "biz_no=xxx&amp;cost=1.50&amp;platform_biz_no=xxx&amp;result_code=1000&amp;result_message=xxx&amp;status=2"
+sign = 小写hex( HMAC-SHA256(api_secret, canonical) )</code></pre>
+    <p>其中 <code>cost</code> 固定保留两位小数（如 <code>1.50</code>），<code>status</code> 为整数。校验失败应拒绝该通知（返回非 2xx），并依赖轮询接口兜底。</p>
 
     <h4>result_code 说明</h4>
     <table>
