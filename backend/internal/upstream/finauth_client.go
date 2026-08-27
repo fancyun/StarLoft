@@ -107,7 +107,7 @@ func (c *FinAuthClient) GetToken(req *GetTokenRequest) (*GetTokenResponse, error
 	if err != nil {
 		return nil, fmt.Errorf("read response failed: %w", err)
 	}
-	log.Printf("FinAuth GetToken 响应: Status=%d, Body=%s", httpResp.StatusCode, string(respBody))
+	log.Printf("FinAuth GetToken 响应: Status=%d, Body=%s", httpResp.StatusCode, redactBody(respBody))
 
 	// 解析响应
 	var resp GetTokenResponse
@@ -147,7 +147,8 @@ func (c *FinAuthClient) GetResult(req *GetResultRequest) (*GetResultResponse, er
 	queryParams.Set("biz_id", req.BizID)
 
 	fullURL := fmt.Sprintf("%s?%s", apiURL, queryParams.Encode())
-	log.Printf("FinAuth GetResult 请求: URL=%s", fullURL)
+	// 不打印完整 URL（query 中携带 sign 签名，防泄露/重放），仅打印接口地址与业务 ID
+	log.Printf("FinAuth GetResult 请求: URL=%s, BizID=%s", apiURL, req.BizID)
 
 	httpReq, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
@@ -166,7 +167,7 @@ func (c *FinAuthClient) GetResult(req *GetResultRequest) (*GetResultResponse, er
 	if err != nil {
 		return nil, fmt.Errorf("read response failed: %w", err)
 	}
-	log.Printf("FinAuth GetResult 响应: Status=%d, Body=%s", httpResp.StatusCode, string(respBody))
+	log.Printf("FinAuth GetResult 响应: Status=%d, Body=%s", httpResp.StatusCode, redactBody(respBody))
 
 	// 解析响应
 	var resp GetResultResponse
@@ -197,4 +198,61 @@ func (c *FinAuthClient) GenerateSign() string {
 // VerifySign 验证回调签名
 func (c *FinAuthClient) VerifySign(jsonData, receivedSign string) bool {
 	return c.signer.VerifyNotifySign(jsonData, receivedSign, SignVersionHMACSHA256)
+}
+
+// sensitiveKeys 日志脱敏：命中该集合的字段一律替换为 ***
+var sensitiveKeys = map[string]bool{
+	"idcard_name":      true,
+	"idcard_number":    true,
+	"id_card":          true,
+	"name":             true,
+	"images":           true,
+	"liveness_result":  true,
+	"verify_result":    true,
+	"will_result":      true,
+	"verify_risk_info": true,
+	"device_risk_info": true,
+}
+
+// redactBody 对上游响应 JSON 做脱敏后再输出日志，防止人脸图片、证件信息等隐私数据落入日志
+func redactBody(body []byte) string {
+	var data interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		s := string(body)
+		if len(s) > 500 {
+			return s[:500] + "...(truncated)"
+		}
+		return s
+	}
+
+	out, err := json.Marshal(redactJSON(data))
+	if err != nil {
+		return "(redact failed)"
+	}
+	s := string(out)
+	if len(s) > 1000 {
+		return s[:1000] + "...(truncated)"
+	}
+	return s
+}
+
+func redactJSON(value interface{}) interface{} {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		for k := range v {
+			if sensitiveKeys[k] {
+				v[k] = "***"
+			} else {
+				v[k] = redactJSON(v[k])
+			}
+		}
+		return v
+	case []interface{}:
+		for i := range v {
+			v[i] = redactJSON(v[i])
+		}
+		return v
+	default:
+		return v
+	}
 }

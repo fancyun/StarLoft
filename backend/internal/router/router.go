@@ -72,7 +72,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	// 初始化 Service
 	userService := service.NewUserService(userRepo, configRepo)
 	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, configRepo, db)
-	callbackService := service.NewCallbackService(authRepo)
 
 	authService := service.NewAuthService(
 		finAuthClient,
@@ -116,7 +115,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	callbackHandler := handler.NewCallbackHandler(
 		authService,
 		balanceService,
-		callbackService,
 		paymentRepo,
 		unionPayClient,
 	)

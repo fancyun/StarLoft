@@ -2,11 +2,15 @@ package service
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -78,9 +82,8 @@ func (s *AuthService) StartAuth(
 	if returnURL == "" {
 		returnURL = s.config.ReturnURL
 	}
-	if notifyURL == "" {
-		notifyURL = s.config.NotifyURL
-	}
+	// 注意：notifyURL 仅由 API 流程（source=2）的下游显式传入；
+	// 账户实名（source=1）不设下游 notify_url，保持为空，避免向平台自身回调地址发送无意义通知。
 
 	// 幂等去重：同一下游 biz_no 若已存在进行中订单，直接复用，避免重复创建任务/重复扣费
 	if existing, err := s.orderRepo.GetOrderByBizNo(userID, bizNo); err == nil && existing != nil {
@@ -332,6 +335,11 @@ func (s *AuthService) GetAuthResult(userID int64, bizNo, platformBizNo string) (
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	// 越权防护：按 platform_biz_no 查询不受 user_id 过滤，必须显式校验订单归属
+	if order.UserID != userID {
+		return nil, errors.New("order not found")
 	}
 
 	// 如果订单还在处理中，尝试从上游查询最新结果
@@ -617,10 +625,16 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 	return nil
 }
 
-// NotifyDownstream 通知下游：将认证结果 POST 到下游的 notify_url
+// NotifyDownstream 通知下游：将认证结果 POST 到下游的 notify_url（携带 HMAC 签名，供下游校验防伪造）
 func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 	if order.NotifyURL == "" {
 		return
+	}
+
+	// 使用订单所属用户的 api_secret 生成签名（下游用同一 secret 校验）
+	sign := ""
+	if user, err := s.userRepo.GetUserByID(order.UserID); err == nil && user != nil && user.APISecret != "" {
+		sign = buildNotifySign(user.APISecret, order)
 	}
 
 	payload := map[string]interface{}{
@@ -630,6 +644,7 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 		"result_code":     order.ResultCode,
 		"result_message":  order.ResultMessage,
 		"cost":            order.Cost,
+		"sign":            sign,
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -650,6 +665,41 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 	} else {
 		log.Printf("通知下游返回异常 [order_id=%d, url=%s, status=%d]", order.ID, order.NotifyURL, resp.StatusCode)
 	}
+}
+
+// buildNotifySign 构造下游回调签名：
+// 对固定字段按 key 字典序拼接为 k=v&k=v... 的原始字符串（不做 URL 编码），
+// 再以 HMAC-SHA256(api_secret, canonical) 计算十六进制小写签名。
+// 下游（如 zjmf_v10 插件）用相同算法与自己的 api_secret 校验，杜绝伪造回调。
+func buildNotifySign(apiSecret string, order *model.AuthOrder) string {
+	fields := map[string]string{
+		"biz_no":          order.BizNo,
+		"cost":            strconv.FormatFloat(order.Cost, 'f', 2, 64),
+		"platform_biz_no": order.PlatformBizNo,
+		"result_code":     order.ResultCode,
+		"result_message":  order.ResultMessage,
+		"status":          strconv.Itoa(order.Status),
+	}
+
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			sb.WriteByte('&')
+		}
+		sb.WriteString(k)
+		sb.WriteByte('=')
+		sb.WriteString(fields[k])
+	}
+
+	mac := hmac.New(sha256.New, []byte(apiSecret))
+	mac.Write([]byte(sb.String()))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // revertStartAuth 发起认证失败时退还预扣费用并将结果标记为连接超时（免费流程不涉及退费）

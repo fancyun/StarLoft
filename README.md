@@ -1,6 +1,6 @@
 # StarLoft KYC 实名认证系统
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/starloft/kyc)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](https://github.com/starloft/kyc)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.20+-00ADD8.svg)](https://golang.org/)
 [![Docker](https://img.shields.io/badge/docker-20.10+-2496ED.svg)](https://www.docker.com/)
@@ -11,11 +11,11 @@
 
 ## 🌟 核心特性
 
-- 🚀 **高性能**: Go语言开发，支持10000+ QPS
-- 🔒 **安全可靠**: 多层安全防护，敏感数据加密存储
-- 🔌 **易于集成**: RESTful API + 多语言SDK + PHP插件
-- 📊 **完善管理**: Dashboard + 财务统计 + 数据导出
-- 💰 **灵活计费**: 按量付费，支持个性化单价
+- 🚀 **高性能**: Go语言开发，支持高并发
+- 🔒 **安全可靠**: 多层安全防护，HMAC-SHA256 签名鉴权，敏感数据加密存储
+- 🔌 **易于集成**: RESTful API + PHP插件（智简魔方财务版）
+- 📊 **完善管理**: 后台 Dashboard + 用户/订单/资源包管理
+- 💰 **灵活计费**: 资源包 + 余额组合计费（有资源包先扣资源包，否则按平台单价扣余额）；账户实名免费
 - 🎨 **现代UI**: 深色主题设计，移动端自适应
 - 👤 **三要素认证**: 姓名 + 身份证 + 人脸识别（活体检测）
 
@@ -25,37 +25,42 @@
 
 ### 使用Docker部署（推荐）
 
+> 说明：MySQL 使用云数据库服务（不包含在容器编排中），容器仅包含 Redis、后端、前端（Nginx）。
+
 ```bash
 # 1. 克隆代码
 git clone https://github.com/starloft/kyc.git
 cd kyc
 
-# 2. 配置环境变量
-cp .env.example .env
-nano .env  # 修改密码和密钥
+# 2. 导入数据库初始化脚本（云数据库 MySQL 8.0+）
+mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < init.sql
 
-# 3. 启动服务
+# 3. 配置环境变量
+cp .env.example .env
+nano .env  # 填写数据库/Redis/密钥/上游认证等配置
+
+# 4. 放置 SSL 证书（用于 HTTPS）
+mkdir -p certs
+# 将证书分别命名为 fullchain.pem 和 privkey.pem 放入 certs/
+
+# 5. 启动服务
 docker-compose up -d
 
-# 4. 访问系统
+# 6. 访问系统
 # 官网: https://kyc.starloft.cn
-# API: https://kyc.starloft.cn/api
+# API:  https://kyc.starloft.cn/api
+# 文档: https://kyc.starloft.cn/docs
 ```
-
-📖 **完整文档**: [docs/文档导航-README.md](docs/文档导航-README.md)
 
 ---
 
 ## 📚 文档中心
 
-所有项目文档都在 `docs/` 目录下：
-
-- **[文档导航](docs/文档导航-README.md)** - 📑 所有文档索引
-- **[快速开始](docs/快速开始-QUICK_START.md)** - 🚀 5分钟部署指南
-- **[项目概览](docs/项目概览-PROJECT_OVERVIEW.md)** - 📖 功能和架构介绍
-- **[API接口文档](docs/api/API接口文档-API_REFERENCE.md)** - 🔌 完整API参考
-- **[部署指南](docs/deployment/部署指南-DEPLOYMENT_GUIDE.md)** - 🐳 生产环境部署
-- **[安全配置指南](docs/security/安全配置指南-SECURITY_CONFIG_GUIDE.md)** - 🔒 安全最佳实践
+- **[在线文档中心](/docs)** - 📑 平台内嵌文档（API v1 文档、插件教程），部署后可直接访问
+- **[更新文档](更新文档.md)** - 📋 版本变更日志
+- **API v1 文档** - 🔌 [在线版](/docs/api/v1)（鉴权方式、签名算法、接口说明）
+- **插件文档（智简魔方财务版）** - 🔌 [plugin/zjmf_mfcw](plugin/zjmf_mfcw/README.md)
+- **插件文档（智简魔方业务系统 v10）** - 🔌 [plugin/zjmf_v10](plugin/zjmf_v10/README.md)
 
 ---
 
@@ -63,10 +68,13 @@ docker-compose up -d
 
 ```
 后端: Go 1.20+ + Gin框架
-数据库: MySQL 8.0 + Redis 7.0
+数据库: MySQL 8.0（云服务）
+缓存: Redis 7.0
 前端: Vue 3 + Element Plus
-部署: Docker + Docker Compose + Nginx
-认证: FinAuth H5 Plus（三要素实名认证）
+部署: Docker + Docker Compose + Nginx（TLS终止）
+认证: FinAuth H5 Plus（三要素实名认证，HMAC-SHA256 签名）
+短信/验证码: 腾讯云 SMS + 腾讯云天御验证码
+支付: 银联天天付
 ```
 
 ---
@@ -76,23 +84,25 @@ docker-compose up -d
 ```
 StarLoftKYC/
 ├── README.md              # 项目入口（本文件）
-├── init.sql               # 数据库初始化
+├── 更新文档.md            # 版本变更日志
+├── init.sql               # 数据库初始化脚本
 ├── docker-compose.yml     # Docker编排
+├── .env.example           # 环境变量模板
 ├── backend/               # Go后端服务
+│   └── internal/
+│       ├── handler/       # HTTP处理器
+│       ├── service/       # 业务逻辑
+│       ├── repository/    # 数据访问
+│       ├── model/         # 数据模型
+│       ├── router/        # 路由
+│       └── upstream/      # 上游FinAuth/银联客户端
 ├── frontend/              # Vue前端
-├── 3.7.6/                 # PHP插件（智简魔方）
-└── docs/                  # 📚 完整文档目录
-    ├── 文档导航-README.md
-    ├── 快速开始-QUICK_START.md
-    ├── 项目概览-PROJECT_OVERVIEW.md
-    ├── 变更日志-CHANGELOG.md
-    ├── api/               # API文档
-    ├── architecture/      # 架构设计
-    ├── backend/           # 后端文档
-    ├── frontend/          # 前端文档
-    ├── deployment/        # 部署指南
-    ├── plugin/            # 插件文档
-    └── security/          # 安全文档
+│   └── src/
+│       ├── views/         # 页面（user用户端 / admin管理端 / docs文档中心）
+│       └── api/           # 接口封装
+└── plugin/
+    ├── zjmf_mfcw/         # 智简魔方财务版 PHP插件
+    └── zjmf_v10/          # 智简魔方业务系统 v10 PHP插件
 ```
 
 ---
@@ -101,24 +111,24 @@ StarLoftKYC/
 
 ### 用户功能
 - ✅ 手机号注册登录
-- ✅ 身份证三要素实名认证（姓名+身份证+人脸）
-- ✅ 在线充值（支付宝/微信/银联）
-- ✅ 余额查询和消费记录
-- ✅ 退款申请
+- ✅ 账户实名认证（Web端免费，实名信息永久绑定不可修改；终身累计失败达上限后转为计费）
+- ✅ 资源包购买（余额扣费，需先充值；库存限量）
+- ✅ 在线充值（银联支付）
+- ✅ 余额查询、消费记录
+- ✅ API 密钥管理（Key 注册后自动生成，Secret 实名认证后下发）
 
 ### 管理后台
-- ✅ 数据统计Dashboard
-- ✅ 用户管理（搜索/详情/单价调整）
-- ✅ 订单管理（认证订单/充值订单）
-- ✅ 退款审批
-- ✅ 财务统计和报表
-- ✅ 人工充值和赠送
+- ✅ 数据统计 Dashboard
+- ✅ 用户管理（搜索/详情/状态管理）
+- ✅ 认证订单管理（订单详情/失败原因）
+- ✅ 资源包管理（创建/库存/上架下架）
+- ✅ 人工充值（需填写银行流水单号）
+- ✅ 系统配置（KYC 单价等）
 
 ### 开发者功能
-- ✅ RESTful API接口
-- ✅ API Key认证
-- ✅ Webhook回调通知
-- ✅ PHP插件（智简魔方财务系统）
+- ✅ RESTful API 接口（API Key + HMAC-SHA256 签名）
+- ✅ Webhook 回调通知（notify_url）
+- ✅ PHP 插件（智简魔方财务系统）
 
 ---
 
@@ -130,6 +140,7 @@ StarLoftKYC/
 - ✅ 密码bcrypt加密存储
 - ✅ 数据库TLS连接
 - ✅ JWT Token认证
+- ✅ HMAC-SHA256 请求签名校验（防篡改/防重放）
 - ✅ 订单权限验证
 
 ---
@@ -143,11 +154,11 @@ StarLoftKYC/
 ## 📞 技术支持
 
 - 📧 邮箱: support@starloft.tech
-- 📖 文档: [docs/文档导航-README.md](docs/文档导航-README.md)
+- 📖 文档: [在线文档中心](/docs)
 - 🐛 问题反馈: [GitHub Issues](https://github.com/starloft/kyc/issues)
 
 ---
 
-**版本**: v1.0.0  
-**更新日期**: 2026-08-19  
+**版本**: v1.3.0  
+**更新日期**: 2026-08-25  
 **开发团队**: StarLoft Tech Team

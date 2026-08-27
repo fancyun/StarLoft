@@ -16,27 +16,24 @@ import (
 
 // CallbackHandler 回调处理器
 type CallbackHandler struct {
-	authService     *service.AuthService
-	balanceService  *service.BalanceService
-	callbackService *service.CallbackService
-	paymentRepo     *repository.PaymentOrderRepository
-	unionPayClient  *upstream.UnionPayClient
+	authService    *service.AuthService
+	balanceService *service.BalanceService
+	paymentRepo    *repository.PaymentOrderRepository
+	unionPayClient *upstream.UnionPayClient
 }
 
 // NewCallbackHandler 创建回调处理器
 func NewCallbackHandler(
 	authService *service.AuthService,
 	balanceService *service.BalanceService,
-	callbackService *service.CallbackService,
 	paymentRepo *repository.PaymentOrderRepository,
 	unionPayClient *upstream.UnionPayClient,
 ) *CallbackHandler {
 	return &CallbackHandler{
-		authService:     authService,
-		balanceService:  balanceService,
-		callbackService: callbackService,
-		paymentRepo:     paymentRepo,
-		unionPayClient:  unionPayClient,
+		authService:    authService,
+		balanceService: balanceService,
+		paymentRepo:    paymentRepo,
+		unionPayClient: unionPayClient,
 	}
 }
 
@@ -45,10 +42,9 @@ func NewCallbackHandler(
 // POST 请求，Content-Type: application/x-www-form-urlencoded
 // 参数: data (JSON 字符串), sign (HMAC 签名)
 func (h *CallbackHandler) FinAuthCallback(c *gin.Context) {
-	// 打印原始请求体用于调试
+	// 读取原始请求体（脱敏记录：body 含签名与可能的人脸/证件数据，仅记录长度）
 	bodyBytes, _ := io.ReadAll(c.Request.Body)
-	bodyStr := string(bodyBytes)
-	log.Printf("收到 FinAuth 回调: Content-Type=%s, Body=%s", c.GetHeader("Content-Type"), bodyStr)
+	log.Printf("收到 FinAuth 回调: Content-Type=%s, BodyLen=%d", c.GetHeader("Content-Type"), len(bodyBytes))
 
 	// 解析 form data（重置 body）
 	c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
@@ -74,8 +70,8 @@ func (h *CallbackHandler) FinAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// 处理回调
-	log.Printf("FinAuth 回调: Data=%s, Sign=%s", data, sign)
+	// 处理回调（data 可能含人脸图片等敏感数据，仅记录截断片段）
+	log.Printf("FinAuth 回调: DataLen=%d, SignLen=%d, DataHead=%s", len(data), len(sign), truncateStr(data, 120))
 	err := h.authService.HandleUpstreamCallback(data, sign)
 	if err != nil {
 		log.Printf("FinAuth 回调处理失败: %v", err)
@@ -159,4 +155,12 @@ func (h *CallbackHandler) PaymentCallback(c *gin.Context) {
 
 	log.Printf("支付回调处理成功: merOrderId=%s, user_id=%d, amount=%.2f", merOrderID, order.UserID, order.Amount)
 	c.JSON(http.StatusOK, gin.H{"errCode": "SUCCESS"})
+}
+
+// truncateStr 截断长字符串用于日志输出，避免敏感/大体积数据刷屏
+func truncateStr(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "..."
 }
