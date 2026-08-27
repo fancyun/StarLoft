@@ -44,7 +44,7 @@ export const userAPI = {
   },
 
   // 用户登录（支持用户名/手机号/邮箱）
-  login: (data: { account: string; password?: string; sms_code?: string; login_type: string; captcha_ticket: string; captcha_randstr: string }) => {
+  login: (data: { account?: string; password?: string; sms_code?: string; login_type: string; captcha_ticket: string; captcha_randstr: string }) => {
     return request.post('/user/login', data)
   },
 

@@ -39,6 +39,16 @@
 
         <div class="card">
           <div class="card-header">
+            <el-icon class="icon"><PriceTag /></el-icon>
+            <span>实名认证单价</span>
+          </div>
+          <div class="card-body">
+            <div class="amount">¥{{ kycPrice === null ? '--' : kycPrice }}<span class="price-unit">/次</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
             <el-icon class="icon"><Key /></el-icon>
             <span>API 密钥</span>
           </div>
@@ -215,6 +225,13 @@ onBeforeUnmount(() => {
   font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.price-unit {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 4px;
 }
 
 /* ===== 个人信息卡片 ===== */

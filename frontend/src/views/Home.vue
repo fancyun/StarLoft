@@ -191,7 +191,20 @@
 </template>
 
 <script setup lang="ts">
-// 首页无需额外逻辑
+import { ref, onMounted } from 'vue'
+import { publicAPI } from '@/api'
+
+// 平台实名认证单价（从后端公开配置读取，未加载完成前显示占位符）
+const kycPrice = ref<number | null>(null)
+
+onMounted(async () => {
+  try {
+    const config = await publicAPI.getConfig()
+    kycPrice.value = config.kyc_price ?? null
+  } catch (error) {
+    console.error('加载实名认证价格失败:', error)
+  }
+})
 </script>
 
 <style scoped>

@@ -99,7 +99,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	signMgr := utils.NewSignatureManager()
 
 	// 初始化 Handler
-	publicHandler := handler.NewPublicHandler(cfg)
+	publicHandler := handler.NewPublicHandler(cfg, configRepo)
 
 	userHandler := handler.NewUserHandler(
 		userService,
