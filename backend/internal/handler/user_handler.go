@@ -19,6 +19,7 @@ type UserHandler struct {
 	emailService   *service.EmailService
 	captchaService *service.CaptchaService
 	jwtManager     *utils.JWTManager
+	authService    *service.AuthService
 }
 
 func NewUserHandler(
@@ -27,6 +28,7 @@ func NewUserHandler(
 	emailService *service.EmailService,
 	captchaService *service.CaptchaService,
 	jwtManager *utils.JWTManager,
+	authService *service.AuthService,
 ) *UserHandler {
 	return &UserHandler{
 		userService:    userService,
@@ -34,6 +36,7 @@ func NewUserHandler(
 		emailService:   emailService,
 		captchaService: captchaService,
 		jwtManager:     jwtManager,
+		authService:    authService,
 	}
 }
 
@@ -441,22 +444,33 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		}
 	}
 
+	// 账户实名剩余免费认证次数（终身累计失败达3次后转为计费）
+	freeAuthRemaining := 0
+	if h.authService != nil {
+		if remaining, err := h.authService.GetFreeAuthRemaining(userID); err == nil {
+			freeAuthRemaining = remaining
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"user_id":         user.ID,
-			"phone":           user.Phone,
-			"username":        user.Username,
-			"email":           user.Email,
-			"is_kyc_verified": user.IsKYCVerified,
-			"kyc_name":        kycName,
-			"kyc_id_card":     kycIDCard,
-			"balance":         user.Balance,
-			"api_key":         user.APIKey,
+			"user_id":             user.ID,
+			"phone":               user.Phone,
+			"username":            user.Username,
+			"email":               user.Email,
+			"is_kyc_verified":     user.IsKYCVerified,
+			"kyc_name":            kycName,
+			"kyc_id_card":         kycIDCard,
+			"balance":             user.Balance,
+			"api_key":             user.APIKey,
 			// api_secret 仅返回给用户本人（用于 API 管理页展示/复制）；实名前为空字符串
-			"api_secret": user.APISecret,
-			"created_at": user.CreatedAt,
+			"api_secret":          user.APISecret,
+			"created_at":          user.CreatedAt,
+			// 账户实名免费认证次数（free_auth_limit 终身免费上限，free_auth_remaining 剩余免费次数）
+			"free_auth_limit":     3,
+			"free_auth_remaining": freeAuthRemaining,
 		},
 	})
 }

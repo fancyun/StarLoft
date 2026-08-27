@@ -87,12 +87,10 @@ services:
       UNIONPAY_API_URL: ${UNIONPAY_API_URL:-https://qr.chinaums.com}
       UNIONPAY_NOTIFY_URL: ${UNIONPAY_NOTIFY_URL:-https://kyc.starloft.cn/api/v1/callback/payment}
       
-      # 邮件服务（SMTP，用于发送邮箱验证码）
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-465}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-}
+      # 邮件服务（腾讯云 SES，用于发送邮箱验证码）
+      SES_FROM: ${SES_FROM:-}
+      SES_TEMPLATE_ID: ${SES_TEMPLATE_ID:-}
+      SES_REGION: ${SES_REGION:-ap-guangzhou}
       
       # 日志目录（映射到 backend_logs 数据卷）
       LOG_DIR: /app/logs

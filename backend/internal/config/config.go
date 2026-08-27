@@ -17,13 +17,11 @@ type Config struct {
 	Log      LogConfig
 }
 
-// EmailConfig SMTP 邮件发送配置（用于发送邮箱验证码）
+// EmailConfig 腾讯云 SES 邮件发送配置（用于发送邮箱验证码）
 type EmailConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	From     string
+	From       string
+	TemplateID uint64
+	Region     string
 }
 
 // LogConfig 日志配置
@@ -261,23 +259,17 @@ func loadFromEnv(cfg *Config) {
 		// 如果没有，需要添加
 	}
 
-	// 邮件（SMTP）配置
-	if host := os.Getenv("SMTP_HOST"); host != "" {
-		cfg.Email.Host = host
+	// 邮件（腾讯云 SES）配置
+	if from := os.Getenv("SES_FROM"); from != "" {
+		cfg.Email.From = from
 	}
-	if port := os.Getenv("SMTP_PORT"); port != "" {
-		if p, err := strconv.Atoi(port); err == nil {
-			cfg.Email.Port = p
+	if templateID := os.Getenv("SES_TEMPLATE_ID"); templateID != "" {
+		if n, err := strconv.ParseUint(templateID, 10, 64); err == nil {
+			cfg.Email.TemplateID = n
 		}
 	}
-	if user := os.Getenv("SMTP_USER"); user != "" {
-		cfg.Email.User = user
-	}
-	if password := os.Getenv("SMTP_PASSWORD"); password != "" {
-		cfg.Email.Password = password
-	}
-	if from := os.Getenv("SMTP_FROM"); from != "" {
-		cfg.Email.From = from
+	if region := os.Getenv("SES_REGION"); region != "" {
+		cfg.Email.Region = region
 	}
 
 	// 日志配置

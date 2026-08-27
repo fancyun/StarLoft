@@ -22,6 +22,11 @@
                 <span class="info-label">注册时间</span>
                 <span class="info-value">{{ formatDate(userInfo.created_at) }}</span>
               </div>
+              <div class="info-row">
+                <span class="info-label">剩余免费认证</span>
+                <span class="info-value" v-if="userInfo.is_kyc_verified">已实名（无需再认证）</span>
+                <span class="info-value" v-else>{{ userInfo.free_auth_remaining }} / {{ userInfo.free_auth_limit }} 次</span>
+              </div>
             </div>
           </div>
         </div>

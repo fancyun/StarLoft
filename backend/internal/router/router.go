@@ -70,13 +70,13 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		cfg.Tencent.Captcha.AppSecretKey,
 	)
 
-	// 初始化邮箱服务（SMTP，未配置时返回 nil，不启用邮箱验证码）
+	// 初始化邮箱服务（腾讯云 SES，未配置时返回 nil，不启用邮箱验证码）
 	emailService := service.NewEmailService(
-		cfg.Email.Host,
-		cfg.Email.Port,
-		cfg.Email.User,
-		cfg.Email.Password,
+		cfg.Tencent.SecretID,
+		cfg.Tencent.SecretKey,
 		cfg.Email.From,
+		cfg.Email.TemplateID,
+		cfg.Email.Region,
 	)
 
 	// 初始化 Service
@@ -107,6 +107,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		emailService,
 		captchaService,
 		jwtManager,
+		authService,
 	)
 
 	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo)

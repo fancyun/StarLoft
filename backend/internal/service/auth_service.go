@@ -68,6 +68,20 @@ func NewAuthService(
 	}
 }
 
+// GetFreeAuthRemaining 返回账户实名（source=1）剩余免费认证次数
+// 账号终身累计失败（status=3）达到上限（freeFailLimit，3次）后转为计费
+func (s *AuthService) GetFreeAuthRemaining(userID int64) (int, error) {
+	failCount, err := s.orderRepo.CountUserFreeFailures(userID)
+	if err != nil {
+		return 0, err
+	}
+	remaining := freeFailLimit - failCount
+	if remaining < 0 {
+		remaining = 0
+	}
+	return remaining, nil
+}
+
 // StartAuth 发起认证
 // source: 1-账户实名（Web） 2-API调用
 // free: true 表示账户实名免费路径（账号终身累计失败次数达到上限（写死3次）后转为计费）

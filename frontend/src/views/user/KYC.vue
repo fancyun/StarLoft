@@ -39,6 +39,15 @@
             <p v-if="recordStatus === -1">完成实名认证后，将为您自动开通 API，可使用 API 进行业务调用</p>
             <p v-else-if="recordStatus === 3">上次实名认证未通过，请重新填写信息后再次认证</p>
             <p v-else>请填写姓名和身份证号，重新完成实名认证</p>
+
+            <div class="free-remaining" :class="{ exhausted: freeAuthRemaining <= 0 }">
+              <template v-if="freeAuthRemaining > 0">
+                账户实名剩余免费认证次数：<strong>{{ freeAuthRemaining }}</strong> 次
+              </template>
+              <template v-else>
+                免费认证次数已用完，后续认证将按平台单价收费（优先扣资源包，再扣余额）
+              </template>
+            </div>
           </div>
 
           <el-form
@@ -100,6 +109,8 @@ const recordStatus = ref(-1)  // -1=无记录, 1=进行中, 2=已实名, 3=失�
 const kycName = ref('')
 const kycIDCard = ref('')
 const pendingAuthUrl = ref('')
+// 账户实名剩余免费认证次数
+const freeAuthRemaining = ref(0)
 
 const form = reactive({
   name: '',
@@ -214,8 +225,18 @@ const loadData = async () => {
   }
 }
 
+const loadFreeAuthRemaining = async () => {
+  try {
+    const profile: any = await userAPI.getProfile()
+    freeAuthRemaining.value = profile.free_auth_remaining ?? 0
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 onMounted(() => {
   loadData()
+  loadFreeAuthRemaining()
 })
 </script>
 
@@ -315,6 +336,22 @@ onMounted(() => {
 .form-header p {
   color: var(--text-muted);
   font-size: 14px;
+}
+.free-remaining {
+  margin-top: 16px;
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  font-size: 14px;
+}
+.free-remaining strong {
+  font-size: 18px;
+}
+.free-remaining.exhausted {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 .auth-form {
   margin-bottom: 32px;
