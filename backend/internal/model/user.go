@@ -9,6 +9,8 @@ import (
 type PlatformUser struct {
 	ID            int64          `json:"id"`
 	Phone         string         `json:"phone"`
+	Username      string         `json:"username"`
+	Email         string         `json:"email"`
 	PasswordHash  string         `json:"-"`
 	Balance       float64        `json:"balance"`
 	APIKey        string         `json:"api_key"`
@@ -21,6 +23,19 @@ type PlatformUser struct {
 	LastLoginAt   *time.Time     `json:"last_login_at,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+// AdminOperationLog 管理员操作日志
+type AdminOperationLog struct {
+	ID           int64     `json:"id"`
+	AdminID      int64     `json:"admin_id"`
+	AdminName    string    `json:"admin_name,omitempty"` // 联表查询时返回管理员用户名
+	Operation    string    `json:"operation"`
+	ResourceType string    `json:"resource_type,omitempty"`
+	ResourceID   int64     `json:"resource_id,omitempty"`
+	Details      string    `json:"details,omitempty"`
+	IPAddress    string    `json:"ip_address,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // AdminUser 管理员用户

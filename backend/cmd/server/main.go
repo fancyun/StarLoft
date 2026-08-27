@@ -7,6 +7,7 @@ import (
 	"starloftrpa/internal/database"
 	"starloftrpa/internal/redis"
 	"starloftrpa/internal/router"
+	"starloftrpa/internal/utils"
 )
 
 func main() {
@@ -14,6 +15,11 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("加载配置失败: %v", err)
+	}
+
+	// 初始化文件日志（写入 /app/logs，可按 LOG_DIR 覆盖）
+	if err := utils.InitLoggers(cfg.Log.Dir); err != nil {
+		log.Fatalf("初始化日志失败: %v", err)
 	}
 
 	// 初始化数据库

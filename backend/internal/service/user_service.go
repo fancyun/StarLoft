@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"log"
+	"regexp"
 	"strconv"
 
 	"golang.org/x/crypto/bcrypt"
@@ -13,11 +14,33 @@ import (
 )
 
 var (
-	ErrInvalidPhone       = errors.New("invalid phone number")
-	ErrPhoneAlreadyExists = errors.New("phone already exists")
-	ErrInvalidPassword    = errors.New("invalid password")
-	ErrUserDisabled       = errors.New("user disabled")
+	ErrInvalidPhone          = errors.New("invalid phone number")
+	ErrPhoneAlreadyExists    = errors.New("phone already exists")
+	ErrUsernameAlreadyExists = errors.New("username already exists")
+	ErrEmailAlreadyExists    = errors.New("email already exists")
+	ErrInvalidUsername       = errors.New("invalid username")
+	ErrInvalidEmail          = errors.New("invalid email")
+	ErrInvalidPassword       = errors.New("invalid password")
+	ErrUserDisabled          = errors.New("user disabled")
 )
+
+// ValidateUsername 校验用户名：仅支持英文+数字+下划线，长度3-32
+func ValidateUsername(username string) bool {
+	if len(username) < 3 || len(username) > 32 {
+		return false
+	}
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_]+$`, username)
+	return matched
+}
+
+// ValidateEmail 校验邮箱格式
+func ValidateEmail(email string) bool {
+	if len(email) < 5 || len(email) > 100 {
+		return false
+	}
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`, email)
+	return matched
+}
 
 type UserService struct {
 	userRepo   *repository.UserRepository
@@ -31,8 +54,16 @@ func NewUserService(userRepo *repository.UserRepository, configRepo *repository.
 	}
 }
 
-// Register 用户注册
-func (s *UserService) Register(phone, password string) (*model.PlatformUser, error) {
+// Register 用户注册（手机号+用户名+邮箱必填；验证码已在 handler 层校验）
+func (s *UserService) Register(phone, username, email, password string) (*model.PlatformUser, error) {
+	// 校验用户名与邮箱格式
+	if !ValidateUsername(username) {
+		return nil, ErrInvalidUsername
+	}
+	if !ValidateEmail(email) {
+		return nil, ErrInvalidEmail
+	}
+
 	// 检查手机号是否已存在
 	exists, err := s.userRepo.CheckPhoneExists(phone)
 	if err != nil {
@@ -40,6 +71,24 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 	}
 	if exists {
 		return nil, ErrPhoneAlreadyExists
+	}
+
+	// 检查用户名是否已存在
+	exists, err = s.userRepo.CheckUsernameExists(username)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, ErrUsernameAlreadyExists
+	}
+
+	// 检查邮箱是否已存在
+	exists, err = s.userRepo.CheckEmailExists(email)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, ErrEmailAlreadyExists
 	}
 
 	// 密码哈希
@@ -66,6 +115,8 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 	// 创建用户（API Key 注册时自动生成；API Secret 实名成功后生成）
 	user := &model.PlatformUser{
 		Phone:         phone,
+		Username:      username,
+		Email:         email,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
 		APIKey:        utils.GenerateRandomKey(32),
@@ -83,10 +134,10 @@ func (s *UserService) Register(phone, password string) (*model.PlatformUser, err
 	return user, nil
 }
 
-// Login 用户登录
-func (s *UserService) Login(phone, password string) (*model.PlatformUser, error) {
+// Login 用户登录（支持用户名/手机号/邮箱）
+func (s *UserService) Login(account, password string) (*model.PlatformUser, error) {
 	// 查询用户
-	user, err := s.userRepo.GetUserByPhone(phone)
+	user, err := s.userRepo.GetUserByAccount(account)
 	if err != nil {
 		if err == repository.ErrUserNotFound {
 			return nil, ErrInvalidPassword

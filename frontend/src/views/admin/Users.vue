@@ -12,7 +12,7 @@
       <div class="filter-bar">
         <el-input
           v-model="filters.phone"
-          placeholder="搜索手机号"
+          placeholder="搜索手机号/用户名/邮箱"
           style="width: 200px"
           clearable
           @clear="handleSearch"
@@ -40,7 +40,13 @@
 
       <el-table :data="users" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="用户ID" width="80" />
+        <el-table-column prop="username" label="用户名" width="130">
+          <template #default="{ row }">{{ row.username || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="phone" label="手机号" width="140" />
+        <el-table-column prop="email" label="邮箱" width="180">
+          <template #default="{ row }">{{ row.email || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="balance" label="余额" width="100">
           <template #default="{ row }">¥{{ row.balance }}</template>
         </el-table-column>
@@ -98,7 +104,9 @@
     <el-dialog v-model="detailDialogVisible" title="用户详情" width="800px">
       <el-descriptions :column="2" border v-if="currentUser">
         <el-descriptions-item label="用户ID">{{ currentUser.id }}</el-descriptions-item>
+        <el-descriptions-item label="用户名">{{ currentUser.username || '-' }}</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ currentUser.phone }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ currentUser.email || '-' }}</el-descriptions-item>
         <el-descriptions-item label="余额">¥{{ currentUser.balance }}</el-descriptions-item>
         <el-descriptions-item label="实名状态">
           {{ currentUser.is_kyc_verified ? '已实名' : '未实名' }}
@@ -120,8 +128,14 @@
     <!-- 手动注册用户对话框 -->
     <el-dialog v-model="registerDialogVisible" title="手动注册用户" width="500px">
       <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" label-width="100px">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="registerForm.username" placeholder="英文/数字/下划线，3-32位" maxlength="32" />
+        </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="registerForm.phone" placeholder="请输入11位手机号" maxlength="11" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="registerForm.email" placeholder="请输入邮箱" maxlength="100" />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="registerForm.password" type="password" placeholder="请输入密码（至少6位）" show-password />
@@ -247,7 +261,9 @@ import { formatDateTime } from '@/utils/format'
 const loading = ref(false)
 interface User {
   id: number
+  username?: string
   phone: string
+  email?: string
   balance: number
   is_kyc_verified: boolean
   kyc_name?: string
@@ -265,14 +281,24 @@ const registerLoading = ref(false)
 const registerFormRef = ref<FormInstance>()
 
 const registerForm = reactive({
+  username: '',
   phone: '',
+  email: '',
   password: ''
 })
 
 const registerRules: FormRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]{3,32}$/, message: '用户名仅支持英文、数字、下划线，长度3-32位', trigger: 'blur' }
+  ],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: '请输入正确的邮箱', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -379,7 +405,9 @@ const handleRegisterSubmit = async () => {
     registerLoading.value = true
     try {
       const data: any = {
+        username: registerForm.username,
         phone: registerForm.phone,
+        email: registerForm.email,
         password: registerForm.password
       }
       
@@ -391,7 +419,9 @@ const handleRegisterSubmit = async () => {
       // 显示注册结果信息
       ElMessageBox.alert(
         `<div style="line-height: 1.8;">
+          <p><strong>用户名：</strong>${response.username || '-'}</p>
           <p><strong>手机号：</strong>${response.phone}</p>
+          <p><strong>邮箱：</strong>${response.email || '-'}</p>
           <p><strong>用户ID：</strong>${response.id}</p>
           <p><strong>API Key：</strong><br/><code style="word-break: break-all;">${response.api_key || '实名认证后自动生成'}</code></p>
         </div>`,

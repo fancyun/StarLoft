@@ -13,6 +13,22 @@ type Config struct {
 	FinAuth  FinAuthConfig
 	Tencent  TencentConfig
 	UnionPay UnionPayConfig
+	Email    EmailConfig
+	Log      LogConfig
+}
+
+// EmailConfig SMTP 邮件发送配置（用于发送邮箱验证码）
+type EmailConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	From     string
+}
+
+// LogConfig 日志配置
+type LogConfig struct {
+	Dir string
 }
 
 type ServerConfig struct {
@@ -243,5 +259,29 @@ func loadFromEnv(cfg *Config) {
 	if encKey := os.Getenv("ENCRYPTION_KEY"); encKey != "" {
 		// 注意：需要确保Config结构体有Encryption字段
 		// 如果没有，需要添加
+	}
+
+	// 邮件（SMTP）配置
+	if host := os.Getenv("SMTP_HOST"); host != "" {
+		cfg.Email.Host = host
+	}
+	if port := os.Getenv("SMTP_PORT"); port != "" {
+		if p, err := strconv.Atoi(port); err == nil {
+			cfg.Email.Port = p
+		}
+	}
+	if user := os.Getenv("SMTP_USER"); user != "" {
+		cfg.Email.User = user
+	}
+	if password := os.Getenv("SMTP_PASSWORD"); password != "" {
+		cfg.Email.Password = password
+	}
+	if from := os.Getenv("SMTP_FROM"); from != "" {
+		cfg.Email.From = from
+	}
+
+	// 日志配置
+	if dir := os.Getenv("LOG_DIR"); dir != "" {
+		cfg.Log.Dir = dir
 	}
 }

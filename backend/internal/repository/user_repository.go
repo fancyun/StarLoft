@@ -25,11 +25,13 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 // CreateUser 创建用户
 func (r *UserRepository) CreateUser(user *model.PlatformUser) error {
 	query := `INSERT INTO platform_user 
-		(phone, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_price, status, created_at, updated_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		(phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_price, status, created_at, updated_at) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		user.Phone,
+		user.Username,
+		user.Email,
 		user.PasswordHash,
 		user.Balance,
 		user.APIKey,
@@ -52,15 +54,17 @@ func (r *UserRepository) CreateUser(user *model.PlatformUser) error {
 	return nil
 }
 
-// GetUserByPhone 根据手机号查询用户
-func (r *UserRepository) GetUserByPhone(phone string) (*model.PlatformUser, error) {
-	query := `SELECT id, phone, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at 
-		FROM platform_user WHERE phone = ?`
+// userColumns 平台用户常用查询列（含 username/email）
+const userColumns = `id, phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at`
 
+// scanUser 将查询结果扫描到 PlatformUser
+func scanUser(row interface{ Scan(...interface{}) error }) (*model.PlatformUser, error) {
 	user := &model.PlatformUser{}
-	err := r.db.QueryRow(query, phone).Scan(
+	err := row.Scan(
 		&user.ID,
 		&user.Phone,
+		&user.Username,
+		&user.Email,
 		&user.PasswordHash,
 		&user.Balance,
 		&user.APIKey,
@@ -74,6 +78,59 @@ func (r *UserRepository) GetUserByPhone(phone string) (*model.PlatformUser, erro
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetUserByPhone 根据手机号查询用户
+func (r *UserRepository) GetUserByPhone(phone string) (*model.PlatformUser, error) {
+	query := `SELECT ` + userColumns + ` FROM platform_user WHERE phone = ?`
+
+	user, err := scanUser(r.db.QueryRow(query, phone))
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetUserByUsername 根据用户名查询用户
+func (r *UserRepository) GetUserByUsername(username string) (*model.PlatformUser, error) {
+	query := `SELECT ` + userColumns + ` FROM platform_user WHERE username = ?`
+
+	user, err := scanUser(r.db.QueryRow(query, username))
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetUserByEmail 根据邮箱查询用户
+func (r *UserRepository) GetUserByEmail(email string) (*model.PlatformUser, error) {
+	query := `SELECT ` + userColumns + ` FROM platform_user WHERE email = ?`
+
+	user, err := scanUser(r.db.QueryRow(query, email))
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetUserByAccount 根据用户名/手机号/邮箱查询用户（登录用）
+func (r *UserRepository) GetUserByAccount(account string) (*model.PlatformUser, error) {
+	query := `SELECT ` + userColumns + ` FROM platform_user WHERE phone = ? OR username = ? OR email = ? ORDER BY id DESC LIMIT 1`
+
+	user, err := scanUser(r.db.QueryRow(query, account, account, account))
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
@@ -85,27 +142,9 @@ func (r *UserRepository) GetUserByPhone(phone string) (*model.PlatformUser, erro
 
 // GetUserByID 根据用户ID查询用户
 func (r *UserRepository) GetUserByID(id int64) (*model.PlatformUser, error) {
-	query := `SELECT id, phone, password_hash, balance, api_key, api_secret, 
-		is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at 
-		FROM platform_user WHERE id = ?`
+	query := `SELECT ` + userColumns + ` FROM platform_user WHERE id = ?`
 
-	user := &model.PlatformUser{}
-	err := r.db.QueryRow(query, id).Scan(
-		&user.ID,
-		&user.Phone,
-		&user.PasswordHash,
-		&user.Balance,
-		&user.APIKey,
-		&user.APISecret,
-		&user.IsKYCVerified,
-		&user.KYCName,
-		&user.KYCIDCard,
-		&user.KYCPrice,
-		&user.Status,
-		&user.LastLoginAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	user, err := scanUser(r.db.QueryRow(query, id))
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
@@ -117,26 +156,9 @@ func (r *UserRepository) GetUserByID(id int64) (*model.PlatformUser, error) {
 
 // GetByAPIKey 根据API Key查询用户
 func (r *UserRepository) GetByAPIKey(apiKey string) (*model.PlatformUser, error) {
-	query := `SELECT id, phone, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at 
-		FROM platform_user WHERE api_key = ?`
+	query := `SELECT ` + userColumns + ` FROM platform_user WHERE api_key = ?`
 
-	user := &model.PlatformUser{}
-	err := r.db.QueryRow(query, apiKey).Scan(
-		&user.ID,
-		&user.Phone,
-		&user.PasswordHash,
-		&user.Balance,
-		&user.APIKey,
-		&user.APISecret,
-		&user.IsKYCVerified,
-		&user.KYCName,
-		&user.KYCIDCard,
-		&user.KYCPrice,
-		&user.Status,
-		&user.LastLoginAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	user, err := scanUser(r.db.QueryRow(query, apiKey))
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
@@ -221,8 +243,30 @@ func (r *UserRepository) CheckPhoneExists(phone string) (bool, error) {
 	return count > 0, nil
 }
 
+// CheckUsernameExists 检查用户名是否已存在
+func (r *UserRepository) CheckUsernameExists(username string) (bool, error) {
+	query := `SELECT COUNT(*) FROM platform_user WHERE username = ?`
+	var count int
+	err := r.db.QueryRow(query, username).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// CheckEmailExists 检查邮箱是否已存在
+func (r *UserRepository) CheckEmailExists(email string) (bool, error) {
+	query := `SELECT COUNT(*) FROM platform_user WHERE email = ?`
+	var count int
+	err := r.db.QueryRow(query, email).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // GetAllUsers 获取用户列表（带分页和搜索）- 修复SQL注入漏洞
-func (r *UserRepository) GetAllUsers(page, pageSize int, phone string) ([]*model.PlatformUser, int64, error) {
+func (r *UserRepository) GetAllUsers(page, pageSize int, keyword string) ([]*model.PlatformUser, int64, error) {
 	offset := (page - 1) * pageSize
 
 	// 使用参数化查询防止SQL注入
@@ -230,31 +274,27 @@ func (r *UserRepository) GetAllUsers(page, pageSize int, phone string) ([]*model
 	var rows *sql.Rows
 	var err error
 
-	if phone != "" {
-		// 查询总数
-		countQuery := "SELECT COUNT(*) FROM platform_user WHERE phone LIKE ?"
-		err = r.db.QueryRow(countQuery, "%"+phone+"%").Scan(&total)
+	if keyword != "" {
+		// 支持按手机号/用户名/邮箱模糊搜索
+		like := "%" + keyword + "%"
+		countQuery := "SELECT COUNT(*) FROM platform_user WHERE phone LIKE ? OR username LIKE ? OR email LIKE ?"
+		err = r.db.QueryRow(countQuery, like, like, like).Scan(&total)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		// 查询列表
-		query := `SELECT id, phone, password_hash, balance, api_key, api_secret, 
-			is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at 
-			FROM platform_user WHERE phone LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
-		rows, err = r.db.Query(query, "%"+phone+"%", pageSize, offset)
+		query := `SELECT ` + userColumns + ` FROM platform_user 
+			WHERE phone LIKE ? OR username LIKE ? OR email LIKE ? 
+			ORDER BY created_at DESC LIMIT ? OFFSET ?`
+		rows, err = r.db.Query(query, like, like, like, pageSize, offset)
 	} else {
-		// 查询总数
 		countQuery := "SELECT COUNT(*) FROM platform_user"
 		err = r.db.QueryRow(countQuery).Scan(&total)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		// 查询列表
-		query := `SELECT id, phone, password_hash, balance, api_key, api_secret, 
-			is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at 
-			FROM platform_user ORDER BY created_at DESC LIMIT ? OFFSET ?`
+		query := `SELECT ` + userColumns + ` FROM platform_user ORDER BY created_at DESC LIMIT ? OFFSET ?`
 		rows, err = r.db.Query(query, pageSize, offset)
 	}
 
@@ -265,25 +305,9 @@ func (r *UserRepository) GetAllUsers(page, pageSize int, phone string) ([]*model
 
 	users := make([]*model.PlatformUser, 0)
 	for rows.Next() {
-		user := &model.PlatformUser{}
-		err := rows.Scan(
-			&user.ID,
-			&user.Phone,
-			&user.PasswordHash,
-			&user.Balance,
-			&user.APIKey,
-			&user.APISecret,
-			&user.IsKYCVerified,
-			&user.KYCName,
-			&user.KYCIDCard,
-			&user.KYCPrice,
-			&user.Status,
-			&user.LastLoginAt,
-			&user.CreatedAt,
-			&user.UpdatedAt,
-		)
-		if err != nil {
-			return nil, 0, err
+		user, scanErr := scanUser(rows)
+		if scanErr != nil {
+			return nil, 0, scanErr
 		}
 		users = append(users, user)
 	}

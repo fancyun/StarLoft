@@ -50,6 +50,17 @@
         </div>
 
         <el-form ref="formRef" :model="form" :rules="rules" class="auth-form" @submit.prevent="handleRegister">
+          <el-form-item prop="username">
+            <el-input
+              v-model="form.username"
+              placeholder="请输入用户名（英文/数字/下划线）"
+              size="large"
+              prefix-icon="User"
+              clearable
+              maxlength="32"
+            />
+          </el-form-item>
+
           <el-form-item prop="phone">
             <el-input
               v-model="form.phone"
@@ -64,16 +75,45 @@
             <div class="sms-row">
               <el-input
                 v-model="form.sms_code"
-                placeholder="请输入验证码"
+                placeholder="请输入手机验证码"
                 size="large"
                 prefix-icon="Message"
               />
               <el-button
-                :disabled="countdown > 0 || !form.phone"
+                :disabled="smsCountdown > 0 || !form.phone"
                 class="sms-btn"
-                @click="sendCode"
+                @click="sendSMSCode"
               >
-                {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+                {{ smsCountdown > 0 ? `${smsCountdown}s` : '获取验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+
+          <el-form-item prop="email">
+            <el-input
+              v-model="form.email"
+              placeholder="请输入邮箱"
+              size="large"
+              prefix-icon="Message"
+              clearable
+              maxlength="100"
+            />
+          </el-form-item>
+
+          <el-form-item prop="email_code">
+            <div class="sms-row">
+              <el-input
+                v-model="form.email_code"
+                placeholder="请输入邮箱验证码"
+                size="large"
+                prefix-icon="Message"
+              />
+              <el-button
+                :disabled="emailCountdown > 0 || !form.email"
+                class="sms-btn"
+                @click="sendEmailCode"
+              >
+                {{ emailCountdown > 0 ? `${emailCountdown}s` : '获取验证码' }}
               </el-button>
             </div>
           </el-form-item>
@@ -145,12 +185,16 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
-const countdown = ref(0)
+const smsCountdown = ref(0)
+const emailCountdown = ref(0)
 const formRef = ref()
 
 const form = reactive({
+  username: '',
   phone: '',
   sms_code: '',
+  email: '',
+  email_code: '',
   password: '',
   confirmPassword: '',
   agree: false
@@ -167,11 +211,20 @@ const validatePass = (_rule: any, value: any, callback: any) => {
 }
 
 const rules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]{3,32}$/, message: '用户名仅支持英文、数字、下划线，长度3-32位', trigger: 'blur' }
+  ],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ],
-  sms_code: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
+  sms_code: [{ required: true, message: '请输入手机验证码', trigger: 'blur' }],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: '请输入正确的邮箱', trigger: 'blur' }
+  ],
+  email_code: [{ required: true, message: '请输入邮箱验证码', trigger: 'blur' }],
   password: [
     { required: true, message: '请设置密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
@@ -190,12 +243,12 @@ const rules = {
 
 const getErrorMessage = (error: any) => error?.response?.data?.message || error?.message || '操作失败'
 
-const sendCode = async () => {
+const sendSMSCode = async () => {
   if (!form.phone) {
     ElMessage.warning('请输入手机号')
     return
   }
-  if (countdown.value > 0) return
+  if (smsCountdown.value > 0) return
   try {
     const { ticket, randstr } = await verifyCaptcha()
     await userAPI.sendSMSCode({
@@ -205,10 +258,36 @@ const sendCode = async () => {
       scene: 'register'
     })
     ElMessage.success('验证码已发送')
-    countdown.value = 60
+    smsCountdown.value = 60
     const timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) clearInterval(timer)
+      smsCountdown.value--
+      if (smsCountdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } catch (error: any) {
+    const msg = getErrorMessage(error)
+    if (msg !== '用户取消验证') ElMessage.error(msg)
+  }
+}
+
+const sendEmailCode = async () => {
+  if (!form.email) {
+    ElMessage.warning('请输入邮箱')
+    return
+  }
+  if (emailCountdown.value > 0) return
+  try {
+    const { ticket, randstr } = await verifyCaptcha()
+    await userAPI.sendEmailCode({
+      email: form.email,
+      captcha_ticket: ticket,
+      captcha_randstr: randstr,
+      scene: 'register'
+    })
+    ElMessage.success('邮箱验证码已发送')
+    emailCountdown.value = 60
+    const timer = setInterval(() => {
+      emailCountdown.value--
+      if (emailCountdown.value <= 0) clearInterval(timer)
     }, 1000)
   } catch (error: any) {
     const msg = getErrorMessage(error)
@@ -228,9 +307,12 @@ const handleRegister = async () => {
   try {
     const { ticket, randstr } = await verifyCaptcha()
     const result = await userAPI.register({
+      username: form.username,
       phone: form.phone,
-      password: form.password,
       sms_code: form.sms_code,
+      email: form.email,
+      email_code: form.email_code,
+      password: form.password,
       captcha_ticket: ticket,
       captcha_randstr: randstr
     })

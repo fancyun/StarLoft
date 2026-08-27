@@ -2,8 +2,9 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
-	"log"
 	"time"
+
+	"starloftrpa/internal/utils"
 )
 
 // CORSMiddleware 跨域资源共享中间件
@@ -34,7 +35,7 @@ func Recovery() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Printf("Panic recovered: %v", err)
+				utils.ErrorLogger.Printf("Panic recovered: %v", err)
 				c.JSON(500, gin.H{
 					"code":    500,
 					"message": "internal server error",
@@ -46,7 +47,7 @@ func Recovery() gin.HandlerFunc {
 	}
 }
 
-// RequestLogger 请求日志中间件(不记录敏感信息)
+// RequestLogger 请求日志中间件(不记录敏感信息)，写入 access.log
 func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -60,9 +61,9 @@ func RequestLogger() gin.HandlerFunc {
 
 		// 不记录敏感路径的详细信息
 		if isSensitivePath(path) {
-			log.Printf("[%s] %s - %d (%v)", method, path, statusCode, latency)
+			utils.AccessLogger.Printf("[%s] %s - %d (%v)", method, path, statusCode, latency)
 		} else {
-			log.Printf("[%s] %s - %d (%v) - IP: %s", method, path, statusCode, latency, c.ClientIP())
+			utils.AccessLogger.Printf("[%s] %s - %d (%v) - IP: %s", method, path, statusCode, latency, c.ClientIP())
 		}
 	}
 }

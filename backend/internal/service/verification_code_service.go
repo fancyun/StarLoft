@@ -17,6 +17,15 @@ const (
 	SMSRateLimitPrefix = "sms:rate:"
 	// 短信发送频率限制时间（60秒）
 	SMSRateLimitExpire = 60 * time.Second
+
+	// 邮箱验证码前缀
+	EmailCodePrefix = "email:code:"
+	// 邮箱验证码有效期（5分钟）
+	EmailCodeExpire = 5 * time.Minute
+	// 邮箱发送频率限制前缀
+	EmailRateLimitPrefix = "email:rate:"
+	// 邮箱发送频率限制时间（60秒）
+	EmailRateLimitExpire = 60 * time.Second
 )
 
 // VerificationCodeService 验证码服务
@@ -84,6 +93,57 @@ func (s *VerificationCodeService) CheckSendRateLimit(phone string) (bool, int, e
 func (s *VerificationCodeService) SetSendRateLimit(phone string) error {
 	key := SMSRateLimitPrefix + phone
 	return redis.Set(key, "1", SMSRateLimitExpire)
+}
+
+// SaveEmailCode 保存邮箱验证码到 Redis
+func (s *VerificationCodeService) SaveEmailCode(email, code string) error {
+	key := EmailCodePrefix + email
+	return redis.Set(key, code, EmailCodeExpire)
+}
+
+// VerifyEmailCode 验证邮箱验证码
+func (s *VerificationCodeService) VerifyEmailCode(email, code string) (bool, error) {
+	key := EmailCodePrefix + email
+	storedCode, err := redis.Get(key)
+	if err != nil {
+		// 键不存在或已过期
+		return false, nil
+	}
+
+	if storedCode == code {
+		// 验证成功后删除验证码（防止重复使用）
+		_ = redis.Del(key)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// CheckEmailSendRateLimit 检查邮箱发送频率限制
+// 返回：(是否可以发送, 剩余秒数, error)
+func (s *VerificationCodeService) CheckEmailSendRateLimit(email string) (bool, int, error) {
+	key := EmailRateLimitPrefix + email
+
+	exists, err := redis.Exists(key)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if exists > 0 {
+		ttl, err := redis.TTL(key)
+		if err != nil {
+			return false, 0, err
+		}
+		return false, int(ttl.Seconds()), nil
+	}
+
+	return true, 0, nil
+}
+
+// SetEmailSendRateLimit 设置邮箱发送频率限制
+func (s *VerificationCodeService) SetEmailSendRateLimit(email string) error {
+	key := EmailRateLimitPrefix + email
+	return redis.Set(key, "1", EmailRateLimitExpire)
 }
 
 // CleanExpiredCodes 清理过期的验证码（Redis 会自动过期，此方法保留用于手动清理）

@@ -134,6 +134,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'config',
         name: 'AdminConfig',
         component: () => import('@/views/admin/Config.vue')
+      },
+      {
+        path: 'logs',
+        name: 'AdminOperationLogs',
+        component: () => import('@/views/admin/OperationLogs.vue')
       }
     ]
   }

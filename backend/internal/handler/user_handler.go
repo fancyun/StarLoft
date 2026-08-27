@@ -16,6 +16,7 @@ var validator = utils.NewInputValidator()
 type UserHandler struct {
 	userService    *service.UserService
 	smsService     *service.SMSService
+	emailService   *service.EmailService
 	captchaService *service.CaptchaService
 	jwtManager     *utils.JWTManager
 }
@@ -23,12 +24,14 @@ type UserHandler struct {
 func NewUserHandler(
 	userService *service.UserService,
 	smsService *service.SMSService,
+	emailService *service.EmailService,
 	captchaService *service.CaptchaService,
 	jwtManager *utils.JWTManager,
 ) *UserHandler {
 	return &UserHandler{
 		userService:    userService,
 		smsService:     smsService,
+		emailService:   emailService,
 		captchaService: captchaService,
 		jwtManager:     jwtManager,
 	}
@@ -83,11 +86,79 @@ func (h *UserHandler) SendCode(c *gin.Context) {
 	})
 }
 
+// SendEmailCode 发送邮箱验证码
+func (h *UserHandler) SendEmailCode(c *gin.Context) {
+	var req struct {
+		Email          string `json:"email" binding:"required"`
+		CaptchaTicket  string `json:"captcha_ticket" binding:"required"`  // 腾讯验证码票据
+		CaptchaRandstr string `json:"captcha_randstr" binding:"required"` // 腾讯验证码随机串
+		Scene          string `json:"scene" binding:"required"`           // register
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid request parameters",
+		})
+		return
+	}
+
+	// 校验邮箱格式
+	if !service.ValidateEmail(req.Email) {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "邮箱格式不正确",
+		})
+		return
+	}
+
+	// 验证人机验证码
+	remoteIP := c.ClientIP()
+	err := h.captchaService.VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "captcha verification failed",
+		})
+		return
+	}
+
+	// 邮件服务未配置时不允许发送
+	if !h.emailService.Enabled() {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "邮件服务未配置，无法发送邮箱验证码",
+		})
+		return
+	}
+
+	// 发送邮箱验证码
+	err = h.emailService.SendVerificationCode(req.Email)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"expire_in": 300,
+		},
+	})
+}
+
 // Register 用户注册
 func (h *UserHandler) Register(c *gin.Context) {
 	var req struct {
 		Phone          string `json:"phone" binding:"required"`
+		Username       string `json:"username" binding:"required"`
+		Email          string `json:"email" binding:"required"`
 		SMSCode        string `json:"sms_code" binding:"required"`
+		EmailCode      string `json:"email_code" binding:"required"`
 		Password       string `json:"password" binding:"required"`
 		CaptchaTicket  string `json:"captcha_ticket" binding:"required"`  // 腾讯验证码票据
 		CaptchaRandstr string `json:"captcha_randstr" binding:"required"` // 腾讯验证码随机串
@@ -97,6 +168,24 @@ func (h *UserHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
 			"message": "invalid request parameters",
+		})
+		return
+	}
+
+	// 校验用户名格式（仅支持英文+数字+下划线）
+	if !service.ValidateUsername(req.Username) {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "用户名仅支持英文、数字、下划线，长度3-32位",
+		})
+		return
+	}
+
+	// 校验邮箱格式
+	if !service.ValidateEmail(req.Email) {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "邮箱格式不正确",
 		})
 		return
 	}
@@ -122,13 +211,55 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// 验证邮箱验证码
+	if !h.emailService.Enabled() {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    500,
+			"message": "邮件服务未配置，无法注册",
+		})
+		return
+	}
+	valid, err = h.emailService.VerifyCode(req.Email, req.EmailCode)
+	if err != nil || !valid {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "邮箱验证码错误或已过期",
+		})
+		return
+	}
+
 	// 注册用户
-	user, err := h.userService.Register(req.Phone, req.Password)
+	user, err := h.userService.Register(req.Phone, req.Username, req.Email, req.Password)
 	if err != nil {
-		if err == service.ErrPhoneAlreadyExists {
+		switch err {
+		case service.ErrPhoneAlreadyExists:
 			c.JSON(http.StatusOK, gin.H{
 				"code":    400,
-				"message": "phone already exists",
+				"message": "该手机号已被注册",
+			})
+			return
+		case service.ErrUsernameAlreadyExists:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "该用户名已被占用",
+			})
+			return
+		case service.ErrEmailAlreadyExists:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "该邮箱已被注册",
+			})
+			return
+		case service.ErrInvalidUsername:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "用户名仅支持英文、数字、下划线，长度3-32位",
+			})
+			return
+		case service.ErrInvalidEmail:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "邮箱格式不正确",
 			})
 			return
 		}
@@ -155,16 +286,18 @@ func (h *UserHandler) Register(c *gin.Context) {
 		"data": gin.H{
 			"user_id":   user.ID,
 			"phone":     user.Phone,
+			"username":  user.Username,
+			"email":     user.Email,
 			"token":     token,
 			"expire_in": 86400,
 		},
 	})
 }
 
-// Login 用户登录
+// Login 用户登录（支持用户名/手机号/邮箱）
 func (h *UserHandler) Login(c *gin.Context) {
 	var req struct {
-		Phone          string `json:"phone" binding:"required"`
+		Account        string `json:"account" binding:"required"`
 		Password       string `json:"password"`
 		SMSCode        string `json:"sms_code"`
 		LoginType      string `json:"login_type" binding:"required"`      // password / sms_code
@@ -180,11 +313,11 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 验证手机号格式
-	if err := validator.ValidatePhone(req.Phone); err != nil {
+	// 检测SQL注入
+	if err := validator.DetectSQLInjection(req.Account); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
-			"message": "invalid phone number format",
+			"message": "invalid input detected",
 		})
 		return
 	}
@@ -198,13 +331,15 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 检测SQL注入
-	if err := validator.DetectSQLInjection(req.Phone); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid input detected",
-		})
-		return
+	// 验证码登录必须使用手机号（短信发送依赖手机号）
+	if req.LoginType == "sms_code" {
+		if err := validator.ValidatePhone(req.Account); err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    400,
+				"message": "验证码登录请输入正确的手机号",
+			})
+			return
+		}
 	}
 
 	// 验证人机验证码
@@ -218,13 +353,14 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 根据登录方式验证
+	// 根据登录方式验证（login_type 已在上方校验，仅 password/sms_code 两种）
 	var user *model.PlatformUser
-	if req.LoginType == "password" {
-		user, err = h.userService.Login(req.Phone, req.Password)
-	} else if req.LoginType == "sms_code" {
+	switch req.LoginType {
+	case "password":
+		user, err = h.userService.Login(req.Account, req.Password)
+	case "sms_code":
 		// 验证短信验证码
-		valid, verr := h.smsService.VerifyCode(req.Phone, req.SMSCode)
+		valid, verr := h.smsService.VerifyCode(req.Account, req.SMSCode)
 		if verr != nil || !valid {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    401,
@@ -232,13 +368,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 			})
 			return
 		}
-		user, err = h.userService.GetUserByPhone(req.Phone)
+		user, err = h.userService.GetUserByPhone(req.Account)
 		if err != nil {
 			err = service.ErrInvalidPassword
 		} else if user.Status == 0 {
 			err = service.ErrUserDisabled
 		}
-	} else {
+	default:
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
 			"message": "invalid login type",
@@ -270,6 +406,8 @@ func (h *UserHandler) Login(c *gin.Context) {
 		"data": gin.H{
 			"user_id":    user.ID,
 			"phone":      user.Phone,
+			"username":   user.Username,
+			"email":      user.Email,
 			"token":      token,
 			"expire_in":  86400,
 			"api_key":    user.APIKey,
@@ -309,6 +447,8 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		"data": gin.H{
 			"user_id":         user.ID,
 			"phone":           user.Phone,
+			"username":        user.Username,
+			"email":           user.Email,
 			"is_kyc_verified": user.IsKYCVerified,
 			"kyc_name":        kycName,
 			"kyc_id_card":     kycIDCard,

@@ -18,6 +18,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 
 	// 全局中间件
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.RequestLogger())
 	r.Use(middleware.Recovery())
 
 	// 获取数据库连接
@@ -29,6 +30,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	paymentRepo := repository.NewPaymentOrderRepository(db)
 	balanceLogRepo := repository.NewBalanceLogRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
+	adminLogRepo := repository.NewAdminOperationLogRepository(db)
 	configRepo := repository.NewSystemConfigRepository(db)
 	kycRecordRepo := repository.NewKycRecordRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
@@ -69,6 +71,15 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		cfg.Tencent.Captcha.AppSecretKey,
 	)
 
+	// 初始化邮箱服务（SMTP，未配置时返回 nil，不启用邮箱验证码）
+	emailService := service.NewEmailService(
+		cfg.Email.Host,
+		cfg.Email.Port,
+		cfg.Email.User,
+		cfg.Email.Password,
+		cfg.Email.From,
+	)
+
 	// 初始化 Service
 	userService := service.NewUserService(userRepo, configRepo)
 	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, configRepo, db)
@@ -94,6 +105,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	userHandler := handler.NewUserHandler(
 		userService,
 		smsService,
+		emailService,
 		captchaService,
 		jwtManager,
 	)
@@ -101,6 +113,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo)
 
 	adminHandler := handler.NewAdminHandler(adminRepo,
+		adminLogRepo,
 		userRepo,
 		authRepo,
 		paymentRepo,
@@ -136,6 +149,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		user := v1.Group("/user")
 		{
 			user.POST("/send-code", userHandler.SendCode)
+			user.POST("/send-email-code", userHandler.SendEmailCode)
 			user.POST("/register", userHandler.Register)
 			user.POST("/login", userHandler.Login)
 
@@ -206,6 +220,9 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 
 				// 管理员修改密码
 				adminAuth.POST("/change-password", adminHandler.ChangePassword)
+
+				// 管理员操作日志
+				adminAuth.GET("/logs", adminHandler.GetOperationLogs)
 
 				// Dashboard数据
 				adminAuth.GET("/dashboard", dashboardHandler.GetDashboard)

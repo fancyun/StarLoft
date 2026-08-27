@@ -33,13 +33,18 @@ export const userAPI = {
     return request.post('/user/send-code', data)
   },
 
-  // 用户注册
-  register: (data: { phone: string; sms_code: string; password: string; captcha_ticket: string; captcha_randstr: string }) => {
+  // 发送邮箱验证码
+  sendEmailCode: (data: { email: string; captcha_ticket: string; captcha_randstr: string; scene: string }) => {
+    return request.post('/user/send-email-code', data)
+  },
+
+  // 用户注册（手机号+用户名+邮箱+双验证码）
+  register: (data: { phone: string; username: string; email: string; sms_code: string; email_code: string; password: string; captcha_ticket: string; captcha_randstr: string }) => {
     return request.post('/user/register', data)
   },
 
-  // 用户登录
-  login: (data: { phone: string; password?: string; sms_code?: string; login_type: string; captcha_ticket: string; captcha_randstr: string }) => {
+  // 用户登录（支持用户名/手机号/邮箱）
+  login: (data: { account: string; password?: string; sms_code?: string; login_type: string; captcha_ticket: string; captcha_randstr: string }) => {
     return request.post('/user/login', data)
   },
 
@@ -165,7 +170,7 @@ export const adminAPI = {
   },
 
   // 手动注册用户
-  registerUser: (data: { phone: string; password: string }) => {
+  registerUser: (data: { phone: string; username: string; email: string; password: string }) => {
     return request.post('/admin/users/register', data)
   },
 
@@ -257,5 +262,10 @@ export const adminAPI = {
   // 删除（下架）资源包
   deletePack: (id: number) => {
     return request.delete(`/admin/packs/${id}`)
+  },
+
+  // 获取管理员操作日志
+  getLogs: (params: any) => {
+    return request.get('/admin/logs', { params })
   }
 }

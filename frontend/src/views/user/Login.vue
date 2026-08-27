@@ -48,13 +48,13 @@
 
         <el-tabs v-model="activeTab" class="auth-tabs">
           <el-tab-pane label="密码登录" name="password">
-            <el-form ref="passwordFormRef" :model="passwordForm" :rules="rules" class="auth-form" @submit.prevent="handlePasswordLogin">
-              <el-form-item prop="phone">
+            <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" class="auth-form" @submit.prevent="handlePasswordLogin">
+              <el-form-item prop="account">
                 <el-input
-                  v-model="passwordForm.phone"
-                  placeholder="请输入手机号"
+                  v-model="passwordForm.account"
+                  placeholder="请输入用户名 / 手机号 / 邮箱"
                   size="large"
-                  :prefix-icon="PhoneIcon"
+                  :prefix-icon="UserIcon"
                   clearable
                 />
               </el-form-item>
@@ -157,28 +157,35 @@ const countdown = ref(0)
 const passwordFormRef = ref<FormInstance>()
 const smsFormRef = ref<FormInstance>()
 
-const passwordForm = reactive({ phone: '', password: '' })
+const passwordForm = reactive({ account: '', password: '' })
 const smsForm = reactive({ phone: '', sms_code: '' })
 
+// 密码登录：账号支持用户名/手机号/邮箱
+const passwordRules = {
+  account: [{ required: true, message: '请输入用户名/手机号/邮箱', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+// 验证码登录：仅支持手机号
 const rules = {
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   sms_code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
 // SVG 图标组件（避免 element-plus icon 组件名与字符串不一致）
-const PhoneIcon = shallowRef('Phone')
+const UserIcon = shallowRef('User')
 const LockIcon = shallowRef('Lock')
 const MessageIcon = shallowRef('Message')
+const PhoneIcon = shallowRef('Phone')
 
 resetCaptchaCache()
 
 const getErrorMessage = (error: any) => error?.response?.data?.message || error?.message || '操作失败'
 
-const login = async (payload: { phone: string; password?: string; sms_code?: string; login_type: 'password' | 'sms_code' }) => {
+const login = async (payload: { account?: string; phone?: string; password?: string; sms_code?: string; login_type: 'password' | 'sms_code' }) => {
   const { ticket, randstr } = await verifyCaptcha()
   const result: any = await userAPI.login({ ...payload, captcha_ticket: ticket, captcha_randstr: randstr })
   if (!result || !result.token) {
@@ -195,7 +202,7 @@ const handlePasswordLogin = async () => {
   try {
     await passwordFormRef.value?.validate()
     loading.value = true
-    await login({ phone: passwordForm.phone, password: passwordForm.password, login_type: 'password' })
+    await login({ account: passwordForm.account, password: passwordForm.password, login_type: 'password' })
   } catch (error: any) {
     const msg = getErrorMessage(error)
     if (msg !== '用户取消验证') ElMessage.error(msg)
