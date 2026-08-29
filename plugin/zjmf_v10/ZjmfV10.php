@@ -172,7 +172,11 @@ class ZjmfV10
 
             // ============ 真正创建新任务 ============
             $uid   = $this->resolveCurrentUid($certifi);
-            $bizNo = 'ZJMFV10_' . $uid . '_' . date('YmdHis') . '_' . substr(md5(uniqid((string)mt_rand(), true)), 0, 8);
+            // 随机业务单号：每次认证唯一（同一用户允许多次实名），纯随机数无前缀
+            $bizNo = '';
+            for ($i = 0; $i < 20; $i++) {
+                $bizNo .= random_int(0, 9);
+            }
             $domain = $this->resolveDomain();
             $notifyUrl = $domain . '/certification/zjmf_v10/index/notifyHandle';
             $returnUrl = !empty($config['return_url'])

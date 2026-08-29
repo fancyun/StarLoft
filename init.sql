@@ -289,4 +289,22 @@ CREATE TABLE `user_resource_pack` (
   KEY `idx_user_status` (`user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户资源包表';
 
+-- ----------------------------
+-- 12. 内部账号表（本司其他系统专用，无需实名与计费，不可在用户端登录）
+-- ----------------------------
+DROP TABLE IF EXISTS `internal_account`;
+CREATE TABLE `internal_account` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(64) NOT NULL COMMENT '账号名称（标识本司系统，唯一）',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `api_key` varchar(64) NOT NULL COMMENT 'API Key',
+  `api_secret` varchar(64) NOT NULL COMMENT 'API Secret',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1-启用 0-禁用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_api_key` (`api_key`),
+  UNIQUE KEY `uk_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='内部账号表';
+
 SET FOREIGN_KEY_CHECKS = 1;

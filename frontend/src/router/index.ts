@@ -131,6 +131,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/admin/ResourcePacks.vue')
       },
       {
+        path: 'internal-accounts',
+        name: 'AdminInternalAccounts',
+        component: () => import('@/views/admin/InternalAccounts.vue')
+      },
+      {
         path: 'config',
         name: 'AdminConfig',
         component: () => import('@/views/admin/Config.vue')

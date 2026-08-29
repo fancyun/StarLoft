@@ -111,8 +111,8 @@ POST /certification/zjmf_v10/index/notifyHandle
 Content-Type: application/json
 
 {
-    "biz_no":          "ZJMFV10_1_20260119001_abcd1234",
-    "platform_biz_no": "ZJMFV10_1_20260119001_abcd1234_1_1737000000000",
+    "biz_no":          "12938475602193847560",
+    "platform_biz_no": "46382671905182934716",
     "status":          2,
     "result_code":     "1000",
     "result_message":  "认证成功",
@@ -172,7 +172,7 @@ $sign = hash_hmac('sha256', $body, $this->apiSecret); // 小写十六进制
 POST /api/v1/kyc/start
 
 {
-    "biz_no":         "ZJMFV10_1_20260119001_abcd1234",   // 业务订单号（唯一）
+    "biz_no":         "12938475602193847560",   // 业务订单号（唯一）
     "name":           "张三",                              // 真实姓名
     "id_card":        "110101199001011234",               // 身份证号
     "return_url":     "https://yourdomain.com/certification/zjmf_v10/index/result",
@@ -188,7 +188,7 @@ POST /api/v1/kyc/start
     "code": 0,
     "message": "success",
     "data": {
-        "platform_biz_no": "ZJMFV10_1_20260119001_abcd1234_1_1737000000000",
+        "platform_biz_no": "46382671905182934716",
         "auth_url": "https://auth.finauth.com/verify?token=xxx",
         "expired_time": 1737000900,
         "expired_in": 900
@@ -202,7 +202,7 @@ POST /api/v1/kyc/start
 POST /api/v1/kyc/result
 
 {
-    "platform_biz_no": "ZJMFV10_1_20260119001_abcd1234_1_1737000000000"
+    "platform_biz_no": "46382671905182934716"
 }
 ```
 
@@ -213,8 +213,8 @@ POST /api/v1/kyc/result
     "code": 0,
     "message": "success",
     "data": {
-        "platform_biz_no": "ZJMFV10_1_20260119001_abcd1234_1_1737000000000",
-        "biz_no": "ZJMFV10_1_20260119001_abcd1234",
+        "platform_biz_no": "46382671905182934716",
+        "biz_no": "12938475602193847560",
         "status": 2,
         "result_code": "1000",
         "result_message": "认证成功",

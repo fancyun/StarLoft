@@ -33,6 +33,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	configRepo := repository.NewSystemConfigRepository(db)
 	kycRecordRepo := repository.NewKycRecordRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
+	internalAccountRepo := repository.NewInternalAccountRepository(db)
 
 	// 初始化上游服务客户端
 	finAuthClient := upstream.NewFinAuthClient(
@@ -87,6 +88,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		finAuthClient,
 		authRepo,
 		userRepo,
+		internalAccountRepo,
 		kycRecordRepo,
 		resourcePackRepo,
 		balanceService,
@@ -119,6 +121,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		configRepo,
 		balanceLogRepo,
 		resourcePackRepo,
+		internalAccountRepo,
 		balanceService,
 		authService,
 		cfg.JWT.AdminSecret,
@@ -174,7 +177,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		}
 
 		// KYC认证API（API Key鉴权）
-		kyc := v1.Group("/kyc", middleware.APIKeyMiddleware(userRepo, signMgr))
+		kyc := v1.Group("/kyc", middleware.APIKeyMiddleware(userRepo, internalAccountRepo, signMgr))
 		{
 			kyc.POST("/start", authHandler.StartAuth)
 			kyc.POST("/result", authHandler.GetAuthResult)
@@ -206,6 +209,12 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 				adminAuth.POST("/packs", adminHandler.CreateResourcePack)
 				adminAuth.PUT("/packs/:id", adminHandler.UpdateResourcePack)
 				adminAuth.DELETE("/packs/:id", adminHandler.DeleteResourcePack)
+
+				// 内部账号管理（本司其他系统专用，无需实名与计费）
+				adminAuth.GET("/internal-accounts", adminHandler.GetInternalAccountList)
+				adminAuth.POST("/internal-accounts", adminHandler.CreateInternalAccount)
+				adminAuth.PUT("/internal-accounts/:id/status", adminHandler.UpdateInternalAccountStatus)
+				adminAuth.POST("/internal-accounts/:id/reset-api", adminHandler.ResetInternalAccountAPI)
 
 				// 订单管理
 				adminAuth.GET("/orders", adminHandler.GetAuthOrderList)

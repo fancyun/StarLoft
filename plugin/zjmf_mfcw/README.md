@@ -134,7 +134,7 @@ X-Timestamp: <unix_timestamp>
 
 请求参数:
 {
-    "biz_no": "ZJMF20260119001",           // 业务订单号（唯一）
+    "biz_no": "12938475602193847560",           // 业务订单号（唯一）
     "name": "张三",                        // 真实姓名
     "id_card": "110101199001011234",      // 身份证号
     "return_url": "https://yourdomain.com/certification/zjmf_mfcw/result",
@@ -147,7 +147,7 @@ X-Timestamp: <unix_timestamp>
     "code": 0,
     "message": "success",
     "data": {
-        "platform_biz_no": "ZJMF20260119001_1001_1234567890",  // 平台流水号
+        "platform_biz_no": "46382671905182934716",  // 平台流水号
         "auth_url": "https://auth.finauth.com/verify?token=xxx", // 认证页面URL
         "expired_time": 1234567890,        // 过期时间（Unix秒）
         "expired_in": 900                  // 有效期（秒）
@@ -169,7 +169,7 @@ X-Timestamp: <unix_timestamp>
 
 请求参数:
 {
-    "platform_biz_no": "ZJMF20260119001_1001_1234567890"  // 平台流水号
+    "platform_biz_no": "46382671905182934716"  // 平台流水号
 }
 
 响应数据:
@@ -177,8 +177,8 @@ X-Timestamp: <unix_timestamp>
     "code": 0,
     "message": "success",
     "data": {
-        "platform_biz_no": "ZJMF20260119001_1001_1234567890",
-        "biz_no": "ZJMF20260119001",
+        "platform_biz_no": "46382671905182934716",
+        "biz_no": "12938475602193847560",
         "status": 2,                      // 0待认证 1认证中 2成功 3失败 4已取消 5超时
         "result_code": "1000",
         "result_message": "认证成功",

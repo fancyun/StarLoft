@@ -164,7 +164,7 @@ X-Timestamp: <unix_timestamp>
 **请求体：**
 ```json
 {
-  "biz_no": "ZJMF20260119001",
+  "biz_no": "12938475602193847560",
   "name": "张三",
   "id_card": "110101199001011234",
   "return_url": "https://yourdomain.com/certification/zjmf_mfcw/result?uid=1",
@@ -179,7 +179,7 @@ X-Timestamp: <unix_timestamp>
   "code": 0,
   "message": "success",
   "data": {
-    "platform_biz_no": "ZJMF20260119001_1_1234567890",
+    "platform_biz_no": "46382671905182934716",
     "auth_url": "https://auth.finauth.com/verify?token=xxx",
     "expired_time": 1234567890,
     "expired_in": 900
@@ -192,7 +192,7 @@ X-Timestamp: <unix_timestamp>
 **请求体：**
 ```json
 {
-  "platform_biz_no": "ZJMF20260119001_1_1234567890"
+  "platform_biz_no": "46382671905182934716"
 }
 ```
 
@@ -202,8 +202,8 @@ X-Timestamp: <unix_timestamp>
   "code": 0,
   "message": "success",
   "data": {
-    "platform_biz_no": "ZJMF20260119001_1_1234567890",
-    "biz_no": "ZJMF20260119001",
+    "platform_biz_no": "46382671905182934716",
+    "biz_no": "12938475602193847560",
     "status": 2,
     "result_code": "1000",
     "result_message": "认证成功",

@@ -12,9 +12,9 @@ WORKDIR /app
 # 复制源代码
 COPY . .
 
-# 下载依赖（在源码就绪后执行，go mod download 会把新增模块校验和写入 go.sum，
-# 避免 COPY 覆盖导致 go build 报 missing go.sum entry）
-RUN go mod download
+# 整理并下载依赖（在源码就绪后执行；go mod tidy 会扫描源码 import，
+# 重建 go.mod/go.sum 并补齐所有缺失校验和，避免 go build 报 missing go.sum entry）
+RUN go mod tidy
 
 # 编译应用（禁用CGO以获得静态二进制）
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
