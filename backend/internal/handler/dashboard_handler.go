@@ -200,11 +200,10 @@ func (h *DashboardHandler) GetFinanceStats(c *gin.Context) {
 
 	// 1. 充值统计
 	type RechargeStats struct {
-		TotalAmount    float64 `json:"total_amount"`
-		TotalOrders    int64   `json:"total_orders"`
-		AlipayAmount   float64 `json:"alipay_amount"`
-		WechatAmount   float64 `json:"wechat_amount"`
-		UnionpayAmount float64 `json:"unionpay_amount"`
+		TotalAmount  float64 `json:"total_amount"`
+		TotalOrders  int64   `json:"total_orders"`
+		AlipayAmount float64 `json:"alipay_amount"`
+		WechatAmount float64 `json:"wechat_amount"`
 	}
 
 	rechargeStats := &RechargeStats{}
@@ -223,7 +222,6 @@ func (h *DashboardHandler) GetFinanceStats(c *gin.Context) {
 	// 按渠道统计
 	h.db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payment_order WHERE status = 1 AND channel = 'alipay' AND DATE(paid_at) BETWEEN ? AND ?", startDate, endDate).Scan(&rechargeStats.AlipayAmount)
 	h.db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payment_order WHERE status = 1 AND channel = 'wechat' AND DATE(paid_at) BETWEEN ? AND ?", startDate, endDate).Scan(&rechargeStats.WechatAmount)
-	h.db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payment_order WHERE status = 1 AND channel = 'unionpay' AND DATE(paid_at) BETWEEN ? AND ?", startDate, endDate).Scan(&rechargeStats.UnionpayAmount)
 
 	// 2. 消费统计
 	type ConsumeStats struct {

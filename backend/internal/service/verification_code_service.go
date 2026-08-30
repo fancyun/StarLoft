@@ -145,10 +145,3 @@ func (s *VerificationCodeService) SetEmailSendRateLimit(email string) error {
 	key := EmailRateLimitPrefix + email
 	return redis.Set(key, "1", EmailRateLimitExpire)
 }
-
-// CleanExpiredCodes 清理过期的验证码（Redis 会自动过期，此方法保留用于手动清理）
-func (s *VerificationCodeService) CleanExpiredCodes() error {
-	// Redis 的 TTL 机制会自动删除过期键，通常不需要手动清理
-	// 此方法保留用于特殊场景
-	return nil
-}

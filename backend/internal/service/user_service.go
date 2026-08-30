@@ -172,11 +172,6 @@ func (s *UserService) GetUserByPhone(phone string) (*model.PlatformUser, error) 
 	return s.userRepo.GetUserByPhone(phone)
 }
 
-// GetByAPIKey 根据API Key获取用户
-func (s *UserService) GetByAPIKey(apiKey string) (*model.PlatformUser, error) {
-	return s.userRepo.GetByAPIKey(apiKey)
-}
-
 // ChangePassword 修改密码
 func (s *UserService) ChangePassword(userID int64, newPassword string) error {
 	// 密码哈希
@@ -199,11 +194,4 @@ func (s *UserService) ResetAPIKey(userID int64) (string, string, error) {
 	}
 
 	return apiKey, apiSecret, nil
-}
-
-// UpdateKYCInfo 更新用户实名信息
-func (s *UserService) UpdateKYCInfo(userID int64, name, idCard string) error {
-	// 注：身份证号的加密在 AuthService.CreateAuth 中已实现
-	// 此方法用于更新已认证用户的信息，建议生产环境禁用或添加严格权限控制
-	return s.userRepo.UpdateUserKYCInfo(userID, name, idCard)
 }

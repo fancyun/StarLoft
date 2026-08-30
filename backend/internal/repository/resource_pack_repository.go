@@ -172,24 +172,6 @@ func (r *ResourcePackRepository) GetUserActivePack(userID int64) (*model.UserRes
 	return up, nil
 }
 
-// DeductUserPackCountTx 在事务中扣减用户资源包次数，返回是否扣减成功
-func (r *ResourcePackRepository) DeductUserPackCountTx(tx *sql.Tx, id, userID int64) (bool, error) {
-	query := `UPDATE user_resource_pack
-		SET remaining_count = remaining_count - 1,
-		    status = IF(remaining_count - 1 <= 0, 0, 1),
-		    updated_at = ?
-		WHERE id = ? AND user_id = ? AND remaining_count > 0 AND status = 1`
-	result, err := tx.Exec(query, time.Now(), id, userID)
-	if err != nil {
-		return false, err
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return false, err
-	}
-	return affected > 0, nil
-}
-
 // DeductUserPackCount 扣减用户资源包次数（单条原子 UPDATE，无需事务）
 // 返回 false 表示资源包已耗尽/无剩余次数（并发安全，由 remaining_count > 0 条件保证）
 func (r *ResourcePackRepository) DeductUserPackCount(id, userID int64) (bool, error) {

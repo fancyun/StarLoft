@@ -72,11 +72,6 @@ func RateLimiter(limit int) gin.HandlerFunc {
 	}
 }
 
-// RateLimiterForUser 针对已登录用户的频率限制
-func RateLimiterForUser(limit int) gin.HandlerFunc {
-	return RateLimiter(limit)
-}
-
 // RateLimiterForIP 针对 IP 的频率限制（用于登录、注册等接口）
 func RateLimiterForIP(limit int) gin.HandlerFunc {
 	if limit <= 0 {

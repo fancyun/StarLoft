@@ -3,18 +3,20 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	FinAuth  FinAuthConfig
-	Tencent  TencentConfig
-	UnionPay UnionPayConfig
-	Email    EmailConfig
-	Log      LogConfig
+	Server    ServerConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	JWT       JWTConfig
+	FinAuth   FinAuthConfig
+	Tencent   TencentConfig
+	Alipay    AlipayConfig
+	WeChatPay WeChatPayConfig
+	Email     EmailConfig
+	Log       LogConfig
 }
 
 // EmailConfig 腾讯云 SES 邮件发送配置（用于发送邮箱验证码）
@@ -64,8 +66,6 @@ type FinAuthConfig struct {
 	APISecret string
 	SceneID   string
 	BaseURL   string
-	ReturnURL string
-	NotifyURL string
 }
 
 type TencentConfig struct {
@@ -86,19 +86,22 @@ type TencentCaptchaConfig struct {
 	AppSecretKey string
 }
 
-// UnionPayConfig 银联商务天满支付配置
-type UnionPayConfig struct {
-	MerchantNo  string
-	TerminalNo  string
-	AccessToken string
-	SignKey     string
-	ApiUrl      string
-	NotifyURL   string
+// AlipayConfig 支付宝开放平台支付配置（电脑网站支付 alipay.trade.page.pay）
+type AlipayConfig struct {
+	AppID      string // 应用AppID
+	PrivateKey string // 应用私钥（RSA2，PEM）
+	PublicKey  string // 支付宝公钥（PEM，用于回调验签）
+	Gateway    string // 支付宝网关
 }
 
-// EncryptionConfig 数据加密配置
-type EncryptionConfig struct {
-	Key string
+// WeChatPayConfig 微信支付（APIv3 Native支付）配置
+type WeChatPayConfig struct {
+	AppID          string // 商户绑定的AppID
+	MchID          string // 商户号
+	APIv3Key       string // APIv3密钥（用于回调报文解密）
+	MchSerialNo    string // 商户API证书序列号
+	MchPrivateKey  string // 商户API私钥（PEM）
+	PlatformPubKey string // 微信支付公钥（PEM，用于回调验签）
 }
 
 // Load 从环境变量加载所有配置
@@ -203,12 +206,6 @@ func loadFromEnv(cfg *Config) {
 	if baseURL := os.Getenv("FINAUTH_BASE_URL"); baseURL != "" {
 		cfg.FinAuth.BaseURL = baseURL
 	}
-	if returnURL := os.Getenv("FINAUTH_RETURN_URL"); returnURL != "" {
-		cfg.FinAuth.ReturnURL = returnURL
-	}
-	if notifyURL := os.Getenv("FINAUTH_NOTIFY_URL"); notifyURL != "" {
-		cfg.FinAuth.NotifyURL = notifyURL
-	}
 
 	// 腾讯云配置
 	if secretID := os.Getenv("TENCENT_SECRET_ID"); secretID != "" {
@@ -233,30 +230,38 @@ func loadFromEnv(cfg *Config) {
 		cfg.Tencent.Captcha.AppSecretKey = appSecretKey
 	}
 
-	// 银联支付配置
-	if merchantNo := os.Getenv("UNIONPAY_MERCHANT_NO"); merchantNo != "" {
-		cfg.UnionPay.MerchantNo = merchantNo
+	// 支付宝支付配置
+	if v := os.Getenv("ALIPAY_APP_ID"); v != "" {
+		cfg.Alipay.AppID = v
 	}
-	if terminalNo := os.Getenv("UNIONPAY_TERMINAL_NO"); terminalNo != "" {
-		cfg.UnionPay.TerminalNo = terminalNo
+	if v := os.Getenv("ALIPAY_PRIVATE_KEY"); v != "" {
+		cfg.Alipay.PrivateKey = normalizePEM(v)
 	}
-	if accessToken := os.Getenv("UNIONPAY_ACCESS_TOKEN"); accessToken != "" {
-		cfg.UnionPay.AccessToken = accessToken
+	if v := os.Getenv("ALIPAY_PUBLIC_KEY"); v != "" {
+		cfg.Alipay.PublicKey = normalizePEM(v)
 	}
-	if signKey := os.Getenv("UNIONPAY_SIGN_KEY"); signKey != "" {
-		cfg.UnionPay.SignKey = signKey
-	}
-	if apiURL := os.Getenv("UNIONPAY_API_URL"); apiURL != "" {
-		cfg.UnionPay.ApiUrl = apiURL
-	}
-	if notifyURL := os.Getenv("UNIONPAY_NOTIFY_URL"); notifyURL != "" {
-		cfg.UnionPay.NotifyURL = notifyURL
+	if v := os.Getenv("ALIPAY_GATEWAY"); v != "" {
+		cfg.Alipay.Gateway = v
 	}
 
-	// 加密密钥
-	if encKey := os.Getenv("ENCRYPTION_KEY"); encKey != "" {
-		// 注意：需要确保Config结构体有Encryption字段
-		// 如果没有，需要添加
+	// 微信支付配置
+	if v := os.Getenv("WECHAT_APP_ID"); v != "" {
+		cfg.WeChatPay.AppID = v
+	}
+	if v := os.Getenv("WECHAT_MCH_ID"); v != "" {
+		cfg.WeChatPay.MchID = v
+	}
+	if v := os.Getenv("WECHAT_API_V3_KEY"); v != "" {
+		cfg.WeChatPay.APIv3Key = v
+	}
+	if v := os.Getenv("WECHAT_MCH_SERIAL_NO"); v != "" {
+		cfg.WeChatPay.MchSerialNo = v
+	}
+	if v := os.Getenv("WECHAT_MCH_PRIVATE_KEY"); v != "" {
+		cfg.WeChatPay.MchPrivateKey = normalizePEM(v)
+	}
+	if v := os.Getenv("WECHAT_PLATFORM_PUBLIC_KEY"); v != "" {
+		cfg.WeChatPay.PlatformPubKey = normalizePEM(v)
 	}
 
 	// 邮件（腾讯云 SES）配置
@@ -276,4 +281,10 @@ func loadFromEnv(cfg *Config) {
 	if dir := os.Getenv("LOG_DIR"); dir != "" {
 		cfg.Log.Dir = dir
 	}
+}
+
+// normalizePEM 将 PEM 内容中的字面 \n 还原为换行
+// （.env 与 docker-compose 环境变量中的多行 PEM 需以单行 \n 形式书写）
+func normalizePEM(s string) string {
+	return strings.ReplaceAll(s, "\\n", "\n")
 }

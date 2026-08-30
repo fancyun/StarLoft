@@ -42,14 +42,28 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		cfg.FinAuth.APISecret,
 	)
 
-	unionPayClient := upstream.NewUnionPayClient(
-		cfg.UnionPay.MerchantNo,
-		cfg.UnionPay.TerminalNo,
-		cfg.UnionPay.AccessToken,
-		cfg.UnionPay.SignKey,
-		cfg.UnionPay.ApiUrl,
-		cfg.UnionPay.NotifyURL,
+	// 初始化支付客户端
+	alipayClient, err := upstream.NewAlipayClient(
+		cfg.Alipay.AppID,
+		cfg.Alipay.PrivateKey,
+		cfg.Alipay.PublicKey,
+		cfg.Alipay.Gateway,
 	)
+	if err != nil {
+		panic("初始化支付宝支付客户端失败: " + err.Error())
+	}
+
+	wechatClient, err := upstream.NewWeChatPayClient(
+		cfg.WeChatPay.AppID,
+		cfg.WeChatPay.MchID,
+		cfg.WeChatPay.APIv3Key,
+		cfg.WeChatPay.MchSerialNo,
+		cfg.WeChatPay.MchPrivateKey,
+		cfg.WeChatPay.PlatformPubKey,
+	)
+	if err != nil {
+		panic("初始化微信支付客户端失败: " + err.Error())
+	}
 
 	// 初始化短信服务
 	smsService, err := service.NewSMSService(
@@ -112,7 +126,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		authService,
 	)
 
-	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo)
+	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo, alipayClient, wechatClient)
 
 	adminHandler := handler.NewAdminHandler(adminRepo,
 		userRepo,
@@ -131,7 +145,8 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		authService,
 		balanceService,
 		paymentRepo,
-		unionPayClient,
+		alipayClient,
+		wechatClient,
 	)
 
 	dashboardHandler := handler.NewDashboardHandler(db)
@@ -145,6 +160,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		public := v1.Group("/public")
 		{
 			public.GET("/config", publicHandler.GetPublicConfig)
+			public.GET("/qr", publicHandler.GetQRCode)
 		}
 
 		// 用户相关路由（Web前端调用，JWT鉴权）
@@ -247,7 +263,8 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		callback := v1.Group("/callback")
 		{
 			callback.POST("/finauth", callbackHandler.FinAuthCallback)
-			callback.POST("/payment", callbackHandler.PaymentCallback)
+			callback.POST("/alipay", callbackHandler.AlipayCallback)
+			callback.POST("/wechat", callbackHandler.WeChatCallback)
 		}
 	}
 

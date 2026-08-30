@@ -21,7 +21,7 @@
     <section class="hero">
       <div class="hero-content">
         <h2 class="hero-title">安全、快速、可靠的实名认证服务</h2>
-        <p class="hero-subtitle">为您的业务提供专业的实名认证解决方案，支持银联实名认证</p>
+        <p class="hero-subtitle">为您的业务提供专业的实名认证解决方案，支持人脸二要素实名认证</p>
         <div class="hero-actions">
           <router-link to="/register" class="btn-large primary">立即开始</router-link>
           <a href="#features" class="btn-large secondary">了解更多</a>
@@ -52,8 +52,8 @@
         <div class="feature-grid">
           <div class="feature-card">
             <div class="feature-icon">🔐</div>
-            <h3>银联实名认证</h3>
-            <p>对接银联权威数据源，支持身份证实名认证，准确率高达99%以上</p>
+            <h3>权威实名认证</h3>
+            <p>对接原力金智权威数据源，支持身份证实名认证，准确率高达99%以上</p>
           </div>
           
           <div class="feature-card">
@@ -144,7 +144,7 @@
             </div>
           </div>
           <ul class="price-features">
-            <li>✓ 银联实名认证</li>
+            <li>✓ 身份证实名认证</li>
             <li>✓ 秒级响应</li>
             <li>✓ 99.9%准确率</li>
             <li>✓ 7×24技术支持</li>

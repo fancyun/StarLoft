@@ -76,17 +76,4 @@ func Incr(key string) (int64, error) {
 	return Client.Incr(ctx, key).Result()
 }
 
-// IncrBy 将键的值增加指定数值
-func IncrBy(key string, value int64) (int64, error) {
-	return Client.IncrBy(ctx, key, value).Result()
-}
 
-// SetNX 设置键值对（仅当键不存在时）
-func SetNX(key string, value interface{}, expiration time.Duration) (bool, error) {
-	return Client.SetNX(ctx, key, value, expiration).Result()
-}
-
-// GetContext 返回 context，供外部直接使用 Client 时使用
-func GetContext() context.Context {
-	return ctx
-}

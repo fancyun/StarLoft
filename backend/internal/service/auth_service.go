@@ -33,6 +33,12 @@ type StartAuthResult struct {
 // freeFailLimit 账户实名（Web）免费认证失败次数上限（账号终身累计，写死为3次）
 const freeFailLimit = 3
 
+// 上游（FinAuth）回调与跳转地址（写死，与后端回调路由/前端页面绑定）
+const (
+	finAuthNotifyURL = "https://kyc.starloft.cn/api/v1/callback/finauth" // 上游异步通知地址：认证结果由平台接收并落地
+	finAuthReturnURL = "/user/kyc"                                       // 上游同步跳转默认地址：未传入 return_url 时兜底，认证完成后返回账户实名页
+)
+
 // AuthService 认证服务
 type AuthService struct {
 	finAuthClient      upstream.FinAuthInterface
@@ -97,9 +103,9 @@ func (s *AuthService) StartAuth(
 	free bool,
 	isInternal bool,
 ) (*StartAuthResult, error) {
-	// 使用配置中的默认值（如果未传入）
+	// return_url 未传入时使用默认跳转地址（认证完成后返回账户实名页）
 	if returnURL == "" {
-		returnURL = s.config.ReturnURL
+		returnURL = finAuthReturnURL
 	}
 	// 注意：notifyURL 仅由 API 流程（source=2）的下游显式传入；
 	// 账户实名（source=1）不设下游 notify_url，保持为空，避免向平台自身回调地址发送无意义通知。
@@ -220,7 +226,7 @@ func (s *AuthService) StartAuth(
 	// - return_url 透传用户/下游地址：用户在上游完成认证后浏览器直接回到其 return_url，不再经平台 /kyc 中转页
 	// - notify_url 始终为平台回调地址：认证结果由平台异步接收并落地（更新订单、扣费/退款、下发 API Secret、通知下游）
 	upstreamReturnURL := returnURL
-	upstreamNotifyURL := s.config.NotifyURL
+	upstreamNotifyURL := finAuthNotifyURL
 
 	// 调用上游 get_token
 	req := &upstream.GetTokenRequest{
@@ -241,7 +247,7 @@ func (s *AuthService) StartAuth(
 	if err != nil {
 		log.Printf("获取 FinAuth Token 失败: %v", err)
 		// 将结果标记为连接超时并退还预扣费用（资源包/余额）
-		s.revertStartAuth(order, kycRecord, userID, "连接超时退款")
+		s.revertStartAuth(order, kycRecord, "连接超时退款")
 		return nil, fmt.Errorf("get token failed: %w", err)
 	}
 
@@ -250,7 +256,7 @@ func (s *AuthService) StartAuth(
 	if err != nil {
 		log.Printf("更新订单上游信息失败 [order_id=%d]: %v", order.ID, err)
 		// 费用已扣但 token 未写入，退还预扣费用并将订单标记为超时退款，避免悬挂
-		s.revertStartAuth(order, kycRecord, userID, "写入token失败退款")
+		s.revertStartAuth(order, kycRecord, "写入token失败退款")
 		return nil, fmt.Errorf("update order upstream info failed: %w", err)
 	}
 
@@ -749,7 +755,7 @@ func buildNotifySign(apiSecret string, order *model.AuthOrder) string {
 }
 
 // revertStartAuth 发起认证失败时退还预扣费用并将结果标记为连接超时（免费流程不涉及退费）
-func (s *AuthService) revertStartAuth(order *model.AuthOrder, kycRecord *model.KycRecord, userID int64, remark string) {
+func (s *AuthService) revertStartAuth(order *model.AuthOrder, kycRecord *model.KycRecord, remark string) {
 	if order.Cost > 0 {
 		if err := s.refundOrderCharge(order, remark); err != nil {
 			log.Printf("发起认证失败退费失败 [order_id=%d]: %v", order.ID, err)

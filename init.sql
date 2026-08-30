@@ -151,8 +151,8 @@ CREATE TABLE `payment_order` (
   `pay_order_no` varchar(50) NOT NULL COMMENT '支付流水号',
   `user_id` bigint(20) NOT NULL COMMENT '用户ID',
   `amount` decimal(10,2) NOT NULL COMMENT '充值金额（元）',
-  `channel` varchar(20) NOT NULL COMMENT '支付渠道：alipay-支付宝 wechat-微信 unionpay-云闪付',
-  `channel_trade_no` varchar(100) DEFAULT NULL COMMENT '银联商务交易号（seqId）',
+  `channel` varchar(20) NOT NULL COMMENT '支付渠道：alipay-支付宝 wechat-微信',
+  `channel_trade_no` varchar(100) DEFAULT NULL COMMENT '渠道交易号（支付宝trade_no/微信transaction_id）',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态：0-待支付 1-已支付 2-已退款 3-已关闭',
   `expire_time` datetime NOT NULL COMMENT '支付过期时间',
   `paid_at` datetime DEFAULT NULL COMMENT '支付完成时间',
@@ -214,31 +214,7 @@ CREATE TABLE `kyc_record` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='账户实名认证记录表';
 
 -- ----------------------------
--- 9. 用户API调用记录表
--- ----------------------------
-DROP TABLE IF EXISTS `kyc_api_record`;
-CREATE TABLE `kyc_api_record` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `user_id` bigint(20) NOT NULL COMMENT '调用用户ID',
-  `auth_order_id` bigint(20) DEFAULT NULL COMMENT '关联认证订单ID',
-  `api_type` varchar(50) NOT NULL COMMENT 'API类型：get_token / get_result / create_order',
-  `request_data` text COMMENT '请求数据（脱敏后）',
-  `response_data` text COMMENT '响应数据',
-  `http_status` int(11) NOT NULL DEFAULT '0' COMMENT 'HTTP状态码',
-  `cost` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '本次调用消耗金额',
-  `duration_ms` int(11) NOT NULL DEFAULT '0' COMMENT '接口耗时（毫秒）',
-  `error_message` text COMMENT '错误信息',
-  `ip_address` varchar(50) DEFAULT NULL COMMENT '请求IP地址',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (`id`),
-  KEY `idx_user_id` (`user_id`),
-  KEY `idx_auth_order_id` (`auth_order_id`),
-  KEY `idx_api_type` (`api_type`),
-  KEY `idx_created_at` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户API调用记录表';
-
--- ----------------------------
--- 10. 资源包定义表
+-- 9. 资源包定义表
 -- ----------------------------
 DROP TABLE IF EXISTS `resource_pack`;
 CREATE TABLE `resource_pack` (
@@ -271,7 +247,7 @@ INSERT INTO `resource_pack` (`name`, `total_count`, `price`, `stock`, `status`, 
 ('认证50万次套餐', 500000, 200000.00, -1, 1, '单价0.4元/次');
 
 -- ----------------------------
--- 11. 用户资源包表
+-- 10. 用户资源包表
 -- ----------------------------
 DROP TABLE IF EXISTS `user_resource_pack`;
 CREATE TABLE `user_resource_pack` (
@@ -290,7 +266,7 @@ CREATE TABLE `user_resource_pack` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户资源包表';
 
 -- ----------------------------
--- 12. 内部账号表（本司其他系统专用，无需实名与计费，不可在用户端登录）
+-- 11. 内部账号表（本司其他系统专用，无需实名与计费，不可在用户端登录）
 -- ----------------------------
 DROP TABLE IF EXISTS `internal_account`;
 CREATE TABLE `internal_account` (

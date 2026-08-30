@@ -87,6 +87,8 @@ github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXl
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.155/go.mod h1:r5r4xbfxSaeR04b166HGsBa/R4U3SueirEUpXGuw+Q0=
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.158 h1:L83IVCJUSD6rRrAYsc1VU+x5tolMPb/gX839VQDdqew=
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.158/go.mod h1:r5r4xbfxSaeR04b166HGsBa/R4U3SueirEUpXGuw+Q0=
+github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ses v1.3.136 h1:PGwraJhUB6f4SzI+/ZTWlxjPNGfNPeIh4H54J76uMD0=
+github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ses v1.3.136/go.mod h1:bQZ79jqIltjI+RaAktC1mS3dSur3ExKl8htXUgXCIA4=
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.3.155 h1:MbrQONH8U74mKsa9aRhEnTYNhJBQfnGHQKMN8OEp9aE=
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.3.155/go.mod h1:EmllrZg2oIXfNo5p1BEeMARRG43mxsNjtHcwL2Kxon0=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=

@@ -5,70 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"starloftrpa/internal/repository"
 	"starloftrpa/internal/utils"
 )
-
-// AuthMiddleware JWT authentication middleware
-func AuthMiddleware(jwtManager *utils.JWTManager, userType string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Get Authorization from Header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    401,
-				"message": "missing authorization header",
-			})
-			c.Abort()
-			return
-		}
-
-		// Bearer Token format
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    401,
-				"message": "invalid authorization header format",
-			})
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
-
-		// Validate Token
-		claims, err := jwtManager.ValidateToken(tokenString)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    401,
-				"message": "invalid or expired token",
-			})
-			c.Abort()
-			return
-		}
-
-		// Check user type
-		if userType != "" && claims.UserType != userType {
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "permission denied",
-			})
-			c.Abort()
-			return
-		}
-
-		// Store user info in context
-		c.Set("user_id", claims.UserID)
-		c.Set("phone", claims.Phone)
-		c.Set("user_type", claims.UserType)
-
-		c.Next()
-	}
-}
 
 // APIKeyMiddleware API Key authentication middleware
 // 优先匹配内部账号（internal_account），未命中再匹配平台用户（platform_user）

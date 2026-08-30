@@ -84,8 +84,12 @@ func (s *BalanceService) DeductBalance(userID int64, amount float64, orderID int
 	return tx.Commit()
 }
 
-// CreateRecharge 创建充值订单
-func (s *BalanceService) CreateRecharge(userID int64, amount float64) (*model.PaymentOrder, error) {
+// CreateRecharge 创建充值订单（channel：alipay-支付宝 wechat-微信）
+func (s *BalanceService) CreateRecharge(userID int64, amount float64, channel string) (*model.PaymentOrder, error) {
+	if channel != "alipay" && channel != "wechat" {
+		return nil, fmt.Errorf("不支持的支付渠道: %s", channel)
+	}
+
 	// 生成支付订单号
 	payOrderNo := fmt.Sprintf("R%s%06d", time.Now().Format("20060102150405"), time.Now().UnixNano()%1000000)
 
@@ -95,7 +99,7 @@ func (s *BalanceService) CreateRecharge(userID int64, amount float64) (*model.Pa
 		PayOrderNo:   payOrderNo,
 		UserID:       userID,
 		Amount:       amount,
-		Channel:      "unionpay",
+		Channel:      channel,
 		Status:       0, // 待支付
 		RefundStatus: 0,
 		ExpireTime:   &expireTime,

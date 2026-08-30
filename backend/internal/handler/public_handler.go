@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	qrcode "github.com/skip2/go-qrcode"
 
 	"starloftrpa/internal/config"
 	"starloftrpa/internal/repository"
@@ -40,4 +41,27 @@ func (h *PublicHandler) GetPublicConfig(c *gin.Context) {
 			"kyc_price":      kycPrice,
 		},
 	})
+}
+
+// GetQRCode 渲染二维码图片（用于微信Native支付扫码展示）
+func (h *PublicHandler) GetQRCode(c *gin.Context) {
+	data := c.Query("data")
+	if data == "" || len(data) > 2048 {
+		c.String(http.StatusBadRequest, "invalid data")
+		return
+	}
+
+	size := 280
+	if s := c.Query("size"); s != "" {
+		if n, err := strconv.Atoi(s); err == nil && n >= 100 && n <= 1000 {
+			size = n
+		}
+	}
+
+	png, err := qrcode.Encode(data, qrcode.Medium, size)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "qr encode failed")
+		return
+	}
+	c.Data(http.StatusOK, "image/png", png)
 }

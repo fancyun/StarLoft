@@ -15,35 +15,6 @@ func NewBalanceLogRepository(db *sql.DB) *BalanceLogRepository {
 	return &BalanceLogRepository{db: db}
 }
 
-// CreateLog 创建余额流水记录
-func (r *BalanceLogRepository) CreateLog(log *model.BalanceLog) error {
-	query := `INSERT INTO balance_log 
-		(user_id, order_id, type, amount, balance_before, balance_after, bank_serial_no, remark, created_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-
-	result, err := r.db.Exec(query,
-		log.UserID,
-		log.OrderID,
-		log.Type,
-		log.Amount,
-		log.BalanceBefore,
-		log.BalanceAfter,
-		log.BankSerialNo,
-		log.Remark,
-		time.Now(),
-	)
-	if err != nil {
-		return err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return err
-	}
-	log.ID = id
-	return nil
-}
-
 // CreateLogTx 在事务中创建余额流水记录
 func (r *BalanceLogRepository) CreateLogTx(tx *sql.Tx, log *model.BalanceLog) error {
 	query := `INSERT INTO balance_log 

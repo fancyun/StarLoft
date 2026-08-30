@@ -86,8 +86,8 @@ type PaymentOrder struct {
 	PayOrderNo     string     `json:"pay_order_no"` // 支付流水号
 	UserID         int64      `json:"user_id"`
 	Amount         float64    `json:"amount"`                     // 充值金额（元）
-	Channel        string     `json:"channel"`                    // alipay / wechat / unionpay
-	ChannelTradeNo string     `json:"channel_trade_no,omitempty"` // 银联商务交易号（seqId）
+	Channel        string     `json:"channel"`                    // 支付渠道：alipay-支付宝 wechat-微信
+	ChannelTradeNo string     `json:"channel_trade_no,omitempty"` // 渠道交易号（支付宝 trade_no / 微信 transaction_id）
 	Status         int        `json:"status"`                     // 0-待支付 1-已支付 2-已退款 3-已关闭
 	RefundStatus   int        `json:"refund_status"`              // 退款状态：0-未退款 1-部分退款 2-全额退款
 	RefundAmount   float64    `json:"refund_amount"`              // 退款金额
@@ -96,13 +96,4 @@ type PaymentOrder struct {
 	RefundedAt     *time.Time `json:"refunded_at,omitempty"`      // 退款时间
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
-}
-
-// SystemConfig 系统配置
-type SystemConfig struct {
-	ID          int64     `json:"id"`
-	ConfigKey   string    `json:"config_key"`
-	ConfigValue string    `json:"config_value"`
-	Description string    `json:"description"`
-	UpdatedAt   time.Time `json:"updated_at"`
 }

@@ -90,7 +90,7 @@ function loadCaptchaScript(): Promise<void> {
  * @param appId - 从后端获取的 CaptchaAppId（字符串）
  * @returns Promise<CaptchaResult>
  */
-export async function showTencentCaptcha(appId: string): Promise<CaptchaResult> {
+async function showTencentCaptcha(appId: string): Promise<CaptchaResult> {
   // 1. 确保 SDK 已加载
   await loadCaptchaScript()
 
@@ -136,11 +136,11 @@ export async function showTencentCaptcha(appId: string): Promise<CaptchaResult> 
 }
 
 /**
- * 登录前触发验证码（推荐在发送验证码、密码登录等敏感操作前调用）
+ * 登录前触发验证码
  * @param appId - CaptchaAppId
  * @returns Promise<{ ticket: string, randstr: string }>
  */
-export async function verifyCaptchaForLogin(appId: string): Promise<{ ticket: string, randstr: string }> {
+async function verifyCaptchaForLogin(appId: string): Promise<{ ticket: string, randstr: string }> {
   const result = await showTencentCaptcha(appId)
   return {
     ticket: result.ticket,

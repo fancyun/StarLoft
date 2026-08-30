@@ -4,7 +4,6 @@ package upstream
 type FinAuthInterface interface {
 	GetToken(req *GetTokenRequest) (*GetTokenResponse, error)
 	GetResult(req *GetResultRequest) (*GetResultResponse, error)
-	GenerateSign() string
 	VerifySign(jsonData, receivedSign string) bool
 }
 

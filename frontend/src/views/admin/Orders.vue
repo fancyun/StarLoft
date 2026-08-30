@@ -80,7 +80,6 @@
             <el-select v-model="paymentFilters.channel" placeholder="支付渠道" clearable style="width: 150px">
               <el-option label="支付宝" value="alipay" />
               <el-option label="微信支付" value="wechat" />
-              <el-option label="云闪付" value="unionpay" />
             </el-select>
             <el-select v-model="paymentFilters.status" placeholder="订单状态" clearable style="width: 150px">
               <el-option label="待支付" :value="0" />
@@ -238,7 +237,7 @@ const getAuthStatusText = (status: number) => {
 }
 
 const getChannelText = (channel: string) => {
-  const map: Record<string, string> = { alipay: '支付宝', wechat: '微信支付', unionpay: '云闪付' }
+  const map: Record<string, string> = { alipay: '支付宝', wechat: '微信支付' }
   return map[channel] || channel
 }
 

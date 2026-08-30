@@ -78,11 +78,6 @@ export const userAPI = {
     return request.get('/user/records', { params })
   },
 
-  // 查询认证记录（别名，兼容旧代码）
-  getRecords: (params: { page: number; page_size: number; start_date?: string; end_date?: string }) => {
-    return request.get('/user/records', { params })
-  },
-
   // 查询认证调用统计（近30天，按天计数）
   getCallStats: (): Promise<StatsOrdersResponse> => {
     return request.get('/user/stats/calls')
@@ -93,9 +88,9 @@ export const userAPI = {
     return request.post('/user/recharge', data)
   },
 
-  // 查询充值结果
-  getRechargeResult: (pay_order_no: string) => {
-    return request.get('/user/recharge/result', { params: { pay_order_no } })
+  // 查询充值结果（轮询）
+  getRechargeResult: (params: { pay_order_no: string }) => {
+    return request.get('/user/recharge/result', { params })
   },
 
   // 重置API密钥
@@ -124,24 +119,6 @@ export const userAPI = {
   }
 }
 
-// KYC认证API（API Key调用）
-export const kycAPI = {
-  // 发起认证请求
-  start: (data: any, headers: any) => {
-    return request.post('/kyc/start', data, { headers })
-  },
-
-  // 查询认证结果
-  getResult: (data: any, headers: any) => {
-    return request.post('/kyc/result', data, { headers })
-  },
-
-  // 查询余额
-  queryBalance: (headers: any) => {
-    return request.post('/kyc/balance/query', {}, { headers })
-  }
-}
-
 // 管理后台API
 export const adminAPI = {
   // 管理员登录
@@ -152,11 +129,6 @@ export const adminAPI = {
   // 获取用户列表
   getUsers: (params: any) => {
     return request.get('/admin/users', { params })
-  },
-
-  // 获取用户详情
-  getUserDetail: (id: number) => {
-    return request.get(`/admin/users/${id}`)
   },
 
   // 更新用户状态
@@ -197,11 +169,6 @@ export const adminAPI = {
   // 获取认证订单列表
   getOrders: (params: any) => {
     return request.get('/admin/orders', { params })
-  },
-
-  // 获取订单详情
-  getOrderDetail: (id: number) => {
-    return request.get(`/admin/orders/${id}`)
   },
 
   // 获取支付订单列表

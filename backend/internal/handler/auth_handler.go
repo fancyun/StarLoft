@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	"starloftrpa/internal/repository"
 	"starloftrpa/internal/service"
+	"starloftrpa/internal/upstream"
 	"starloftrpa/internal/utils"
 )
 
@@ -19,13 +21,23 @@ type AuthHandler struct {
 	authService      *service.AuthService
 	balanceService   *service.BalanceService
 	resourcePackRepo *repository.ResourcePackRepository
+	alipayClient     *upstream.AlipayClient
+	wechatClient     *upstream.WeChatPayClient
 }
 
-func NewAuthHandler(authService *service.AuthService, balanceService *service.BalanceService, resourcePackRepo *repository.ResourcePackRepository) *AuthHandler {
+func NewAuthHandler(
+	authService *service.AuthService,
+	balanceService *service.BalanceService,
+	resourcePackRepo *repository.ResourcePackRepository,
+	alipayClient *upstream.AlipayClient,
+	wechatClient *upstream.WeChatPayClient,
+) *AuthHandler {
 	return &AuthHandler{
 		authService:      authService,
 		balanceService:   balanceService,
 		resourcePackRepo: resourcePackRepo,
+		alipayClient:     alipayClient,
+		wechatClient:     wechatClient,
 	}
 }
 
@@ -419,7 +431,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 	if req.ReturnURL == "" {
 		req.ReturnURL = "/user/kyc"
 	}
-	// notifyURL 留空，由 service 层使用 .env 环境变量中的 FINAUTH_NOTIFY_URL
+	// notifyURL 留空，由 service 层使用写死的上游异步通知地址（finAuthNotifyURL）
 	notifyURL := ""
 
 	// 年龄限制：平台实名需年满16周岁
@@ -549,12 +561,13 @@ func (h *AuthHandler) GetUserAuthCallStats(c *gin.Context) {
 	})
 }
 
-// CreateRecharge 发起充值（调用银联支付）
+// CreateRecharge 发起充值（支付宝电脑网站支付 / 微信Native支付）
 func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
 	var req struct {
-		Amount float64 `json:"amount" binding:"required,gt=0"`
+		Amount  float64 `json:"amount" binding:"required,gt=0"`
+		Channel string  `json:"channel" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -565,8 +578,16 @@ func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 		return
 	}
 
+	if req.Channel != "alipay" && req.Channel != "wechat" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "不支持的支付渠道",
+		})
+		return
+	}
+
 	// 创建充值订单
-	order, err := h.balanceService.CreateRecharge(userID, req.Amount)
+	order, err := h.balanceService.CreateRecharge(userID, req.Amount, req.Channel)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
@@ -575,15 +596,56 @@ func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 		return
 	}
 
+	data := gin.H{
+		"pay_order_no": order.PayOrderNo,
+		"amount":       order.Amount,
+		"expire_time":  order.ExpireTime.Unix(),
+		"channel":      order.Channel,
+	}
+
+	// 按渠道生成支付信息
+	switch req.Channel {
+	case "alipay":
+		if h.alipayClient == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    500,
+				"message": "支付宝支付未配置",
+			})
+			return
+		}
+		payURL, err := h.alipayClient.BuildPagePayURL(order.PayOrderNo, order.Amount)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    500,
+				"message": "生成支付宝支付链接失败",
+			})
+			return
+		}
+		data["pay_url"] = payURL
+	case "wechat":
+		if h.wechatClient == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    500,
+				"message": "微信支付未配置",
+			})
+			return
+		}
+		codeURL, err := h.wechatClient.CreateNativeOrder(order.PayOrderNo, order.Amount, "账户余额充值")
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    500,
+				"message": "生成微信支付二维码失败",
+			})
+			return
+		}
+		data["code_url"] = codeURL
+		data["qr_url"] = "/api/v1/public/qr?data=" + url.QueryEscape(codeURL) + "&size=280"
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
-		"data": gin.H{
-			"pay_order_no": order.PayOrderNo,
-			"amount":       order.Amount,
-			"expire_time":  order.ExpireTime.Unix(),
-			"qr_code":      fmt.Sprintf("https://yourdomain.com/pay/%s", order.PayOrderNo),
-		},
+		"data":    data,
 	})
 }
 

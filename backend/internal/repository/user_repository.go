@@ -98,34 +98,6 @@ func (r *UserRepository) GetUserByPhone(phone string) (*model.PlatformUser, erro
 	return user, nil
 }
 
-// GetUserByUsername 根据用户名查询用户
-func (r *UserRepository) GetUserByUsername(username string) (*model.PlatformUser, error) {
-	query := `SELECT ` + userColumns + ` FROM platform_user WHERE username = ?`
-
-	user, err := scanUser(r.db.QueryRow(query, username))
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
-// GetUserByEmail 根据邮箱查询用户
-func (r *UserRepository) GetUserByEmail(email string) (*model.PlatformUser, error) {
-	query := `SELECT ` + userColumns + ` FROM platform_user WHERE email = ?`
-
-	user, err := scanUser(r.db.QueryRow(query, email))
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
 // GetUserByAccount 根据用户名/手机号/邮箱查询用户（登录用）
 func (r *UserRepository) GetUserByAccount(account string) (*model.PlatformUser, error) {
 	query := `SELECT ` + userColumns + ` FROM platform_user WHERE phone = ? OR username = ? OR email = ? ORDER BY id DESC LIMIT 1`
@@ -195,13 +167,6 @@ func (r *UserRepository) UpdateUserKYCInfo(userID int64, name, idCard string) er
 		SET is_kyc_verified = 1, kyc_name = ?, kyc_id_card = ?, updated_at = ? 
 		WHERE id = ?`
 	_, err := r.db.Exec(query, name, idCard, time.Now(), userID)
-	return err
-}
-
-// UpdateUserBalance 更新用户余额
-func (r *UserRepository) UpdateUserBalance(userID int64, balance float64) error {
-	query := `UPDATE platform_user SET balance = ?, updated_at = ? WHERE id = ?`
-	_, err := r.db.Exec(query, balance, time.Now(), userID)
 	return err
 }
 
@@ -315,13 +280,6 @@ func (r *UserRepository) GetAllUsers(page, pageSize int, keyword string) ([]*mod
 	return users, total, nil
 }
 
-// UpdateUserKYCPrice 更新用户KYC单价
-func (r *UserRepository) UpdateUserKYCPrice(userID int64, kycPrice float64) error {
-	query := `UPDATE platform_user SET kyc_price = ?, updated_at = ? WHERE id = ?`
-	_, err := r.db.Exec(query, kycPrice, time.Now(), userID)
-	return err
-}
-
 // UpdateUserStatus 更新用户状态
 func (r *UserRepository) UpdateUserStatus(userID int64, status int) error {
 	query := `UPDATE platform_user SET status = ?, updated_at = ? WHERE id = ?`
@@ -333,12 +291,5 @@ func (r *UserRepository) UpdateUserStatus(userID int64, status int) error {
 func (r *UserRepository) DeleteUser(userID int64) error {
 	query := `DELETE FROM platform_user WHERE id = ?`
 	_, err := r.db.Exec(query, userID)
-	return err
-}
-
-// UpdateUserDiscount 更新用户折扣
-func (r *UserRepository) UpdateUserDiscount(userID int64, discount float64) error {
-	query := `UPDATE platform_user SET kyc_price = ?, updated_at = ? WHERE id = ?`
-	_, err := r.db.Exec(query, discount, time.Now(), userID)
 	return err
 }

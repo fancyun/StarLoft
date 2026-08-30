@@ -185,16 +185,6 @@ func (c *FinAuthClient) GetResult(req *GetResultRequest) (*GetResultResponse, er
 	return &resp, nil
 }
 
-// GenerateSign 生成签名
-func (c *FinAuthClient) GenerateSign() string {
-	sign, err := c.signer.GenerateSign(c.apiKey, SignVersionHMACSHA256)
-	if err != nil {
-		log.Printf("GenerateSign 失败: %v", err)
-		return ""
-	}
-	return sign
-}
-
 // VerifySign 验证回调签名
 func (c *FinAuthClient) VerifySign(jsonData, receivedSign string) bool {
 	return c.signer.VerifyNotifySign(jsonData, receivedSign, SignVersionHMACSHA256)

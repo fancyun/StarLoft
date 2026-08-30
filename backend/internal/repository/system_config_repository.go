@@ -50,13 +50,6 @@ func (r *SystemConfigRepository) GetAllConfigs() (map[string]string, error) {
 	return configs, nil
 }
 
-// UpdateConfig 更新配置
-func (r *SystemConfigRepository) UpdateConfig(key, value string) error {
-	query := `UPDATE system_config SET config_value = ?, updated_at = ? WHERE config_key = ?`
-	_, err := r.db.Exec(query, value, time.Now(), key)
-	return err
-}
-
 // BatchUpdateConfigs 批量更新配置
 func (r *SystemConfigRepository) BatchUpdateConfigs(configs map[string]string) error {
 	tx, err := r.db.Begin()

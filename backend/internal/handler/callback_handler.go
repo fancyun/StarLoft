@@ -2,10 +2,10 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
-	"strings"
 
 	"starloftrpa/internal/repository"
 	"starloftrpa/internal/service"
@@ -19,7 +19,8 @@ type CallbackHandler struct {
 	authService    *service.AuthService
 	balanceService *service.BalanceService
 	paymentRepo    *repository.PaymentOrderRepository
-	unionPayClient *upstream.UnionPayClient
+	alipayClient   *upstream.AlipayClient
+	wechatClient   *upstream.WeChatPayClient
 }
 
 // NewCallbackHandler 创建回调处理器
@@ -27,13 +28,15 @@ func NewCallbackHandler(
 	authService *service.AuthService,
 	balanceService *service.BalanceService,
 	paymentRepo *repository.PaymentOrderRepository,
-	unionPayClient *upstream.UnionPayClient,
+	alipayClient *upstream.AlipayClient,
+	wechatClient *upstream.WeChatPayClient,
 ) *CallbackHandler {
 	return &CallbackHandler{
 		authService:    authService,
 		balanceService: balanceService,
 		paymentRepo:    paymentRepo,
-		unionPayClient: unionPayClient,
+		alipayClient:   alipayClient,
+		wechatClient:   wechatClient,
 	}
 }
 
@@ -89,11 +92,18 @@ func (h *CallbackHandler) FinAuthCallback(c *gin.Context) {
 	})
 }
 
-// PaymentCallback 处理支付回调
-// 银联天满支付异步通知（application/x-www-form-urlencoded）
-func (h *CallbackHandler) PaymentCallback(c *gin.Context) {
+// AlipayCallback 处理支付宝异步通知（notify_url，RSA2 验签）
+// 支付宝要求返回纯文本 "success" 表示通知处理成功
+func (h *CallbackHandler) AlipayCallback(c *gin.Context) {
+	if h.alipayClient == nil {
+		log.Printf("支付宝回调: 支付宝支付未配置")
+		c.String(http.StatusOK, "failure")
+		return
+	}
+
 	if err := c.Request.ParseForm(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errCode": "PARAM_ERROR"})
+		log.Printf("支付宝回调: 解析表单失败: %v", err)
+		c.String(http.StatusOK, "failure")
 		return
 	}
 
@@ -104,57 +114,146 @@ func (h *CallbackHandler) PaymentCallback(c *gin.Context) {
 		}
 	}
 
-	merOrderID := params["merOrderId"]
-	status := params["status"]
-	seqID := params["seqId"]
-	targetSys := params["targetSys"]
-
-	log.Printf("收到支付回调: merOrderId=%s, status=%s, seqId=%s, targetSys=%s", merOrderID, status, seqID, targetSys)
+	outTradeNo := params["out_trade_no"]
+	tradeNo := params["trade_no"]
+	tradeStatus := params["trade_status"]
+	log.Printf("收到支付宝回调: out_trade_no=%s, trade_no=%s, trade_status=%s", outTradeNo, tradeNo, tradeStatus)
 
 	// 验证签名
-	if h.unionPayClient == nil || !h.unionPayClient.VerifyNotify(params) {
-		log.Printf("支付回调签名验证失败: merOrderId=%s", merOrderID)
-		c.JSON(http.StatusBadRequest, gin.H{"errCode": "SIGN_ERROR"})
+	if !h.alipayClient.VerifyNotify(params) {
+		log.Printf("支付宝回调签名验证失败: out_trade_no=%s", outTradeNo)
+		c.String(http.StatusOK, "failure")
 		return
 	}
 
 	// 查询订单
-	order, err := h.paymentRepo.GetOrderByPayOrderNo(merOrderID)
+	order, err := h.paymentRepo.GetOrderByPayOrderNo(outTradeNo)
 	if err != nil {
-		log.Printf("支付回调订单不存在: merOrderId=%s, err=%v", merOrderID, err)
-		c.JSON(http.StatusBadRequest, gin.H{"errCode": "ORDER_NOT_EXIST"})
+		log.Printf("支付宝回调订单不存在: out_trade_no=%s, err=%v", outTradeNo, err)
+		c.String(http.StatusOK, "failure")
 		return
 	}
 
-	// 非支付成功状态，忽略（等待后续通知）
-	if !strings.EqualFold(status, "SUCCESS") {
-		log.Printf("支付回调非成功状态: merOrderId=%s, status=%s", merOrderID, status)
-		c.JSON(http.StatusOK, gin.H{"errCode": "SUCCESS"})
+	// 非支付成功状态，忽略（返回 success 停止支付宝重试）
+	if tradeStatus != "TRADE_SUCCESS" && tradeStatus != "TRADE_FINISHED" {
+		log.Printf("支付宝回调非成功状态: out_trade_no=%s, trade_status=%s", outTradeNo, tradeStatus)
+		c.String(http.StatusOK, "success")
 		return
 	}
 
 	// 幂等处理：仅当订单待支付时才入账
-	changed, err := h.paymentRepo.MarkOrderPaidIfPending(order.ID, seqID)
+	changed, err := h.paymentRepo.MarkOrderPaidIfPending(order.ID, tradeNo)
 	if err != nil {
 		log.Printf("更新支付订单状态失败: order_id=%d, err=%v", order.ID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"errCode": "FAIL"})
+		c.String(http.StatusOK, "failure")
 		return
 	}
 	if !changed {
 		// 已处理过，直接返回成功
-		c.JSON(http.StatusOK, gin.H{"errCode": "SUCCESS"})
+		c.String(http.StatusOK, "success")
 		return
 	}
 
 	// 增加用户余额
 	if err := h.balanceService.RechargeBalance(order.UserID, order.Amount, order.ID); err != nil {
-		log.Printf("支付回调入账失败: order_id=%d, err=%v", order.ID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"errCode": "FAIL"})
+		log.Printf("支付宝回调入账失败: order_id=%d, err=%v", order.ID, err)
+		c.String(http.StatusOK, "failure")
 		return
 	}
 
-	log.Printf("支付回调处理成功: merOrderId=%s, user_id=%d, amount=%.2f", merOrderID, order.UserID, order.Amount)
-	c.JSON(http.StatusOK, gin.H{"errCode": "SUCCESS"})
+	log.Printf("支付宝回调处理成功: out_trade_no=%s, user_id=%d, amount=%.2f", outTradeNo, order.UserID, order.Amount)
+	c.String(http.StatusOK, "success")
+}
+
+// WeChatCallback 处理微信支付异步通知（APIv3，公钥验签 + AES-GCM 解密）
+// 微信要求返回 200 且响应体为 "SUCCESS" 表示处理成功，否则会重试
+func (h *CallbackHandler) WeChatCallback(c *gin.Context) {
+	if h.wechatClient == nil {
+		log.Printf("微信回调: 微信支付未配置")
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		log.Printf("微信回调: 读取请求体失败: %v", err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+	bodyStr := string(bodyBytes)
+
+	timestamp := c.GetHeader("Wechatpay-Timestamp")
+	nonce := c.GetHeader("Wechatpay-Nonce")
+	signature := c.GetHeader("Wechatpay-Signature")
+	serial := c.GetHeader("Wechatpay-Serial")
+	log.Printf("收到微信回调: BodyLen=%d, serial=%s", len(bodyBytes), serial)
+
+	// 验证签名
+	if !h.wechatClient.VerifyNotify(timestamp, nonce, bodyStr, signature) {
+		log.Printf("微信回调签名验证失败: serial=%s", serial)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+
+	// 解析通知并解密资源
+	var notify upstream.WechatNotify
+	if err := json.Unmarshal(bodyBytes, &notify); err != nil {
+		log.Printf("微信回调报文解析失败: %v", err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+	plain, err := h.wechatClient.DecryptNotify(notify.Resource.Ciphertext, notify.Resource.Nonce, notify.Resource.AssociatedData)
+	if err != nil {
+		log.Printf("微信回调报文解密失败: %v", err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+
+	var tx upstream.WechatTransaction
+	if err := json.Unmarshal(plain, &tx); err != nil {
+		log.Printf("微信回调交易数据解析失败: %v", err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+	log.Printf("微信回调交易: out_trade_no=%s, transaction_id=%s, trade_state=%s", tx.OutTradeNo, tx.TransactionID, tx.TradeState)
+
+	// 查询订单
+	order, err := h.paymentRepo.GetOrderByPayOrderNo(tx.OutTradeNo)
+	if err != nil {
+		log.Printf("微信回调订单不存在: out_trade_no=%s, err=%v", tx.OutTradeNo, err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+
+	// 非支付成功状态，忽略（返回 SUCCESS 停止微信重试）
+	if tx.TradeState != "SUCCESS" {
+		log.Printf("微信回调非成功状态: out_trade_no=%s, trade_state=%s", tx.OutTradeNo, tx.TradeState)
+		c.String(http.StatusOK, "SUCCESS")
+		return
+	}
+
+	// 幂等处理：仅当订单待支付时才入账
+	changed, err := h.paymentRepo.MarkOrderPaidIfPending(order.ID, tx.TransactionID)
+	if err != nil {
+		log.Printf("更新支付订单状态失败: order_id=%d, err=%v", order.ID, err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+	if !changed {
+		// 已处理过，直接返回成功
+		c.String(http.StatusOK, "SUCCESS")
+		return
+	}
+
+	// 增加用户余额
+	if err := h.balanceService.RechargeBalance(order.UserID, order.Amount, order.ID); err != nil {
+		log.Printf("微信回调入账失败: order_id=%d, err=%v", order.ID, err)
+		c.String(http.StatusInternalServerError, "FAIL")
+		return
+	}
+
+	log.Printf("微信回调处理成功: out_trade_no=%s, user_id=%d, amount=%.2f", tx.OutTradeNo, order.UserID, order.Amount)
+	c.String(http.StatusOK, "SUCCESS")
 }
 
 // truncateStr 截断长字符串用于日志输出，避免敏感/大体积数据刷屏

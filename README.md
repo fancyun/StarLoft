@@ -74,7 +74,7 @@ docker-compose up -d
 部署: Docker + Docker Compose + Nginx（TLS终止）
 认证: FinAuth H5 Plus（三要素实名认证，HMAC-SHA256 签名）
 短信/验证码: 腾讯云 SMS + 腾讯云天御验证码
-支付: 银联天天付
+支付: 支付宝（电脑网站支付）+ 微信支付（Native支付）
 ```
 
 ---
@@ -95,7 +95,7 @@ StarLoftKYC/
 │       ├── repository/    # 数据访问
 │       ├── model/         # 数据模型
 │       ├── router/        # 路由
-│       └── upstream/      # 上游FinAuth/银联客户端
+│       └── upstream/      # 上游FinAuth/支付宝/微信支付客户端
 ├── frontend/              # Vue前端
 │   └── src/
 │       ├── views/         # 页面（user用户端 / admin管理端 / docs文档中心）
@@ -113,7 +113,7 @@ StarLoftKYC/
 - ✅ 手机号注册登录
 - ✅ 账户实名认证（Web端免费，实名信息永久绑定不可修改；终身累计失败达上限后转为计费）
 - ✅ 资源包购买（余额扣费，需先充值；库存限量）
-- ✅ 在线充值（银联支付）
+- ✅ 在线充值（支付宝/微信支付）
 - ✅ 余额查询、消费记录
 - ✅ API 密钥管理（Key 注册后自动生成，Secret 实名认证后下发）
 

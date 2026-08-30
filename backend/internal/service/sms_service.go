@@ -91,8 +91,3 @@ func (s *SMSService) SendVerificationCode(phone string) error {
 func (s *SMSService) VerifyCode(phone, code string) (bool, error) {
 	return s.verifyCodeSvc.VerifyCode(phone, code)
 }
-
-// GenerateVerificationCode 生成验证码（供测试使用）
-func (s *SMSService) GenerateVerificationCode() string {
-	return s.verifyCodeSvc.GenerateCode()
-}
