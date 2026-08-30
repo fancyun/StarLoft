@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log"
 	"starloftrpa/internal/config"
+	"starloftrpa/internal/model"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 var DB *sql.DB
@@ -38,8 +42,35 @@ func Init(cfg config.DatabaseConfig) error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	// 使用 GORM AutoMigrate 自动创建/更新表结构（替代 init.sql 建表）
+	if err := autoMigrate(); err != nil {
+		return fmt.Errorf("failed to auto migrate database: %w", err)
+	}
+
 	log.Println("Database connected successfully with TLS support")
 	return nil
+}
+
+// autoMigrate 复用现有数据库连接执行 AutoMigrate，按模型自动创建表结构
+func autoMigrate() error {
+	gormDB, err := gorm.Open(mysql.New(mysql.Config{Conn: DB}), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+	})
+	if err != nil {
+		return err
+	}
+	return gormDB.AutoMigrate(
+		&model.PlatformUser{},
+		&model.AdminUser{},
+		&model.AuthOrder{},
+		&model.BalanceLog{},
+		&model.PaymentOrder{},
+		&model.SystemConfig{},
+		&model.KycRecord{},
+		&model.ResourcePack{},
+		&model.UserResourcePack{},
+		&model.InternalAccount{},
+	)
 }
 
 func Close() error {

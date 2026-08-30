@@ -33,6 +33,7 @@ git clone https://github.com/starloft/kyc.git
 cd kyc
 
 # 2. 导入数据库初始化脚本（云数据库 MySQL 8.0+）
+# 表结构由后端启动时的 AutoMigrate 自动创建；先启动一次后端完成建表，再执行本脚本插入初始化数据（默认管理员、系统配置、资源包套餐）
 mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < init.sql
 
 # 3. 配置环境变量
@@ -85,7 +86,7 @@ docker-compose up -d
 StarLoftKYC/
 ├── README.md              # 项目入口（本文件）
 ├── 更新文档.md            # 版本变更日志
-├── init.sql               # 数据库初始化脚本
+├── init.sql               # 数据库初始化脚本（仅含初始化数据，建表由后端 AutoMigrate 完成）
 ├── docker-compose.yml     # Docker编排
 ├── .env.example           # 环境变量模板
 ├── backend/               # Go后端服务
