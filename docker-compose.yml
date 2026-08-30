@@ -63,7 +63,6 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       
       # FinAuth实名认证配置
-      # 异步通知/return 地址已写死在代码中（internal/service/auth_service.go）
       FINAUTH_API_KEY: ${FINAUTH_API_KEY}
       FINAUTH_API_SECRET: ${FINAUTH_API_SECRET}
       FINAUTH_SCENE_ID: ${FINAUTH_SCENE_ID:-kyc}
@@ -79,14 +78,12 @@ services:
       TENCENT_CAPTCHA_SECRET: ${TENCENT_CAPTCHA_SECRET}
       
       # 支付宝支付配置（电脑网站支付）
-      # 异步通知/return 地址已写死在代码中（upstream/alipay.go）
       ALIPAY_APP_ID: ${ALIPAY_APP_ID}
       ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY}
       ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY}
       ALIPAY_GATEWAY: ${ALIPAY_GATEWAY:-https://openapi.alipay.com/gateway.do}
       
       # 微信支付配置（Native支付）
-      # 异步通知地址已写死在代码中（upstream/wechatpay.go）
       WECHAT_APP_ID: ${WECHAT_APP_ID}
       WECHAT_MCH_ID: ${WECHAT_MCH_ID}
       WECHAT_API_V3_KEY: ${WECHAT_API_V3_KEY}
