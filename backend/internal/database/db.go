@@ -55,6 +55,8 @@ func Init(cfg config.DatabaseConfig) error {
 func autoMigrate() error {
 	gormDB, err := gorm.Open(mysql.New(mysql.Config{Conn: DB}), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+		// AutoMigrate 的 information_schema 内省查询在云数据库上耗时较长，屏蔽慢查询日志避免启动时刷屏
+		Logger: logger.Default.LogMode(logger.Error),
 	})
 	if err != nil {
 		return err
