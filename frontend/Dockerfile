@@ -91,35 +91,6 @@ EOF
 # 从builder复制构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 入口脚本：后台启动 Nginx，并监听证书变化自动 reload（配合 acme.sh 自动续期）
-COPY <<'EOF' /usr/local/bin/entrypoint.sh
-#!/bin/sh
-set -e
-
-# 启动 nginx（后台运行）
-nginx -g 'daemon off;' &
-NGINX_PID=$!
-
-# 每 5 分钟检查一次：nginx 异常退出则拉起；证书变化则 reload 加载新证书
-LAST=""
-while true; do
-  sleep 300
-  if ! kill -0 "$NGINX_PID" 2>/dev/null; then
-    nginx -g 'daemon off;' &
-    NGINX_PID=$!
-    continue
-  fi
-  CUR=$(md5sum /etc/nginx/certs/fullchain.pem /etc/nginx/certs/privkey.pem 2>/dev/null || true)
-  if [ -n "$CUR" ] && [ "$CUR" != "$LAST" ]; then
-    if [ -n "$LAST" ]; then
-      nginx -s reload || true
-    fi
-    LAST="$CUR"
-  fi
-done
-EOF
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
 # 暴露端口
 EXPOSE 80
 EXPOSE 443
@@ -128,5 +99,5 @@ EXPOSE 443
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost/healthz || exit 1
 
-# 启动nginx（含证书变更自动 reload）
-CMD ["/usr/local/bin/entrypoint.sh"]
+# 启动nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -38,18 +38,14 @@ mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < init.sql
 
 # 3. 配置环境变量
 cp .env.example .env
-nano .env  # 填写数据库/Redis/密钥/上游认证等配置（含 ACME_EMAIL）
+nano .env  # 填写数据库/Redis/密钥/上游认证等配置
 
-# 4. 初始化证书自动续期（acme.sh + 腾讯云 DNSPod 自动 DNS 验证，无需手动放置证书）
-#    首次执行：启动 acme-sh 容器并注册账号、申请、安装证书（域名按实际替换，密钥需具备 DNSPod 解析权限）
-docker compose up -d acme-sh
-docker exec kyc_acme acme.sh --register-account -m "${ACME_EMAIL}"
-docker exec kyc_acme acme.sh --issue --dns dns_tencent -d kyc.starloft.cn --server letsencrypt
-docker exec kyc_acme acme.sh --install-cert -d kyc.starloft.cn \
-  --key-file /certs/privkey.pem \
-  --fullchain-file /certs/fullchain.pem
+# 4. 放置证书
+# 将证书私钥与完整证书链（含中间证书）分别命名为 privkey.pem、fullchain.pem 放入 ./certs 目录
+# 证书由证书服务商（如腾讯云）签发后手动放入，可开启服务商自动续费，到期后替换文件并重启前端加载
+mkdir -p certs
 
-# 5. 启动服务（证书写入 ./certs 后，前端 Nginx 启动即加载，后续续期由 acme.sh 自动完成并自动 reload）
+# 5. 启动服务
 docker compose up -d
 
 # 6. 访问系统

@@ -12,8 +12,6 @@ services:
       --appendonly yes
     volumes:
       - redis_data:/data
-    networks:
-      - kyc_network
     healthcheck:
       test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -106,8 +104,6 @@ services:
     # 不暴露端口到宿主机，仅内部网络访问
     expose:
       - "8080"
-    networks:
-      - kyc_network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/public/config"]
       interval: 30s
@@ -129,34 +125,12 @@ services:
       - "${FRONTEND_PORT:-80}:80"
       - "${FRONTEND_HTTPS_PORT:-443}:443"
     volumes:
-      - ./certs:/etc/nginx/certs:ro
-    networks:
-      - kyc_network
+      - ./certs:/etc/nginx/certs:ro  # 证书目录（fullchain.pem + privkey.pem），续期后替换文件并重启前端生效
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
-
-  # 证书自动续期（acme.sh + 腾讯云 DNSPod DNS 验证）
-  acme-sh:
-    image: neilpang/acme.sh
-    container_name: kyc_acme
-    restart: unless-stopped
-    environment:
-      # 复用腾讯云 API 密钥（需具备 DNSPod 解析权限，用于自动 DNS 验证）
-      Tencent_SecretId: ${TENCENT_SECRET_ID}
-      Tencent_SecretKey: ${TENCENT_SECRET_KEY}
-      # ACME 账号邮箱（用于接收证书续期提醒）
-      ACME_EMAIL: ${ACME_EMAIL:-}
-      TZ: Asia/Shanghai
-    volumes:
-      - acme_data:/acme.sh
-      # 证书输出目录（与前端 Nginx 共用，写入新证书后由前端自动 reload）
-      - ./certs:/certs
-    command: daemon
-    networks:
-      - kyc_network
 
 # 数据卷
 volumes:
@@ -164,10 +138,3 @@ volumes:
     driver: local
   backend_logs:
     driver: local
-  acme_data:
-    driver: local
-
-# 网络
-networks:
-  kyc_network:
-    driver: bridge
