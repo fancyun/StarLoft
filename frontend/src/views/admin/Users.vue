@@ -6,7 +6,7 @@
           <el-icon><User /></el-icon>
           用户管理
         </h3>
-        <el-button type="primary" @click="showRegisterDialog">手动注册用户</el-button>
+        <el-button type="primary" @click="showRegisterDialog">人工注册</el-button>
       </div>
 
       <div class="filter-bar">
