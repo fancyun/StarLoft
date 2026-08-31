@@ -20,7 +20,7 @@
             "title": "API地址",
             "type": "text",
             "required": true,
-            "default": "https://kyc.starloft.cn/api/v1"
+            "default": "https://www.starloft.cn/api/v1"
         },
         "api_key": {
             "title": "API Key",

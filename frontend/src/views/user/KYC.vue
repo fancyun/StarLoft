@@ -14,7 +14,7 @@
           </div>
           <p class="permanent-tip">实名信息一经认证成功即永久绑定，不可修改。</p>
           <div class="verified-actions">
-            <el-button @click="$router.push('/user/dashboard')">返回首页</el-button>
+            <el-button @click="$router.push('/dashboard')">返回首页</el-button>
           </div>
         </div>
 
@@ -115,7 +115,7 @@ const freeAuthRemaining = ref(0)
 const form = reactive({
   name: '',
   id_card: '',
-  return_url: window.location.origin + '/user/kyc'
+  return_url: window.location.origin + '/kyc'
 })
 
 const validateIdCard = (_rule: any, value: string, callback: any) => {
@@ -158,7 +158,7 @@ const handleSubmit = async () => {
     const res = await userAPI.startKYC({
       name: form.name,
       id_card: form.id_card,
-      return_url: window.location.origin + '/user/kyc'
+      return_url: window.location.origin + '/kyc'
     })
     
     // 跳转到认证页面

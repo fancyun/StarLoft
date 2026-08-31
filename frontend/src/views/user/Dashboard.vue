@@ -38,7 +38,7 @@
           </div>
           <div class="card-body">
             <div class="amount">¥{{ userInfo.balance }}</div>
-            <el-button type="primary" size="small" @click="$router.push('/user/balance')">充值</el-button>
+            <el-button type="primary" size="small" @click="$router.push('/balance')">充值</el-button>
           </div>
         </div>
 

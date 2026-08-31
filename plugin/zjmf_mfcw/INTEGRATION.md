@@ -341,7 +341,7 @@ BODY='{}'
 SIGN=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "your_api_secret" | awk '{print $2}')
 TS=$(date +%s)
 
-curl -X POST "https://kyc.starloft.cn/api/v1/kyc/balance/query" \
+curl -X POST "https://www.starloft.cn/api/v1/kyc/balance/query" \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: your_api_key" \
   -H "X-Sign: $SIGN" \

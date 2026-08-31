@@ -110,11 +110,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # 前端服务（Nginx + 反向代理）
+  # 前端服务（Nginx 多站点：www.starloft.cn 门户 + console.starloft.cn 控制台 + 反向代理）
+  # 镜像内一次构建两个前端应用，通过不同 server 块按域名分发
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       shm_size: '2gb'  # 增加共享内存
     container_name: kyc_frontend
     restart: unless-stopped
@@ -124,7 +125,9 @@ services:
       - "${FRONTEND_PORT:-80}:80"
       - "${FRONTEND_HTTPS_PORT:-443}:443"
     volumes:
-      - ./certs:/etc/nginx/certs:ro  # 证书目录（fullchain.pem + privkey.pem），续期后替换文件并重启前端生效
+      # 证书目录：www.starloft.cn/ 与 console.starloft.cn/ 子目录各含 fullchain.pem + privkey.pem，
+      # 证书由服务商（腾讯云）自动续费，到期后替换对应子目录文件并重启前端生效
+      - ./certs:/etc/nginx/certs:ro
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/healthz"]
       interval: 30s

@@ -1,7 +1,7 @@
 <template>
   <div class="markdown-body">
     <h1>插件使用教程</h1>
-    <p class="lead">以下为星楼KYC 提供的下游系统实名认证插件，选择你的系统查看对应的安装与使用教程。</p>
+    <p class="lead">以下为星楼云提供的下游系统实名认证插件，选择你的系统查看对应的安装与使用教程。</p>
 
     <h2>插件列表</h2>
     <table>

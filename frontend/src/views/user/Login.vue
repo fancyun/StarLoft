@@ -194,7 +194,7 @@ const login = async (payload: { account?: string; phone?: string; password?: str
   userStore.setToken(result.token)
   userStore.setUserInfo(result)
   ElMessage.success('登录成功')
-  await router.push('/user/dashboard')
+  await router.push('/dashboard')
 }
 
 const handlePasswordLogin = async () => {

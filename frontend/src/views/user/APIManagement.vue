@@ -15,7 +15,7 @@
           class="kyc-alert"
         >
           <p>API Key 已随注册自动生成；API Secret 需完成账户实名认证后自动下发，实名通过后即可调用 API。</p>
-          <el-button type="primary" size="small" @click="$router.push('/user/kyc')">前往实名认证</el-button>
+          <el-button type="primary" size="small" @click="$router.push('/kyc')">前往实名认证</el-button>
         </el-alert>
         <template v-if="!pageLoading">
           <div class="api-item">
@@ -47,7 +47,7 @@
           接口文档
         </h3>
         <p class="doc-tip">完整的接口调用方法与示例请前往文档中心查看。</p>
-        <el-button type="primary" @click="$router.push('/docs/api/v1')">查看 API 文档</el-button>
+        <el-button type="primary" @click="goApiDocs">查看 API 文档</el-button>
       </div>
     </div>
   </div>
@@ -78,6 +78,10 @@ const copyText = (text: string) => {
   }
   navigator.clipboard.writeText(text)
   ElMessage.success('已复制到剪贴板')
+}
+
+const goApiDocs = () => {
+  window.open('https://www.starloft.cn/docs/api/v1', '_blank')
 }
 
 const handleResetAPIKey = async () => {

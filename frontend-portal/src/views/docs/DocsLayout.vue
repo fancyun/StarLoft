@@ -4,9 +4,9 @@
       <div class="docs-header-inner">
         <router-link to="/docs" class="brand">
           <span class="brand-logo">SL</span>
-          <span class="brand-text">星楼KYC 文档中心</span>
+          <span class="brand-text">星楼云 文档中心</span>
         </router-link>
-        <a href="/" class="home-link">返回首页</a>
+        <router-link to="/" class="home-link">返回首页</router-link>
       </div>
     </header>
 

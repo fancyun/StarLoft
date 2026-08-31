@@ -50,7 +50,7 @@ zjmf_mfcw/
 
 | 配置项 | 必填 | 说明 | 示例 |
 |--------|------|------|------|
-| API地址 | ✅ | KYC系统的API地址 | `https://kyc.starloft.cn/api/v1` |
+| API地址 | ✅ | KYC系统的API地址 | `https://www.starloft.cn/api/v1` |
 | API Key | ✅ | 在KYC系统后台获取 | `your_api_key_here` |
 | API Secret | ✅ | 在KYC系统后台获取，用于HMAC签名 | `your_api_secret_here` |
 | 单次认证费用 | - | 每次认证费用（元） | `0`（不扣费）或 `2.00` |
@@ -227,7 +227,7 @@ BODY='{}'
 SIGN=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "your_api_secret" | awk '{print $2}')
 TS=$(date +%s)
 
-curl -X POST "https://kyc.starloft.cn/api/v1/kyc/balance/query" \
+curl -X POST "https://www.starloft.cn/api/v1/kyc/balance/query" \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: your_api_key" \
   -H "X-Sign: $SIGN" \

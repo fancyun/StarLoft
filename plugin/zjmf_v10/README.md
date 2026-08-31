@@ -52,7 +52,7 @@ zjmf_v10/
 
 | 配置项 | 必填 | 说明 | 示例 |
 |--------|------|------|------|
-| API地址 | ✅ | StarLoft KYC 系统的 API 地址 | `https://kyc.starloft.cn/api/v1` |
+| API地址 | ✅ | StarLoft KYC 系统的 API 地址 | `https://www.starloft.cn/api/v1` |
 | API Key | ✅ | 在 KYC 系统后台获取 | `your_api_key_here` |
 | API Secret | ✅ | 在 KYC 系统后台获取，用于 HMAC 签名 | `your_api_secret_here` |
 | 单次认证费用 | - | 每次认证费用（元） | `0`（不扣费）或 `2.00` |

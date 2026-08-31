@@ -1,7 +1,7 @@
 <template>
   <div class="markdown-body">
     <h1>文档总览</h1>
-    <p class="lead">欢迎使用星楼KYC 实名认证服务。以下文档将帮助你快速完成对接与使用。</p>
+    <p class="lead">欢迎使用星楼云实名认证服务。以下文档将帮助你快速完成对接与使用。</p>
 
     <h2>文档目录</h2>
 

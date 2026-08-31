@@ -1,7 +1,7 @@
 <template>
   <div class="markdown-body">
     <h1>API 文档</h1>
-    <p class="lead">星楼KYC 平台对外提供基于 API Key + HMAC-SHA256 签名鉴权的 RESTful 接口。</p>
+    <p class="lead">星楼云平台对外提供基于 API Key + HMAC-SHA256 签名鉴权的 RESTful 接口。</p>
 
     <h2>版本列表</h2>
     <table>

@@ -2,13 +2,13 @@
   <div class="markdown-body">
     <h1>API v1 文档</h1>
     <p class="lead">
-      本文档介绍星楼KYC 平台 API v1 的鉴权方式与接口调用方法。所有接口均使用
+      本文档介绍星楼云平台 API v1 的鉴权方式与接口调用方法。所有接口均使用
       <strong>API Key + HMAC-SHA256 签名</strong> 鉴权。
     </p>
 
     <h2>1. 基础信息</h2>
     <ul>
-      <li>接口地址：<code>https://kyc.starloft.cn/api/v1</code></li>
+      <li>接口地址：<code>https://www.starloft.cn/api/v1</code></li>
       <li>请求格式：<code>application/json</code></li>
       <li>鉴权方式：请求头携带 API Key 与签名（见下）</li>
     </ul>
@@ -387,7 +387,7 @@ sign = 小写hex( HMAC-SHA256(api_secret, canonical) )</code></pre>
 SIGN=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "your_api_secret" | awk '{print $2}')
 TS=$(date +%s)
 
-curl -X POST "https://kyc.starloft.cn/api/v1/kyc/balance/query" \
+curl -X POST "https://www.starloft.cn/api/v1/kyc/balance/query" \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: your_api_key" \
   -H "X-Sign: $SIGN" \

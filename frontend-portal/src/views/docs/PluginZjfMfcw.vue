@@ -3,13 +3,13 @@
     <h1>智简魔方·财务版（zjmf_mfcw）实名认证插件</h1>
     <p class="lead">
       平台标识：<code>zjmf_mfcw</code>，插件名称：<code>starloft_kyc</code>。为智简魔方·财务版（3.7.6+）系统
-      提供身份证三要素实名认证（姓名 + 身份证 + 人脸识别），对接星楼KYC 实名认证系统。
+      提供身份证三要素实名认证（姓名 + 身份证 + 人脸识别），对接星楼云实名认证系统。
     </p>
 
     <h2>1. 功能特性</h2>
     <ul>
       <li>身份证三要素实名认证（姓名 + 身份证 + 人脸识别）</li>
-      <li>自动对接星楼KYC 后端系统</li>
+      <li>自动对接星楼云后端系统</li>
       <li>支持自动扣费与强制实名</li>
       <li>支持年龄限制（可配置最低实名年龄）</li>
       <li>认证结果自动回调与状态轮询</li>
@@ -45,7 +45,7 @@
           <td>API 地址</td>
           <td>是</td>
           <td>KYC 系统的 API 地址</td>
-          <td><code>https://kyc.starloft.cn/api/v1</code></td>
+          <td><code>https://www.starloft.cn/api/v1</code></td>
         </tr>
         <tr>
           <td>API Key</td>
@@ -93,7 +93,7 @@
     </table>
 
     <h3>2.4 获取 API 密钥</h3>
-    <p>登录星楼KYC 系统后台：进入「用户中心」→「API 密钥管理」→ 复制 API Key 和 API Secret。</p>
+    <p>登录星楼云控制台：进入「用户中心」→「API 密钥管理」→ 复制 API Key 和 API Secret。</p>
 
     <h2>3. 使用方法</h2>
     <h3>3.1 用户实名认证</h3>

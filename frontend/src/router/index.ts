@@ -2,12 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
+// 控制台应用路由（部署于 console.starloft.cn）
+// 产品化结构：实名认证 /kyc、云服务器 /cs、短信服务 /sms 等均为顶层产品路径
 const routes: Array<RouteRecordRaw> = [
-  {
-    path: '/',
-    name: 'Home',
-    component: () => import('@/views/Home.vue')
-  },
   {
     path: '/login',
     name: 'Login',
@@ -18,43 +15,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Register',
     component: () => import('@/views/user/Register.vue')
   },
-  // 文档中心（公开，无需登录）
+  // 控制台（需登录）
   {
-    path: '/docs',
-    component: () => import('@/views/docs/DocsLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'DocsHome',
-        component: () => import('@/views/docs/DocsHome.vue')
-      },
-      {
-        path: 'api',
-        name: 'DocsApi',
-        component: () => import('@/views/docs/ApiDocs.vue')
-      },
-      {
-        path: 'api/v1',
-        name: 'DocsApiV1',
-        component: () => import('@/views/docs/ApiV1.vue')
-      },
-      {
-        path: 'plugin',
-        name: 'DocsPlugin',
-        component: () => import('@/views/docs/PluginDocs.vue')
-      },
-      {
-        path: 'plugin/zjmf_mfcw',
-        name: 'DocsPluginZjfMfcw',
-        component: () => import('@/views/docs/PluginZjfMfcw.vue')
-      }
-    ]
-  },
-  // 用户功能（需登录）
-  {
-    path: '/user',
+    path: '/',
     component: () => import('@/views/user/UserLayout.vue'),
     meta: { requiresAuth: true },
+    redirect: '/dashboard',
     children: [
       {
         path: 'dashboard',
@@ -67,24 +33,36 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/user/KYC.vue')
       },
       {
-        path: 'balance',
-        name: 'Balance',
-        component: () => import('@/views/user/Balance.vue')
+        path: 'kyc/records',
+        name: 'Records',
+        component: () => import('@/views/user/Records.vue')
       },
       {
-        path: 'packs',
+        path: 'kyc/packs',
         name: 'ResourcePacks',
         component: () => import('@/views/user/ResourcePacks.vue')
       },
       {
-        path: 'packs/buy',
+        path: 'kyc/packs/buy',
         name: 'PurchasePacks',
         component: () => import('@/views/user/PurchasePacks.vue')
       },
       {
-        path: 'records',
-        name: 'Records',
-        component: () => import('@/views/user/Records.vue')
+        path: 'cs',
+        name: 'CloudServer',
+        component: () => import('@/views/user/ComingSoon.vue'),
+        meta: { productName: '云服务器' }
+      },
+      {
+        path: 'sms',
+        name: 'SMS',
+        component: () => import('@/views/user/ComingSoon.vue'),
+        meta: { productName: '短信服务' }
+      },
+      {
+        path: 'balance',
+        name: 'Balance',
+        component: () => import('@/views/user/Balance.vue')
       },
       {
         path: 'settings',
@@ -162,9 +140,9 @@ router.beforeEach((to, _from, next) => {
   } else if (requiresAuth && !userStore.token) {
     // 普通用户页面需要登录但未登录
     next('/login')
-  } else if (!requiresAuth && !requiresAdmin && userStore.token && (to.path === '/login' || to.path === '/register' || to.path === '/')) {
-    // 普通用户已登录访问首页/登录/注册页，跳转到用户 dashboard
-    next('/user/dashboard')
+  } else if (!requiresAuth && !requiresAdmin && userStore.token && (to.path === '/login' || to.path === '/register')) {
+    // 普通用户已登录访问登录/注册页，跳转到控制台首页
+    next('/dashboard')
   } else if (to.path === '/admin/login' && userStore.adminToken) {
     // 管理员已登录访问登录页，跳转到管理后台
     next('/admin/dashboard')

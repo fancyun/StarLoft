@@ -22,14 +22,14 @@
 点击 `配置`，填写以下信息：
 
 ```
-API地址: https://kyc.starloft.cn/api/v1
+API地址: https://www.starloft.cn/api/v1
 API Key: your_api_key_here
 API Secret: your_api_secret_here
 ```
 
 ### 4. 获取 API 密钥
 
-登录 [KYC系统](https://kyc.starloft.cn/admin/login)：
+登录 [KYC系统](https://console.starloft.cn/admin/login)：
 
 - 完成账户实名认证
 - 进入 `用户中心` → `API密钥管理`
@@ -89,7 +89,7 @@ API Secret: your_api_secret_here
 
 **测试方法：**
 ```bash
-curl -I https://kyc.starloft.cn/api/v1/
+curl -I https://www.starloft.cn/api/v1/
 ```
 
 ### 认证一直显示"认证中"

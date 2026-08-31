@@ -8,7 +8,7 @@
             <el-icon><Wallet /></el-icon>
             我的资源
           </h3>
-          <el-button type="primary" @click="$router.push('/user/packs/buy')">
+          <el-button type="primary" @click="$router.push('/kyc/packs/buy')">
             <el-icon><ShoppingCart /></el-icon>
             <span class="buy-btn-text">购买资源包</span>
           </el-button>

@@ -19,8 +19,8 @@ import (
 
 const (
 	alipayDefaultGateway = "https://openapi.alipay.com/gateway.do"
-	alipayNotifyURL      = "https://kyc.starloft.cn/api/v1/callback/alipay" // 异步通知地址（写死，与后端回调路由绑定）
-	alipayReturnURL      = "https://kyc.starloft.cn/user/balance"           // 同步跳转地址（写死，与前端路由绑定）
+	alipayNotifyURL      = "https://www.starloft.cn/api/v1/callback/alipay" // 异步通知地址（写死，与后端回调路由绑定）
+	alipayReturnURL      = "https://console.starloft.cn/balance"            // 同步跳转地址（写死，指向控制台余额页）
 )
 
 // AlipayClient 支付宝开放平台支付客户端（电脑网站支付 alipay.trade.page.pay，RSA2 签名）

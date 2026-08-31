@@ -35,7 +35,7 @@ const freeFailLimit = 3
 
 // 上游（FinAuth）回调与跳转地址（写死，与后端回调路由/前端页面绑定）
 const (
-	finAuthNotifyURL = "https://kyc.starloft.cn/api/v1/callback/finauth" // 上游异步通知地址：认证结果由平台接收并落地
+	finAuthNotifyURL = "https://www.starloft.cn/api/v1/callback/finauth" // 上游异步通知地址：认证结果由平台接收并落地
 	finAuthReturnURL = "/user/kyc"                                       // 上游同步跳转默认地址：未传入 return_url 时兜底，认证完成后返回账户实名页
 )
 

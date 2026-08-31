@@ -322,7 +322,7 @@ const handleRegister = async () => {
       userStore.setToken(result.token)
       userStore.setUserInfo(result)
       ElMessage.success('注册成功')
-      router.push('/user/dashboard')
+      router.push('/dashboard')
     } else {
       ElMessage.success('注册成功，请登录')
       router.push('/login')
