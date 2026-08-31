@@ -36,9 +36,9 @@ type AlipayClient struct {
 	Gateway    string
 }
 
-// NewAlipayClient 创建支付宝支付客户端；未配置（AppID 或密钥未填写）时返回 (nil, nil)
+// NewAlipayClient 创建支付宝支付客户端；未配置 AppID 时返回 (nil, nil)
 func NewAlipayClient(appID, privateKeyPEM, publicKeyPEM, gateway string) (*AlipayClient, error) {
-	if !isConfiguredValue(appID) || !isConfiguredValue(privateKeyPEM) || !isConfiguredValue(publicKeyPEM) {
+	if appID == "" {
 		return nil, nil
 	}
 	priv, err := parseRSAPrivateKey(privateKeyPEM)
