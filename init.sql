@@ -272,24 +272,24 @@ CREATE TABLE IF NOT EXISTS `user_resource_pack` (
 -- 默认管理员
 -- 用户名: admin  密码: kigga9aj（首次登录后请立即修改！） 密码哈希: bcrypt cost=10
 -- 使用 REPLACE INTO 避免重复键冲突
-REPLACE INTO `starloft_sys`.`admin_user` (`username`, `password_hash`, `nickname`, `status`)
-VALUES ('admin', '$2a$10$U8urafJV5ggvfeHunkalMuH4Wkdq7gWK1kI5X2q076ZWEJwGn5Dce', '管理员', 1);
+REPLACE INTO `starloft_sys`.`admin_user` (`username`, `password_hash`, `nickname`, `status`, `created_at`, `updated_at`)
+VALUES ('admin', '$2a$10$U8urafJV5ggvfeHunkalMuH4Wkdq7gWK1kI5X2q076ZWEJwGn5Dce', '管理员', 1, NOW(3), NOW(3));
 
 -- 默认系统配置（密钥类配置统一在 .env 环境变量中管理）
-REPLACE INTO `starloft_sys`.`system_config` (`config_key`, `config_value`, `description`) VALUES
-('kyc_price', '1.00', 'KYC单价');
+REPLACE INTO `starloft_sys`.`system_config` (`config_key`, `config_value`, `description`, `created_at`, `updated_at`) VALUES
+('kyc_price', '1.00', 'KYC单价', NOW(3), NOW(3));
 
 -- 资源包种子数据（单价分档：0.7/0.6/0.5/0.4 元每次，库存 -1 不限量）
-INSERT INTO `starloft_kyc`.`resource_pack` (`name`, `total_count`, `price`, `stock`, `status`, `description`) VALUES
-('认证100次套餐', 100, 70.00, -1, 1, '单价0.7元/次'),
-('认证200次套餐', 200, 140.00, -1, 1, '单价0.7元/次'),
-('认证500次套餐', 500, 350.00, -1, 1, '单价0.7元/次'),
-('认证1000次套餐', 1000, 600.00, -1, 1, '单价0.6元/次'),
-('认证2000次套餐', 2000, 1200.00, -1, 1, '单价0.6元/次'),
-('认证5000次套餐', 5000, 3000.00, -1, 1, '单价0.6元/次'),
-('认证1万次套餐', 10000, 5000.00, -1, 1, '单价0.5元/次'),
-('认证2万次套餐', 20000, 10000.00, -1, 1, '单价0.5元/次'),
-('认证5万次套餐', 50000, 25000.00, -1, 1, '单价0.5元/次'),
-('认证10万次套餐', 100000, 40000.00, -1, 1, '单价0.4元/次'),
-('认证20万次套餐', 200000, 80000.00, -1, 1, '单价0.4元/次'),
-('认证50万次套餐', 500000, 200000.00, -1, 1, '单价0.4元/次');
+INSERT INTO `starloft_kyc`.`resource_pack` (`name`, `total_count`, `price`, `stock`, `status`, `description`, `created_at`, `updated_at`) VALUES
+('认证100次套餐', 100, 70.00, -1, 1, '单价0.7元/次', NOW(3), NOW(3)),
+('认证200次套餐', 200, 140.00, -1, 1, '单价0.7元/次', NOW(3), NOW(3)),
+('认证500次套餐', 500, 350.00, -1, 1, '单价0.7元/次', NOW(3), NOW(3)),
+('认证1000次套餐', 1000, 600.00, -1, 1, '单价0.6元/次', NOW(3), NOW(3)),
+('认证2000次套餐', 2000, 1200.00, -1, 1, '单价0.6元/次', NOW(3), NOW(3)),
+('认证5000次套餐', 5000, 3000.00, -1, 1, '单价0.6元/次', NOW(3), NOW(3)),
+('认证1万次套餐', 10000, 5000.00, -1, 1, '单价0.5元/次', NOW(3), NOW(3)),
+('认证2万次套餐', 20000, 10000.00, -1, 1, '单价0.5元/次', NOW(3), NOW(3)),
+('认证5万次套餐', 50000, 25000.00, -1, 1, '单价0.5元/次', NOW(3), NOW(3)),
+('认证10万次套餐', 100000, 40000.00, -1, 1, '单价0.4元/次', NOW(3), NOW(3)),
+('认证20万次套餐', 200000, 80000.00, -1, 1, '单价0.4元/次', NOW(3), NOW(3)),
+('认证50万次套餐', 500000, 200000.00, -1, 1, '单价0.4元/次', NOW(3), NOW(3));

@@ -1,6 +1,6 @@
 # StarLoft 星楼云 · 云服务与实名认证平台
 
-[![Version](https://img.shields.io/badge/version-1.11.1-blue.svg)](https://github.com/starloft/kyc)
+[![Version](https://img.shields.io/badge/version-1.11.2-blue.svg)](https://github.com/starloft/kyc)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.20+-00ADD8.svg)](https://golang.org/)
 [![Docker](https://img.shields.io/badge/docker-20.10+-2496ED.svg)](https://www.docker.com/)
