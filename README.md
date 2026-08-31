@@ -25,7 +25,7 @@
 
 ```
 www.starloft.cn       门户站点（frontend-portal）：平台首页 / 产品页 / 文档中心
-console.starloft.cn   控制台（frontend）：登录注册、产品控制台、管理后台
+console.starloft.cn   控制台（frontend-console）：登录注册、产品控制台、管理后台
 └─ /api/ 反向代理      → backend 后端服务（Go + Gin）
 ```
 
@@ -77,8 +77,8 @@ docker compose up -d
 
 1. 在 `frontend-portal/src/config/products.ts` 登记产品信息（key / 名称 / 特性 / 场景 / 控制台地址）
 2. 在 `frontend-portal/src/router/index.ts` 注册对应产品路由（复用 `ProductPage.vue`，`meta.product` 指定 key）
-3. 在 `frontend/src/router/index.ts` 为控制台增加对应产品路由与侧边栏入口
-4. 重新构建前端镜像即可上线（`docker compose up -d --build frontend`）
+3. 在 `frontend-console/src/router/index.ts` 为控制台增加对应产品路由与侧边栏入口
+4. 重新构建前端镜像即可上线（`docker compose up -d --build frontend-console`）
 
 ---
 
@@ -124,7 +124,7 @@ StarLoftKYC/
 │       ├── model/         # 数据模型
 │       ├── router/        # 路由
 │       └── upstream/      # 上游FinAuth/支付宝/微信支付客户端
-├── frontend/              # 控制台前端（console.starloft.cn）
+├── frontend-console/     # 控制台前端（console.starloft.cn）
 │   └── src/
 │       ├── views/         # 页面（user用户端 / admin管理端）
 │       ├── layouts/       # 布局

@@ -1,5 +1,5 @@
-# 前端镜像（frontend/Dockerfile）构建上下文为仓库根目录，
-# 仅需要 frontend 与 frontend-portal 两个前端源码，其余一律排除以减小上下文体积
+# 前端镜像（frontend-console/Dockerfile）构建上下文为仓库根目录，
+# 仅需要 frontend-console 与 frontend-portal 两个前端源码，其余一律排除以减小上下文体积
 .git
 .gitignore
 .gitattributes

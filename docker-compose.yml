@@ -113,12 +113,12 @@ services:
 
   # 前端服务（Nginx 多站点：www.starloft.cn 门户 + console.starloft.cn 控制台 + 反向代理）
   # 镜像内一次构建两个前端应用，通过不同 server 块按域名分发
-  frontend:
+  frontend-console:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: frontend-console/Dockerfile
       shm_size: '2gb'  # 增加共享内存
-    container_name: kyc_frontend
+    container_name: kyc_frontend_console
     restart: unless-stopped
     depends_on:
       - backend
