@@ -7,12 +7,12 @@
           <span class="brand-logo lg">SL</span>
           <div class="logo-text">
             <h2>StarLoft</h2>
-            <span>KYC Authentication</span>
+            <span>Cloud Services</span>
           </div>
         </div>
         <div class="banner-desc">
-          <h1>安全可靠的<br/>实名认证服务</h1>
-          <p>对接权威数据源，秒级响应，为您的业务保驾护航</p>
+          <h1>安全可靠的<br/>云服务平台</h1>
+          <p>简单接入、稳定可靠，为您的业务保驾护航</p>
         </div>
         <div class="banner-features">
           <div class="feature-item">
@@ -488,6 +488,7 @@ const sendCode = async () => {
 
 .sms-row .el-input {
   flex: 1;
+  min-width: 0;
 }
 
 .sms-btn {

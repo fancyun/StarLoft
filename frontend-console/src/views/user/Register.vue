@@ -7,12 +7,12 @@
           <span class="brand-logo lg">SL</span>
           <div class="logo-text">
             <h2>StarLoft</h2>
-            <span>KYC Authentication</span>
+            <span>Cloud Services</span>
           </div>
         </div>
         <div class="banner-desc">
-          <h1>创建您的账户<br/>开启认证之旅</h1>
-          <p>注册即享完整的实名认证服务，快速接入，安全可靠</p>
+          <h1>创建您的账户<br/>开启云上之旅</h1>
+          <p>注册即享完整的云产品服务，快速接入，安全可靠</p>
         </div>
         <div class="banner-steps">
           <div class="step-item">
@@ -33,7 +33,7 @@
             <span class="step-num">03</span>
             <div class="step-info">
               <strong>开始使用</strong>
-              <span>API 调用实名认证</span>
+              <span>按需调用云产品</span>
             </div>
           </div>
         </div>
@@ -544,6 +544,7 @@ const handleRegister = async () => {
 
 .sms-row .el-input {
   flex: 1;
+  min-width: 0;
 }
 
 .sms-btn {

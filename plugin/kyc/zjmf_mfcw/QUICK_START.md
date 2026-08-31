@@ -20,7 +20,7 @@
 点击"配置"，填写以下信息：
 
 ```
-API地址: https://www.starloft.cn/api/v1
+API地址: https://www.starloft.cn/api
 API Key: your_api_key_here
 API Secret: your_api_secret_here
 ```
@@ -81,14 +81,14 @@ https://你的域名/certification/zjmf_mfcw
 ### API连接失败
 
 **检查清单：**
-- ✅ API地址正确（包含 `/api/v1`）
+- ✅ API地址正确（包含 `/api`）
 - ✅ API Key和Secret正确
 - ✅ KYC系统运行正常
 - ✅ 服务器可访问KYC系统
 
 **测试方法：**
 ```bash
-curl -I https://www.starloft.cn/api/v1/
+curl -I https://www.starloft.cn/api/
 ```
 
 ### 认证一直显示"认证中"

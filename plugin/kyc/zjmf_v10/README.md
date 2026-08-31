@@ -52,7 +52,7 @@ zjmf_v10/
 
 | 配置项 | 必填 | 说明 | 示例 |
 |--------|------|------|------|
-| API地址 | ✅ | StarLoft KYC 系统的 API 地址 | `https://www.starloft.cn/api/v1` |
+| API地址 | ✅ | StarLoft KYC 系统的 API 地址 | `https://www.starloft.cn/api` |
 | API Key | ✅ | 在 KYC 系统后台获取 | `your_api_key_here` |
 | API Secret | ✅ | 在 KYC 系统后台获取，用于 HMAC 签名 | `your_api_secret_here` |
 | 单次认证费用 | - | 每次认证费用（元） | `0`（不扣费）或 `2.00` |
@@ -169,7 +169,7 @@ $sign = hash_hmac('sha256', $body, $this->apiSecret); // 小写十六进制
 ### 1. 创建认证订单
 
 ```
-POST /api/v1/kyc/start
+POST /api/kyc/start
 
 {
     "biz_no":         "12938475602193847560",   // 业务订单号（唯一）
@@ -199,7 +199,7 @@ POST /api/v1/kyc/start
 ### 2. 查询认证结果
 
 ```
-POST /api/v1/kyc/result
+POST /api/kyc/result
 
 {
     "platform_biz_no": "46382671905182934716"
@@ -226,7 +226,7 @@ POST /api/v1/kyc/result
 ### 3. 查询用户余额
 
 ```
-POST /api/v1/kyc/balance/query
+POST /api/kyc/balance/query
 
 {
     "code": 0,
@@ -255,7 +255,7 @@ POST /api/v1/kyc/balance/query
 
 ### Q3: API 连接失败 / 鉴权失败？
 
-- 检查 API 地址是否正确（包含 `/api/v1`）
+- 检查 API 地址是否正确（包含 `/api`）
 - 检查 API Key / Secret 是否正确
 - 确认 KYC 系统后台已完成实名认证并生成 API 密钥
 - 确认服务器可以访问 KYC 系统、时间戳与服务器时间同步（±5 分钟内）

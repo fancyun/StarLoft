@@ -85,10 +85,14 @@ const product = computed(() => productByKey(String(route.meta.product)))
   background: linear-gradient(135deg, #0052D9 0%, #006EFF 60%, #3A8DFF 100%);
   color: #fff;
   padding: 72px 0;
+  display: flex;
+  align-items: center;
+  min-height: 440px;
 }
 
 .hero-inner {
   max-width: 860px;
+  margin: 0 auto;
   text-align: center;
 }
 

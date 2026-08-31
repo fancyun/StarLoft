@@ -50,7 +50,7 @@ zjmf_mfcw/
 
 | 配置项 | 必填 | 说明 | 示例 |
 |--------|------|------|------|
-| API地址 | ✅ | KYC系统的API地址 | `https://www.starloft.cn/api/v1` |
+| API地址 | ✅ | KYC系统的API地址 | `https://www.starloft.cn/api` |
 | API Key | ✅ | 在KYC系统后台获取 | `your_api_key_here` |
 | API Secret | ✅ | 在KYC系统后台获取，用于HMAC签名 | `your_api_secret_here` |
 | 单次认证费用 | - | 每次认证费用（元） | `0`（不扣费）或 `2.00` |
@@ -123,7 +123,7 @@ $sign = hash_hmac('sha256', $body, $this->apiSecret); // 小写十六进制
 ### 1. 创建认证订单
 
 ```
-POST /api/v1/kyc/start
+POST /api/kyc/start
 
 请求头:
 Content-Type: application/json
@@ -158,7 +158,7 @@ X-Timestamp: <unix_timestamp>
 ### 2. 查询认证结果
 
 ```
-POST /api/v1/kyc/result
+POST /api/kyc/result
 
 请求头:
 Content-Type: application/json
@@ -190,7 +190,7 @@ X-Timestamp: <unix_timestamp>
 ### 3. 查询用户余额
 
 ```
-POST /api/v1/kyc/balance/query
+POST /api/kyc/balance/query
 
 请求头:
 Content-Type: application/json
@@ -227,7 +227,7 @@ BODY='{}'
 SIGN=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "your_api_secret" | awk '{print $2}')
 TS=$(date +%s)
 
-curl -X POST "https://www.starloft.cn/api/v1/kyc/balance/query" \
+curl -X POST "https://www.starloft.cn/api/kyc/balance/query" \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: your_api_key" \
   -H "X-Sign: $SIGN" \

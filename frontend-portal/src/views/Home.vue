@@ -3,14 +3,14 @@
     <!-- Hero 区 -->
     <section class="hero">
       <div class="container hero-inner">
-        <h1 class="hero-title">一站式云服务与实名认证平台</h1>
+        <h1 class="hero-title">一站式云服务平台</h1>
         <p class="hero-sub">
-          为企业提供安全可信的实名认证、弹性云服务器、短信等云产品能力，
+          为企业提供弹性云服务器、实名认证、短信等安全可信的云产品能力，
           简单接入、稳定可靠、按需付费。
         </p>
         <div class="hero-actions">
           <a class="btn-primary" href="https://console.starloft.cn/register">免费注册</a>
-          <router-link class="btn-ghost" to="/kyc">了解实名认证</router-link>
+          <router-link class="btn-ghost" to="/docs">了解产品服务</router-link>
         </div>
       </div>
     </section>
@@ -64,7 +64,7 @@
     <section class="cta">
       <div class="container cta-inner">
         <h2>立即开始使用星楼云</h2>
-        <p>注册账号，开通实名认证服务，几分钟内完成对接</p>
+        <p>注册账号，开通云服务，几分钟内完成对接</p>
         <a class="btn-primary" href="https://console.starloft.cn/register">立即注册</a>
       </div>
     </section>
@@ -107,11 +107,15 @@ const advantages = [
 .hero {
   background: linear-gradient(135deg, #0052D9 0%, #006EFF 60%, #3A8DFF 100%);
   color: #fff;
-  padding: 88px 0;
+  padding: 72px 0;
+  display: flex;
+  align-items: center;
+  min-height: 440px;
 }
 
 .hero-inner {
   max-width: 900px;
+  margin: 0 auto;
   text-align: center;
 }
 

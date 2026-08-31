@@ -22,7 +22,7 @@
 点击 `配置`，填写以下信息：
 
 ```
-API地址: https://www.starloft.cn/api/v1
+API地址: https://www.starloft.cn/api
 API Key: your_api_key_here
 API Secret: your_api_secret_here
 ```
@@ -81,7 +81,7 @@ API Secret: your_api_secret_here
 ### API 连接失败
 
 **检查清单：**
-- ✅ API 地址正确（包含 `/api/v1`）
+- ✅ API 地址正确（包含 `/api`）
 - ✅ API Key 和 Secret 正确
 - ✅ KYC 系统运行正常
 - ✅ 服务器可访问 KYC 系统
@@ -89,7 +89,7 @@ API Secret: your_api_secret_here
 
 **测试方法：**
 ```bash
-curl -I https://www.starloft.cn/api/v1/
+curl -I https://www.starloft.cn/api/
 ```
 
 ### 认证一直显示"认证中"

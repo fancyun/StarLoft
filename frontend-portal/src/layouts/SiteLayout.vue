@@ -35,7 +35,7 @@
               <span class="brand-logo">SL</span>
               <span>星楼云</span>
             </div>
-            <p class="footer-desc">一站式云服务与实名认证平台，为企业提供安全、稳定、易用的云产品能力。</p>
+            <p class="footer-desc">一站式云服务平台，为企业提供安全、稳定、易用的云产品能力。</p>
           </div>
           <div class="footer-col">
             <div class="footer-title">产品服务</div>

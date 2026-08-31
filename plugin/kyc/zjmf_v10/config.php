@@ -27,8 +27,8 @@ return [
     'api_url' => [
         'title' => 'API地址',
         'type'  => 'text',
-        'value' => 'https://www.starloft.cn/api/v1',
-        'tip'   => 'StarLoft KYC系统的API地址，例如：https://www.starloft.cn/api/v1',
+        'value' => 'https://www.starloft.cn/api',
+        'tip'   => 'StarLoft KYC系统的API地址，例如：https://www.starloft.cn/api',
     ],
 
     'api_key' => [
