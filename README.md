@@ -1,6 +1,6 @@
 # StarLoft 星楼云 · 云服务与实名认证平台
 
-[![Version](https://img.shields.io/badge/version-1.11.0-blue.svg)](https://github.com/starloft/kyc)
+[![Version](https://img.shields.io/badge/version-1.11.1-blue.svg)](https://github.com/starloft/kyc)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.20+-00ADD8.svg)](https://golang.org/)
 [![Docker](https://img.shields.io/badge/docker-20.10+-2496ED.svg)](https://www.docker.com/)
@@ -47,8 +47,9 @@ git clone https://github.com/starloft/kyc.git
 cd kyc
 
 # 2. 导入数据库初始化脚本（云数据库 MySQL 8.0+，分库架构）
-# 脚本创建 4 个库（starloft_sys 系统库 / starloft_kyc 实名认证库 / starloft_cs、starloft_sms 预留产品库）与全部表结构，
-# 并插入初始化数据（默认管理员、系统配置、资源包套餐）；重复执行安全（库表使用 IF NOT EXISTS）。
+# 脚本会先删除旧库再创建 4 个库（starloft_sys 系统库 / starloft_kyc 实名认证库 / starloft_cs、starloft_sms 预留产品库）与全部表结构，
+# 并插入初始化数据（默认管理员、系统配置、资源包套餐）。
+# 注意：脚本会 DROP DATABASE 永久删除旧库数据，仅限确认无存量数据需要保留时执行！
 # 连接账号需拥有上述 4 个库的读写权限。
 mysql -h <DB_HOST> -u <DB_USER> -p < init.sql
 

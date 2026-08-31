@@ -8,23 +8,23 @@
 --   starloft_sms  短信服务产品库（预留，暂不建表）
 --
 -- 使用方式：
---   1. 本脚本包含完整的建库、建表与初始化数据，可直接在 MySQL 中执行（重复执行安全，库表使用 IF NOT EXISTS）
---   2. 如需彻底重建：先执行下方 DROP 语句删除旧库，再执行本脚本
+--   1. 本脚本会先删除旧库再创建新库与全部表结构，并插入初始化数据，直接执行即可彻底重建
+--   2. 脚本包含完整的建库、建表与初始化数据（删除旧库后重建，避免旧表/旧字段残留）
 --   3. 数据库账号需拥有上述 4 个库的读写权限（在云数据库控制台创建库并授权）
---   4. 后端启动时的 GORM AutoMigrate 会自动同步表结构，两者不冲突
+--   4. 后端启动时的 GORM AutoMigrate 会自动同步表结构（只增不减），两者不冲突
 --
--- 注意：DROP DATABASE 会永久删除数据，仅限确认无存量数据需要保留时使用！
+-- 注意：本脚本会 DROP DATABASE 永久删除旧库数据！仅限确认无存量数据需要保留时执行！
 -- ============================================================
 
 SET NAMES utf8mb4;
 
 -- ------------------------------------------------------------
--- 0. （可选）删除旧库以彻底重建 —— 确认无数据需要保留后再执行
+-- 0. 删除旧库以彻底重建（避免旧表/旧字段残留，AutoMigrate 只增不减无法清理）
 -- ------------------------------------------------------------
--- DROP DATABASE IF EXISTS `starloft_sys`;
--- DROP DATABASE IF EXISTS `starloft_kyc`;
--- DROP DATABASE IF EXISTS `starloft_cs`;
--- DROP DATABASE IF EXISTS `starloft_sms`;
+DROP DATABASE IF EXISTS `starloft_sys`;
+DROP DATABASE IF EXISTS `starloft_kyc`;
+DROP DATABASE IF EXISTS `starloft_cs`;
+DROP DATABASE IF EXISTS `starloft_sms`;
 
 -- ------------------------------------------------------------
 -- 1. 创建数据库
