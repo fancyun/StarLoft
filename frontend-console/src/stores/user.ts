@@ -7,10 +7,6 @@ export const useUserStore = defineStore('user', () => {
   const userInfo = ref<any>(null)
   const isKYCVerified = ref(false)
 
-  // 管理员端
-  const adminToken = ref(localStorage.getItem('admin_token') || '')
-  const adminInfo = ref<any>(null)
-
   const setToken = (newToken: string) => {
     token.value = newToken
     localStorage.setItem('token', newToken)
@@ -32,34 +28,13 @@ export const useUserStore = defineStore('user', () => {
     logout()
   }
 
-  // 管理员相关
-  const setAdminToken = (newToken: string) => {
-    adminToken.value = newToken
-    localStorage.setItem('admin_token', newToken)
-  }
-
-  const setAdminInfo = (info: any) => {
-    adminInfo.value = info
-  }
-
-  const clearAdminInfo = () => {
-    adminToken.value = ''
-    adminInfo.value = null
-    localStorage.removeItem('admin_token')
-  }
-
   return {
     token,
     userInfo,
     isKYCVerified,
-    adminToken,
-    adminInfo,
     setToken,
     setUserInfo,
     logout,
-    clearAuth,
-    setAdminToken,
-    setAdminInfo,
-    clearAdminInfo
+    clearAuth
   }
 })

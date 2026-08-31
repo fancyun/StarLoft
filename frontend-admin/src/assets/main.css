@@ -232,6 +232,13 @@
   min-height: 100%;
 }
 
+/* 通用统计卡片网格（admin dashboard 用） */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap-lg);
+}
+
 /* 通用工具类 */
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }

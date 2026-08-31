@@ -1,6 +1,6 @@
 # StarLoft 星楼云 · 云服务与实名认证平台
 
-[![Version](https://img.shields.io/badge/version-1.12.0-blue.svg)](https://github.com/starloft/kyc)
+[![Version](https://img.shields.io/badge/version-1.13.0-blue.svg)](https://github.com/starloft/kyc)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.20+-00ADD8.svg)](https://golang.org/)
 [![Docker](https://img.shields.io/badge/docker-20.10+-2496ED.svg)](https://www.docker.com/)
@@ -25,12 +25,14 @@
 
 ```
 www.starloft.cn       门户站点（frontend-portal）：平台首页 / 产品页 / 文档中心
-console.starloft.cn   控制台（frontend-console）：登录注册、产品控制台、管理后台
+console.starloft.cn   控制台（frontend-console）：登录注册、产品控制台
+admin.starloft.cn     管理后台（frontend-admin）：数据统计、用户/订单/资源包/系统配置管理
 └─ /api/ 反向代理      → backend 后端服务（Go + Gin）
 ```
 
 - 门户聚合平台产品入口；每个产品页可通过 URL 访问（实名认证 `/kyc`、云服务器 `/cs`、短信服务 `/sms`）
 - 门户与控制台共用同一账户体系，登录 / 注册 / 实名认证均位于控制台
+- 管理后台为独立应用，通过 `admin.starloft.cn` 访问，管理员登录
 - 旧域名 `kyc.starloft.cn` 端口 80 自动重定向至门户
 
 ---
@@ -57,20 +59,22 @@ mysql -h <DB_HOST> -u <DB_USER> -p < init.sql
 cp .env.example .env
 nano .env  # 填写数据库/Redis/密钥/上游认证等配置
 
-# 4. 放置证书（两个站点各一份）
+# 4. 放置证书（三个站点各一份）
 # 将 www.starloft.cn 的证书私钥与完整证书链分别命名为 privkey.pem、fullchain.pem 放入 ./certs/www.starloft.cn/
 # 将 console.starloft.cn 的证书放入 ./certs/console.starloft.cn/
+# 将 admin.starloft.cn 的证书放入 ./certs/admin.starloft.cn/
 # 证书由证书服务商（如腾讯云）签发后手动放入，可开启服务商自动续费，到期后替换对应子目录文件并重启前端加载
-mkdir -p certs/www.starloft.cn certs/console.starloft.cn
+mkdir -p certs/www.starloft.cn certs/console.starloft.cn certs/admin.starloft.cn
 
-# 5. 启动服务（前端镜像一次构建门户与控制台两个应用）
+# 5. 启动服务（前端镜像一次构建门户、控制台与管理后台三个应用）
 docker compose up -d
 
 # 6. 访问系统
-# 门户:  https://www.starloft.cn
-# 控制台: https://console.starloft.cn
-# API:   https://www.starloft.cn/api
-# 文档:  https://www.starloft.cn/docs
+# 门户:     https://www.starloft.cn
+# 控制台:   https://console.starloft.cn
+# 管理后台: https://admin.starloft.cn
+# API:      https://www.starloft.cn/api
+# 文档:     https://www.starloft.cn/docs
 ```
 
 ### 新增一个云产品
@@ -98,7 +102,7 @@ docker compose up -d
 后端: Go 1.20+ + Gin框架
 数据库: MySQL 8.0（云服务）
 缓存: Redis 7.0
-前端: Vue 3 + Vite（门户 frontend-portal / 控制台 frontend）
+前端: Vue 3 + Vite（门户 frontend-portal / 控制台 frontend-console / 管理后台 frontend-admin）
 部署: Docker + Docker Compose + Nginx（TLS终止，多站点分发）
 认证: FinAuth H5 Plus（三要素实名认证，HMAC-SHA256 签名）
 短信/验证码: 腾讯云 SMS + 腾讯云天御验证码
@@ -126,9 +130,15 @@ StarLoftKYC/
 │       └── upstream/      # 上游FinAuth/支付宝/微信支付客户端
 ├── frontend-console/     # 控制台前端（console.starloft.cn）
 │   └── src/
-│       ├── views/         # 页面（user用户端 / admin管理端）
+│       ├── views/         # 页面（user用户端）
 │       ├── layouts/       # 布局
 │       └── api/           # 接口封装
+├── frontend-admin/        # 管理后台前端（admin.starloft.cn）
+│   └── src/
+│       ├── views/admin/   # 页面（数据统计 / 用户 / 订单 / 资源包 / 系统配置）
+│       ├── layouts/       # 管理后台布局
+│       ├── stores/        # 管理员状态（admin_token）
+│       └── api/           # 管理后台接口（/admin/*）
 ├── frontend-portal/       # 门户前端（www.starloft.cn）
 │   └── src/
 │       ├── config/        # 产品目录配置（products.ts）
@@ -156,7 +166,7 @@ StarLoftKYC/
 - ✅ 余额查询、消费记录
 - ✅ API 密钥管理（Key 注册后自动生成，Secret 实名认证后下发）
 
-### 管理后台
+### 管理后台（admin.starloft.cn）
 - ✅ 数据统计 Dashboard
 - ✅ 用户管理（搜索/详情/状态管理）
 - ✅ 认证订单管理（订单详情/失败原因）
@@ -198,6 +208,6 @@ StarLoftKYC/
 
 ---
 
-**版本**: v1.10.0  
+**版本**: v1.13.0  
 **更新日期**: 2026-08-31  
 **开发团队**: StarLoft Tech Team

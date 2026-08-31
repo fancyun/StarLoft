@@ -3,7 +3,7 @@
     <!-- 顶部 Header（一级，全宽置顶，与用户端一致） -->
     <header class="layout-header">
       <div class="header-left">
-        <router-link to="/admin/dashboard" class="header-title">
+        <router-link to="/dashboard" class="header-title">
           <span class="brand-logo">SL</span>
           <span>管理后台</span>
         </router-link>
@@ -30,9 +30,9 @@
       <aside class="layout-sidebar">
         <nav class="sidebar-nav">
           <router-link
-            to="/admin/dashboard"
+            to="/dashboard"
             class="sidebar-item"
-            :class="{ active: $route.path === '/admin/dashboard' }"
+            :class="{ active: $route.path === '/dashboard' }"
           >
             <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="20" x2="18" y2="10"/>
@@ -42,9 +42,9 @@
             <span>数据统计</span>
           </router-link>
           <router-link
-            to="/admin/users"
+            to="/users"
             class="sidebar-item"
-            :class="{ active: $route.path === '/admin/users' }"
+            :class="{ active: $route.path === '/users' }"
           >
             <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -53,9 +53,9 @@
             <span>用户管理</span>
           </router-link>
           <router-link
-            to="/admin/orders"
+            to="/orders"
             class="sidebar-item"
-            :class="{ active: $route.path === '/admin/orders' }"
+            :class="{ active: $route.path === '/orders' }"
           >
             <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -66,9 +66,9 @@
             <span>订单管理</span>
           </router-link>
           <router-link
-            to="/admin/packs"
+            to="/packs"
             class="sidebar-item"
-            :class="{ active: $route.path === '/admin/packs' }"
+            :class="{ active: $route.path === '/packs' }"
           >
             <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -78,9 +78,9 @@
             <span>资源包管理</span>
           </router-link>
           <router-link
-            to="/admin/config"
+            to="/config"
             class="sidebar-item"
-            :class="{ active: $route.path === '/admin/config' }"
+            :class="{ active: $route.path === '/config' }"
           >
             <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
@@ -145,13 +145,13 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { UserFilled, ArrowDown } from '@element-plus/icons-vue'
-import { useUserStore } from '@/stores/user'
+import { useAdminStore } from '@/stores/admin'
 import { adminAPI } from '@/api'
 
 const router = useRouter()
-const userStore = useUserStore()
+const adminStore = useAdminStore()
 
-const adminName = computed(() => userStore.adminInfo?.username || '管理员')
+const adminName = computed(() => adminStore.adminInfo?.username || '管理员')
 
 // ===== 修改密码 =====
 const passwordDialogVisible = ref(false)
@@ -216,9 +216,9 @@ const handleCommand = (command: string) => {
     passwordFormRef.value?.clearValidate()
     passwordDialogVisible.value = true
   } else if (command === 'logout') {
-    userStore.clearAdminInfo()
+    adminStore.clearAdminInfo()
     ElMessage.success('已退出登录')
-    router.push('/admin/login')
+    router.push('/login')
   }
 }
 </script>

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { useUserStore } from '@/stores/user'
+import { useAdminStore } from '@/stores/admin'
 
 const request = axios.create({
   baseURL: '/api/v1',
@@ -10,10 +10,10 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
-    const userStore = useUserStore()
-    // 普通用户接口使用 token
-    if (userStore.token) {
-      config.headers.Authorization = `Bearer ${userStore.token}`
+    const adminStore = useAdminStore()
+    // 管理员接口使用 adminToken
+    if (adminStore.adminToken) {
+      config.headers.Authorization = `Bearer ${adminStore.adminToken}`
     }
     return config
   },
@@ -38,8 +38,8 @@ request.interceptors.response.use(
     // HTTP 错误（网络错误、服务器错误等）
     const backendMsg = error.response?.data?.message
     if (error.response?.status === 401) {
-      const userStore = useUserStore()
-      userStore.logout()
+      const adminStore = useAdminStore()
+      adminStore.clearAdminInfo()
       window.location.href = '/login'
       ElMessage.error(backendMsg || '登录已过期，请重新登录')
     } else {

@@ -6,13 +6,13 @@ FROM node:20-alpine AS console-builder
 WORKDIR /app/console
 
 # 复制 package 文件
-COPY frontend/package*.json ./
+COPY frontend-console/package*.json ./
 
 # 安装依赖
 RUN npm install --prefer-offline --no-audit
 
 # 复制源代码
-COPY frontend/ .
+COPY frontend-console/ .
 
 # 构建生产版本（增加Node.js内存限制到4GB）
 ENV NODE_OPTIONS="--max-old-space-size=4096"
@@ -39,8 +39,28 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # ========================
-# Stage 3: Runtime (Nginx) 多站点
-# 同一容器通过不同 server 块分发 www.starloft.cn（门户）与 console.starloft.cn（控制台）
+# Stage 3: 构建管理后台前端（admin.starloft.cn）
+# ========================
+FROM node:20-alpine AS admin-builder
+
+WORKDIR /app/admin
+
+# 复制 package 文件
+COPY frontend-admin/package*.json ./
+
+# 安装依赖
+RUN npm install --prefer-offline --no-audit
+
+# 复制源代码
+COPY frontend-admin/ .
+
+# 构建生产版本（增加Node.js内存限制到4GB）
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN npm run build
+
+# ========================
+# Stage 4: Runtime (Nginx) 多站点
+# 同一容器通过不同 server 块分发 www.starloft.cn（门户）与 console.starloft.cn（控制台）与 admin.starloft.cn（管理后台）
 # ========================
 FROM nginx:alpine
 
@@ -163,11 +183,59 @@ server {
         add_header Cache-Control "public, immutable";
     }
 }
+
+# 管理后台站点 admin.starloft.cn
+server {
+    listen 443 ssl;
+    server_name admin.starloft.cn;
+    root /usr/share/nginx/html/admin;
+    index index.html;
+
+    # SSL 证书（挂载自宿主机 ./certs/admin.starloft.cn 目录）
+    ssl_certificate     /etc/nginx/certs/admin.starloft.cn/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/admin.starloft.cn/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Gzip压缩
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+
+    # 安全头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # SPA路由支持
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API代理（管理后台与后端同域访问）
+    location /api/ {
+        proxy_pass http://backend:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 静态资源缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
 EOF
 
 # 从builder复制构建产物
 COPY --from=console-builder /app/console/dist /usr/share/nginx/html/console
 COPY --from=portal-builder /app/portal/dist /usr/share/nginx/html/www
+COPY --from=admin-builder /app/admin/dist /usr/share/nginx/html/admin
 
 # 暴露端口
 EXPOSE 80

@@ -36,8 +36,8 @@
         </el-form-item>
       </el-form>
       <div class="footer-tip">
-        <span>非管理员请返回</span>
-        <router-link to="/login">用户登录</router-link>
+        <span>非管理员请前往</span>
+        <a href="https://console.starloft.cn" target="_blank" rel="noopener">用户控制台</a>
       </div>
     </div>
   </div>
@@ -48,10 +48,10 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminAPI } from '@/api'
-import { useUserStore } from '@/stores/user'
+import { useAdminStore } from '@/stores/admin'
 
 const router = useRouter()
-const userStore = useUserStore()
+const adminStore = useAdminStore()
 const loginFormRef = ref()
 const loading = ref(false)
 
@@ -80,15 +80,15 @@ const handleLogin = async () => {
     const res: any = await adminAPI.login(loginForm)
     
     // 保存token和管理员信息
-    userStore.setAdminToken(res.token)
-    userStore.setAdminInfo({
+    adminStore.setAdminToken(res.token)
+    adminStore.setAdminInfo({
       admin_id: res.admin_id,
       username: res.username,
       nickname: res.nickname
     })
     
     ElMessage.success('登录成功')
-    router.push('/admin/dashboard')
+    router.push('/dashboard')
   } catch (err: any) {
     ElMessage.error(err.response?.data?.message || err.message || '登录失败')
   } finally {

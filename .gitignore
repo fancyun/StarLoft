@@ -9,6 +9,8 @@
 coverage.out
 
 # 前端构建产物
+/frontend-admin/dist
+/frontend-admin/node_modules
 /frontend-console/dist
 /frontend-console/node_modules
 /frontend-portal/dist
