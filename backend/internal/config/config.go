@@ -91,7 +91,6 @@ type AlipayConfig struct {
 	AppID      string // 应用AppID
 	PrivateKey string // 应用私钥（RSA2，PEM）
 	PublicKey  string // 支付宝公钥（PEM，用于回调验签）
-	Gateway    string // 支付宝网关
 }
 
 // WeChatPayConfig 微信支付（APIv3 Native支付）配置
@@ -239,9 +238,6 @@ func loadFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("ALIPAY_PUBLIC_KEY"); v != "" {
 		cfg.Alipay.PublicKey = normalizePEM(v)
-	}
-	if v := os.Getenv("ALIPAY_GATEWAY"); v != "" {
-		cfg.Alipay.Gateway = v
 	}
 
 	// 微信支付配置

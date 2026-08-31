@@ -47,7 +47,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		cfg.Alipay.AppID,
 		cfg.Alipay.PrivateKey,
 		cfg.Alipay.PublicKey,
-		cfg.Alipay.Gateway,
 	)
 	if err != nil {
 		panic("初始化支付宝支付客户端失败: " + err.Error())

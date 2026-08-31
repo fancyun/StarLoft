@@ -23,21 +23,15 @@ const (
 	alipayReturnURL      = "https://kyc.starloft.cn/user/balance"           // 同步跳转地址（写死，与前端路由绑定）
 )
 
-// isConfiguredValue 判断配置值是否已实际填写（为空或 .env.example 占位符视为未配置）
-func isConfiguredValue(v string) bool {
-	return v != "" && !strings.HasPrefix(v, "your_")
-}
-
 // AlipayClient 支付宝开放平台支付客户端（电脑网站支付 alipay.trade.page.pay，RSA2 签名）
 type AlipayClient struct {
 	AppID      string
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
-	Gateway    string
 }
 
 // NewAlipayClient 创建支付宝支付客户端；未配置 AppID 时返回 (nil, nil)
-func NewAlipayClient(appID, privateKeyPEM, publicKeyPEM, gateway string) (*AlipayClient, error) {
+func NewAlipayClient(appID, privateKeyPEM, publicKeyPEM string) (*AlipayClient, error) {
 	if appID == "" {
 		return nil, nil
 	}
@@ -49,14 +43,10 @@ func NewAlipayClient(appID, privateKeyPEM, publicKeyPEM, gateway string) (*Alipa
 	if err != nil {
 		return nil, fmt.Errorf("解析支付宝公钥失败: %w", err)
 	}
-	if gateway == "" {
-		gateway = alipayDefaultGateway
-	}
 	return &AlipayClient{
 		AppID:      appID,
 		PrivateKey: priv,
 		PublicKey:  pub,
-		Gateway:    gateway,
 	}, nil
 }
 
@@ -96,7 +86,7 @@ func (c *AlipayClient) BuildPagePayURL(outTradeNo string, amount float64) (strin
 	}
 	values.Set("sign", sign)
 
-	return c.Gateway + "?" + values.Encode(), nil
+	return alipayDefaultGateway + "?" + values.Encode(), nil
 }
 
 // Sign 对参数按 key 升序拼接 key=value（以 & 连接），使用应用私钥做 RSA2 签名
