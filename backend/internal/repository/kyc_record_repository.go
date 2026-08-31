@@ -17,7 +17,7 @@ func NewKycRecordRepository(db *sql.DB) *KycRecordRepository {
 
 // Create 创建实名认证记录
 func (r *KycRecordRepository) Create(record *model.KycRecord) error {
-	query := `INSERT INTO kyc_record 
+	query := `INSERT INTO ` + model.SysDB + `.kyc_record 
 		(user_id, auth_order_id, name, id_card, status, result_code, 
 		result_message, result_data, verified_at, created_at, updated_at) 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -51,7 +51,7 @@ func (r *KycRecordRepository) Create(record *model.KycRecord) error {
 func (r *KycRecordRepository) GetLatestByUserID(userID int64) (*model.KycRecord, error) {
 	query := `SELECT id, user_id, auth_order_id, name, id_card, status, 
 		result_code, result_message, result_data, verified_at, created_at, updated_at 
-		FROM kyc_record WHERE user_id = ? 
+		FROM ` + model.SysDB + `.kyc_record WHERE user_id = ? 
 		ORDER BY created_at DESC LIMIT 1`
 
 	record := &model.KycRecord{}
@@ -80,7 +80,7 @@ func (r *KycRecordRepository) GetLatestByUserID(userID int64) (*model.KycRecord,
 
 // UpdateResult 更新认证结果
 func (r *KycRecordRepository) UpdateResult(id int64, status int, resultCode, resultMessage, resultData string, verifiedAt *time.Time) error {
-	query := `UPDATE kyc_record 
+	query := `UPDATE ` + model.SysDB + `.kyc_record 
 			SET status = ?, result_code = ?, result_message = ?, result_data = ?, 
 			verified_at = ?, updated_at = ? 
 			WHERE id = ?`
@@ -90,7 +90,7 @@ func (r *KycRecordRepository) UpdateResult(id int64, status int, resultCode, res
 
 // Cancel 取消认证记录（将状态设为 3-认证失败/取消）
 func (r *KycRecordRepository) Cancel(id int64) error {
-	query := `UPDATE kyc_record SET status = 3, result_message = '用户取消认证', updated_at = ? WHERE id = ?`
+	query := `UPDATE ` + model.SysDB + `.kyc_record SET status = 3, result_message = '用户取消认证', updated_at = ? WHERE id = ?`
 	_, err := r.db.Exec(query, time.Now(), id)
 	return err
 }

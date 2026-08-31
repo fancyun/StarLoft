@@ -36,12 +36,13 @@ services:
       SERVER_PORT: 8080
       GIN_MODE: ${GIN_MODE:-release}
       
-      # 云数据库配置
+      # 云数据库配置（分库：系统库 + 实名认证产品库）
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME:-kyc_platform}
+      DB_NAME: ${DB_NAME:-starloft_sys}
+      KYC_DB_NAME: ${KYC_DB_NAME:-starloft_kyc}
       DB_MAX_IDLE_CONNS: ${DB_MAX_IDLE_CONNS:-50}
       DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS:-200}
       

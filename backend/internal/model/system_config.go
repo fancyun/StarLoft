@@ -3,6 +3,8 @@ package model
 import "time"
 
 // SystemConfig 系统配置（键值对，值以 JSON 文本存储）
+func (SystemConfig) TableName() string { return SysDB + ".system_config" }
+
 type SystemConfig struct {
 	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	ConfigKey   string    `json:"config_key" gorm:"size:50;not null;uniqueIndex"` // 配置键

@@ -3,6 +3,8 @@ package model
 import "time"
 
 // ResourcePack 平台资源包定义
+func (ResourcePack) TableName() string { return KycDB + ".resource_pack" }
+
 type ResourcePack struct {
 	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name        string    `json:"name" gorm:"size:100;not null"` // 资源包名称
@@ -16,6 +18,8 @@ type ResourcePack struct {
 }
 
 // UserResourcePack 用户已购资源包
+func (UserResourcePack) TableName() string { return KycDB + ".user_resource_pack" }
+
 type UserResourcePack struct {
 	ID             int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID         int64     `json:"user_id" gorm:"not null;index;index:idx_user_status,priority:1"`

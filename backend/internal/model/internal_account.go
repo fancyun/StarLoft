@@ -3,6 +3,8 @@ package model
 import "time"
 
 // InternalAccount 内部账号（本司其他系统专用，无需实名与计费，不可在用户端登录）
+func (InternalAccount) TableName() string { return SysDB + ".internal_account" }
+
 type InternalAccount struct {
 	ID        int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name      string    `json:"name" gorm:"size:64;not null;uniqueIndex"` // 账号名称（标识本司系统，唯一）

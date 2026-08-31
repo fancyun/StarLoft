@@ -18,7 +18,15 @@ import (
 var DB *sql.DB
 
 func Init(cfg config.DatabaseConfig) error {
-	// 构建DSN，添加TLS支持
+	// 注入分库库名（连接默认库为系统库，产品库通过全限定表名跨库访问，同一实例事务可跨库）
+	if cfg.DBName != "" {
+		model.SysDB = cfg.DBName
+	}
+	if cfg.KycDBName != "" {
+		model.KycDB = cfg.KycDBName
+	}
+
+	// 构建DSN（连接系统库），添加TLS支持
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=preferred",
 		cfg.User,
 		cfg.Password,
@@ -63,16 +71,20 @@ func autoMigrate() error {
 		return err
 	}
 	return gormDB.AutoMigrate(
+		// 系统库（starloft_sys）：用户/管理员/内部账号/实名记录/余额流水/充值订单/系统配置/登录日志
 		&model.PlatformUser{},
 		&model.AdminUser{},
-		&model.AuthOrder{},
+		&model.InternalAccount{},
+		&model.KycRecord{},
 		&model.BalanceLog{},
 		&model.PaymentOrder{},
 		&model.SystemConfig{},
-		&model.KycRecord{},
+		&model.UserLoginLog{},
+		&model.AdminLoginLog{},
+		// 实名认证产品库（starloft_kyc）：认证订单/资源包
+		&model.AuthOrder{},
 		&model.ResourcePack{},
 		&model.UserResourcePack{},
-		&model.InternalAccount{},
 	)
 }
 

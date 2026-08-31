@@ -29,6 +29,7 @@ type AdminHandler struct {
 	balanceLogRepo      *repository.BalanceLogRepository
 	resourcePackRepo    *repository.ResourcePackRepository
 	internalAccountRepo *repository.InternalAccountRepository
+	loginLogRepo        *repository.LoginLogRepository
 	balanceSvc          *service.BalanceService
 	authSvc             *service.AuthService
 	jwtSecret           string
@@ -43,6 +44,7 @@ func NewAdminHandler(
 	balanceLogRepo *repository.BalanceLogRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
 	internalAccountRepo *repository.InternalAccountRepository,
+	loginLogRepo *repository.LoginLogRepository,
 	balanceSvc *service.BalanceService,
 	authSvc *service.AuthService,
 	jwtSecret string,
@@ -56,6 +58,7 @@ func NewAdminHandler(
 		balanceLogRepo:      balanceLogRepo,
 		resourcePackRepo:    resourcePackRepo,
 		internalAccountRepo: internalAccountRepo,
+		loginLogRepo:        loginLogRepo,
 		balanceSvc:          balanceSvc,
 		authSvc:             authSvc,
 		jwtSecret:           jwtSecret,
@@ -91,6 +94,13 @@ func (h *AdminHandler) AdminLogin(c *gin.Context) {
 	admin, err := h.adminRepo.GetAdminByUsername(req.Username)
 	if err != nil {
 		log.Printf("Admin login failed: username=%s, error=%v", req.Username, err)
+		h.loginLogRepo.InsertAdminLoginLog(&model.AdminLoginLog{
+			Username:   req.Username,
+			IP:         c.ClientIP(),
+			UserAgent:  c.GetHeader("User-Agent"),
+			Status:     0,
+			FailReason: "account not found",
+		})
 		c.JSON(http.StatusOK, gin.H{
 			"code":    401,
 			"message": "invalid username or password",
@@ -102,6 +112,14 @@ func (h *AdminHandler) AdminLogin(c *gin.Context) {
 	err = bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(req.Password))
 	if err != nil {
 		log.Printf("Admin login failed: username=%s, password mismatch", req.Username)
+		h.loginLogRepo.InsertAdminLoginLog(&model.AdminLoginLog{
+			AdminID:    admin.ID,
+			Username:   req.Username,
+			IP:         c.ClientIP(),
+			UserAgent:  c.GetHeader("User-Agent"),
+			Status:     0,
+			FailReason: "password mismatch",
+		})
 		c.JSON(http.StatusOK, gin.H{
 			"code":    401,
 			"message": "invalid username or password",
@@ -111,6 +129,14 @@ func (h *AdminHandler) AdminLogin(c *gin.Context) {
 
 	// 检查账号状态
 	if admin.Status != 1 {
+		h.loginLogRepo.InsertAdminLoginLog(&model.AdminLoginLog{
+			AdminID:    admin.ID,
+			Username:   req.Username,
+			IP:         c.ClientIP(),
+			UserAgent:  c.GetHeader("User-Agent"),
+			Status:     0,
+			FailReason: "account disabled",
+		})
 		c.JSON(http.StatusOK, gin.H{
 			"code":    403,
 			"message": "account disabled",
@@ -123,6 +149,15 @@ func (h *AdminHandler) AdminLogin(c *gin.Context) {
 	if err != nil {
 		log.Printf("Failed to update admin last login time: %v", err)
 	}
+
+	// 记录管理员登录日志（成功）
+	h.loginLogRepo.InsertAdminLoginLog(&model.AdminLoginLog{
+		AdminID:   admin.ID,
+		Username:  req.Username,
+		IP:        c.ClientIP(),
+		UserAgent: c.GetHeader("User-Agent"),
+		Status:    1,
+	})
 
 	// 生成 JWT Token
 	jwtManager := utils.NewJWTManager(h.jwtSecret)

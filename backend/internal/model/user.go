@@ -6,6 +6,8 @@ import (
 )
 
 // PlatformUser 平台用户（使用 Web 前端的用户）
+func (PlatformUser) TableName() string { return SysDB + ".platform_user" }
+
 type PlatformUser struct {
 	ID            int64          `json:"id" gorm:"primaryKey;autoIncrement"`
 	Phone         string         `json:"phone" gorm:"size:20;not null;uniqueIndex"`
@@ -26,6 +28,8 @@ type PlatformUser struct {
 }
 
 // AdminUser 管理员用户
+func (AdminUser) TableName() string { return SysDB + ".admin_user" }
+
 type AdminUser struct {
 	ID           int64      `json:"id" gorm:"primaryKey;autoIncrement"`
 	Username     string     `json:"username" gorm:"size:50;not null;uniqueIndex"`
@@ -38,6 +42,8 @@ type AdminUser struct {
 }
 
 // BalanceLog 余额流水
+func (BalanceLog) TableName() string { return SysDB + ".balance_log" }
+
 type BalanceLog struct {
 	ID            int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID        int64     `json:"user_id" gorm:"not null;index"`
@@ -52,6 +58,8 @@ type BalanceLog struct {
 }
 
 // AuthOrder 认证订单
+func (AuthOrder) TableName() string { return KycDB + ".auth_order" }
+
 type AuthOrder struct {
 	ID            int64      `json:"id" gorm:"primaryKey;autoIncrement"`
 	PlatformBizNo string     `json:"platform_biz_no" gorm:"size:50;not null;uniqueIndex"` // 平台业务流水号
@@ -81,6 +89,8 @@ type AuthOrder struct {
 }
 
 // PaymentOrder 支付订单（充值订单）
+func (PaymentOrder) TableName() string { return SysDB + ".payment_order" }
+
 type PaymentOrder struct {
 	ID             int64      `json:"id" gorm:"primaryKey;autoIncrement"`
 	PayOrderNo     string     `json:"pay_order_no" gorm:"size:50;not null;uniqueIndex"` // 支付流水号

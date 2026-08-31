@@ -34,6 +34,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	kycRecordRepo := repository.NewKycRecordRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
 	internalAccountRepo := repository.NewInternalAccountRepository(db)
+	loginLogRepo := repository.NewLoginLogRepository(db)
 
 	// 初始化上游服务客户端
 	finAuthClient := upstream.NewFinAuthClient(
@@ -123,6 +124,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		captchaService,
 		jwtManager,
 		authService,
+		loginLogRepo,
 	)
 
 	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo, alipayClient, wechatClient)
@@ -135,6 +137,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		balanceLogRepo,
 		resourcePackRepo,
 		internalAccountRepo,
+		loginLogRepo,
 		balanceService,
 		authService,
 		cfg.JWT.AdminSecret,

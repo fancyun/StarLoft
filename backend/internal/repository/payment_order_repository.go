@@ -21,7 +21,7 @@ func NewPaymentOrderRepository(db *sql.DB) *PaymentOrderRepository {
 
 // CreateOrder 创建支付订单
 func (r *PaymentOrderRepository) CreateOrder(order *model.PaymentOrder) error {
-	query := `INSERT INTO payment_order 
+	query := `INSERT INTO ` + model.SysDB + `.payment_order 
 		(pay_order_no, user_id, amount, channel, status, 
 		expire_time, created_at, updated_at, refund_status) 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -54,7 +54,7 @@ func (r *PaymentOrderRepository) GetOrderByPayOrderNo(payOrderNo string) (*model
 	query := `SELECT id, pay_order_no, user_id, amount, 
 		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
 		refund_status, COALESCE(refund_amount, 0), refunded_at 
-		FROM payment_order WHERE pay_order_no = ?`
+		FROM ` + model.SysDB + `.payment_order WHERE pay_order_no = ?`
 
 	order := &model.PaymentOrder{}
 	err := r.db.QueryRow(query, payOrderNo).Scan(
@@ -85,7 +85,7 @@ func (r *PaymentOrderRepository) GetOrderByPayOrderNo(payOrderNo string) (*model
 // MarkOrderPaidIfPending 仅当订单仍为待支付时更新为已支付（幂等）
 // 返回是否发生了状态变更
 func (r *PaymentOrderRepository) MarkOrderPaidIfPending(orderID int64, channelTradeNo string) (bool, error) {
-	query := `UPDATE payment_order 
+	query := `UPDATE ` + model.SysDB + `.payment_order 
 		SET status = 1, channel_trade_no = ?, paid_at = ?, updated_at = ? 
 		WHERE id = ? AND status = 0`
 	result, err := r.db.Exec(query, channelTradeNo, time.Now(), time.Now(), orderID)
@@ -122,7 +122,7 @@ func (r *PaymentOrderRepository) GetAllOrders(page, pageSize int, status *int, u
 	}
 
 	// 查询总数
-	countQuery := "SELECT COUNT(*) FROM payment_order " + whereClause
+	countQuery := "SELECT COUNT(*) FROM ` + model.SysDB + `.payment_order " + whereClause
 	var total int64
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
@@ -133,7 +133,7 @@ func (r *PaymentOrderRepository) GetAllOrders(page, pageSize int, status *int, u
 	query := `SELECT id, pay_order_no, user_id, amount, 
 		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
 		refund_status, COALESCE(refund_amount, 0), refunded_at 
-		FROM payment_order ` + whereClause + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+		FROM ` + model.SysDB + `.payment_order ` + whereClause + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
 	args = append(args, pageSize, offset)
 	rows, err := r.db.Query(query, args...)

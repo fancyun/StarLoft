@@ -42,7 +42,8 @@ type DatabaseConfig struct {
 	Port         int
 	User         string
 	Password     string
-	DBName       string
+	DBName       string // 系统库名（连接默认库）
+	KycDBName    string // 实名认证产品库名（跨库访问）
 	MaxIdleConns int
 	MaxOpenConns int
 }
@@ -144,6 +145,9 @@ func loadFromEnv(cfg *Config) {
 	}
 	if dbname := os.Getenv("DB_NAME"); dbname != "" {
 		cfg.Database.DBName = dbname
+	}
+	if kycDB := os.Getenv("KYC_DB_NAME"); kycDB != "" {
+		cfg.Database.KycDBName = kycDB
 	}
 	if maxIdle := os.Getenv("DB_MAX_IDLE_CONNS"); maxIdle != "" {
 		if n, err := strconv.Atoi(maxIdle); err == nil {

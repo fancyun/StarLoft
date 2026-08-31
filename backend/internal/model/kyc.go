@@ -7,6 +7,8 @@ import (
 
 // KycRecord 账户实名认证记录表
 // 记录平台用户每次实名认证的详细信息，包括认证状态、结果等
+func (KycRecord) TableName() string { return SysDB + ".kyc_record" }
+
 type KycRecord struct {
 	ID            int64         `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID        int64         `json:"user_id" gorm:"not null;index"` // 用户ID

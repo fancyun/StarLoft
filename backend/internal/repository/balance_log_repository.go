@@ -17,7 +17,7 @@ func NewBalanceLogRepository(db *sql.DB) *BalanceLogRepository {
 
 // CreateLogTx 在事务中创建余额流水记录
 func (r *BalanceLogRepository) CreateLogTx(tx *sql.Tx, log *model.BalanceLog) error {
-	query := `INSERT INTO balance_log 
+	query := `INSERT INTO ` + model.SysDB + `.balance_log 
 		(user_id, order_id, type, amount, balance_before, balance_after, bank_serial_no, remark, created_at) 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
@@ -47,7 +47,7 @@ func (r *BalanceLogRepository) CreateLogTx(tx *sql.Tx, log *model.BalanceLog) er
 // GetUserBalanceLogs 查询用户余额流水（分页）
 func (r *BalanceLogRepository) GetUserBalanceLogs(userID int64, page, pageSize int) ([]*model.BalanceLog, int64, error) {
 	// 查询总数
-	countQuery := `SELECT COUNT(*) FROM balance_log WHERE user_id = ?`
+	countQuery := `SELECT COUNT(*) FROM ` + model.SysDB + `.balance_log WHERE user_id = ?`
 	var total int64
 	err := r.db.QueryRow(countQuery, userID).Scan(&total)
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *BalanceLogRepository) GetUserBalanceLogs(userID int64, page, pageSize i
 	// 查询流水列表
 	offset := (page - 1) * pageSize
 	query := `SELECT id, user_id, order_id, type, amount, balance_before, balance_after, COALESCE(bank_serial_no, ''), remark, created_at 
-		FROM balance_log WHERE user_id = ? 
+		FROM ` + model.SysDB + `.balance_log WHERE user_id = ? 
 		ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
 	rows, err := r.db.Query(query, userID, pageSize, offset)
@@ -97,7 +97,7 @@ func (r *BalanceLogRepository) GetUserFinanceStats(userID int64) (map[string]int
 			COALESCE(SUM(CASE WHEN type = 1 THEN amount ELSE 0 END), 0) as total_recharge,
 			COALESCE(SUM(CASE WHEN type = 2 THEN amount ELSE 0 END), 0) as total_consume,
 			COALESCE(SUM(CASE WHEN type = 3 THEN amount ELSE 0 END), 0) as total_refund
-		FROM balance_log 
+		FROM ` + model.SysDB + `.balance_log 
 		WHERE user_id = ?`
 
 	var totalRecharge, totalConsume, totalRefund float64

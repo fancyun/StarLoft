@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"starloftrpa/internal/model"
+	"starloftrpa/internal/repository"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/utils"
 )
@@ -20,6 +22,7 @@ type UserHandler struct {
 	captchaService *service.CaptchaService
 	jwtManager     *utils.JWTManager
 	authService    *service.AuthService
+	loginLogRepo   *repository.LoginLogRepository
 }
 
 func NewUserHandler(
@@ -29,6 +32,7 @@ func NewUserHandler(
 	captchaService *service.CaptchaService,
 	jwtManager *utils.JWTManager,
 	authService *service.AuthService,
+	loginLogRepo *repository.LoginLogRepository,
 ) *UserHandler {
 	return &UserHandler{
 		userService:    userService,
@@ -37,6 +41,7 @@ func NewUserHandler(
 		captchaService: captchaService,
 		jwtManager:     jwtManager,
 		authService:    authService,
+		loginLogRepo:   loginLogRepo,
 	}
 }
 
@@ -358,24 +363,22 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	// 根据登录方式验证（login_type 已在上方校验，仅 password/sms_code 两种）
 	var user *model.PlatformUser
+	var loginErr error
 	switch req.LoginType {
 	case "password":
-		user, err = h.userService.Login(req.Account, req.Password)
+		user, loginErr = h.userService.Login(req.Account, req.Password)
 	case "sms_code":
 		// 验证短信验证码
 		valid, verr := h.smsService.VerifyCode(req.Account, req.SMSCode)
 		if verr != nil || !valid {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    401,
-				"message": "短信验证码错误或已过期",
-			})
-			return
-		}
-		user, err = h.userService.GetUserByPhone(req.Account)
-		if err != nil {
-			err = service.ErrInvalidPassword
-		} else if user.Status == 0 {
-			err = service.ErrUserDisabled
+			loginErr = errors.New("短信验证码错误或已过期")
+		} else {
+			user, loginErr = h.userService.GetUserByPhone(req.Account)
+			if loginErr != nil {
+				loginErr = service.ErrInvalidPassword
+			} else if user.Status == 0 {
+				loginErr = service.ErrUserDisabled
+			}
 		}
 	default:
 		c.JSON(http.StatusOK, gin.H{
@@ -385,13 +388,31 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	if err != nil {
+	// 记录登录日志（成功与失败均记录）
+	if loginErr != nil {
+		h.loginLogRepo.InsertUserLoginLog(&model.UserLoginLog{
+			Account:    req.Account,
+			LoginType:  req.LoginType,
+			IP:         c.ClientIP(),
+			UserAgent:  c.GetHeader("User-Agent"),
+			Status:     0,
+			FailReason: loginErr.Error(),
+		})
 		c.JSON(http.StatusOK, gin.H{
 			"code":    401,
-			"message": err.Error(),
+			"message": loginErr.Error(),
 		})
 		return
 	}
+
+	h.loginLogRepo.InsertUserLoginLog(&model.UserLoginLog{
+		UserID:    user.ID,
+		Account:   req.Account,
+		LoginType: req.LoginType,
+		IP:        c.ClientIP(),
+		UserAgent: c.GetHeader("User-Agent"),
+		Status:    1,
+	})
 
 	// 生成 Token
 	token, err := h.jwtManager.GenerateToken(user.ID, user.Phone, "user", 24*time.Hour)

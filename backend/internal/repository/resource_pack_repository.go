@@ -27,7 +27,7 @@ func NewResourcePackRepository(db *sql.DB) *ResourcePackRepository {
 
 // CreatePack 创建资源包
 func (r *ResourcePackRepository) CreatePack(pack *model.ResourcePack) error {
-	query := `INSERT INTO resource_pack (name, total_count, price, stock, status, description, created_at, updated_at)
+	query := `INSERT INTO ` + model.KycDB + `.resource_pack (name, total_count, price, stock, status, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	result, err := r.db.Exec(query,
 		pack.Name, pack.TotalCount, pack.Price, pack.Stock, pack.Status, pack.Description,
@@ -46,7 +46,7 @@ func (r *ResourcePackRepository) CreatePack(pack *model.ResourcePack) error {
 
 // UpdatePack 更新资源包
 func (r *ResourcePackRepository) UpdatePack(pack *model.ResourcePack) error {
-	query := `UPDATE resource_pack SET name = ?, total_count = ?, price = ?, stock = ?, status = ?, description = ?, updated_at = ? WHERE id = ?`
+	query := `UPDATE ` + model.KycDB + `.resource_pack SET name = ?, total_count = ?, price = ?, stock = ?, status = ?, description = ?, updated_at = ? WHERE id = ?`
 	_, err := r.db.Exec(query,
 		pack.Name, pack.TotalCount, pack.Price, pack.Stock, pack.Status, pack.Description,
 		time.Now(), pack.ID,
@@ -56,7 +56,7 @@ func (r *ResourcePackRepository) UpdatePack(pack *model.ResourcePack) error {
 
 // GetPackByID 根据ID查询资源包
 func (r *ResourcePackRepository) GetPackByID(id int64) (*model.ResourcePack, error) {
-	query := `SELECT id, name, total_count, price, stock, status, description, created_at, updated_at FROM resource_pack WHERE id = ?`
+	query := `SELECT id, name, total_count, price, stock, status, description, created_at, updated_at FROM ` + model.KycDB + `.resource_pack WHERE id = ?`
 	pack := &model.ResourcePack{}
 	err := r.db.QueryRow(query, id).Scan(
 		&pack.ID, &pack.Name, &pack.TotalCount, &pack.Price, &pack.Stock,
@@ -73,7 +73,7 @@ func (r *ResourcePackRepository) GetPackByID(id int64) (*model.ResourcePack, err
 
 // ListPacks 查询资源包列表（status 为 nil 时查询全部；否则按状态过滤）
 func (r *ResourcePackRepository) ListPacks(status *int) ([]*model.ResourcePack, error) {
-	query := `SELECT id, name, total_count, price, stock, status, description, created_at, updated_at FROM resource_pack`
+	query := `SELECT id, name, total_count, price, stock, status, description, created_at, updated_at FROM ` + model.KycDB + `.resource_pack`
 	args := make([]interface{}, 0)
 	if status != nil {
 		query += ` WHERE status = ?`
@@ -105,7 +105,7 @@ func (r *ResourcePackRepository) ListPacks(status *int) ([]*model.ResourcePack, 
 // 返回 false 表示库存不足/已售罄
 func (r *ResourcePackRepository) DecrementStockTx(tx *sql.Tx, packID int64) (bool, error) {
 	// 先锁定并读取库存
-	query := `SELECT stock FROM resource_pack WHERE id = ? FOR UPDATE`
+	query := `SELECT stock FROM ` + model.KycDB + `.resource_pack WHERE id = ? FOR UPDATE`
 	var stock int
 	err := tx.QueryRow(query, packID).Scan(&stock)
 	if err == sql.ErrNoRows {
@@ -123,7 +123,7 @@ func (r *ResourcePackRepository) DecrementStockTx(tx *sql.Tx, packID int64) (boo
 		return false, ErrPackSoldOut
 	}
 
-	_, err = tx.Exec(`UPDATE resource_pack SET stock = stock - 1, updated_at = ? WHERE id = ?`, time.Now(), packID)
+	_, err = tx.Exec(`UPDATE ` + model.KycDB + `.resource_pack SET stock = stock - 1, updated_at = ? WHERE id = ?`, time.Now(), packID)
 	if err != nil {
 		return false, err
 	}
@@ -134,7 +134,7 @@ func (r *ResourcePackRepository) DecrementStockTx(tx *sql.Tx, packID int64) (boo
 
 // CreateUserPackTx 在事务中创建用户资源包
 func (r *ResourcePackRepository) CreateUserPackTx(tx *sql.Tx, up *model.UserResourcePack) error {
-	query := `INSERT INTO user_resource_pack (user_id, pack_id, pack_name, total_count, remaining_count, status, created_at, updated_at)
+	query := `INSERT INTO ` + model.KycDB + `.user_resource_pack (user_id, pack_id, pack_name, total_count, remaining_count, status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	result, err := tx.Exec(query,
 		up.UserID, up.PackID, up.PackName, up.TotalCount, up.RemainingCount, up.Status,
@@ -154,7 +154,7 @@ func (r *ResourcePackRepository) CreateUserPackTx(tx *sql.Tx, up *model.UserReso
 // GetUserActivePack 获取用户第一个有效资源包（剩余次数 > 0），按购买时间升序
 func (r *ResourcePackRepository) GetUserActivePack(userID int64) (*model.UserResourcePack, error) {
 	query := `SELECT id, user_id, pack_id, pack_name, total_count, remaining_count, status, created_at, updated_at
-		FROM user_resource_pack
+		FROM ` + model.KycDB + `.user_resource_pack
 		WHERE user_id = ? AND status = 1 AND remaining_count > 0
 		ORDER BY created_at ASC
 		LIMIT 1`
@@ -175,7 +175,7 @@ func (r *ResourcePackRepository) GetUserActivePack(userID int64) (*model.UserRes
 // DeductUserPackCount 扣减用户资源包次数（单条原子 UPDATE，无需事务）
 // 返回 false 表示资源包已耗尽/无剩余次数（并发安全，由 remaining_count > 0 条件保证）
 func (r *ResourcePackRepository) DeductUserPackCount(id, userID int64) (bool, error) {
-	query := `UPDATE user_resource_pack
+	query := `UPDATE ` + model.KycDB + `.user_resource_pack
 		SET remaining_count = remaining_count - 1,
 		    status = IF(remaining_count - 1 <= 0, 0, 1),
 		    updated_at = ?
@@ -193,7 +193,7 @@ func (r *ResourcePackRepository) DeductUserPackCount(id, userID int64) (bool, er
 
 // RefundUserPackCount 退还资源包次数（退款/不计费时加回）
 func (r *ResourcePackRepository) RefundUserPackCount(id int64) error {
-	query := `UPDATE user_resource_pack SET remaining_count = remaining_count + 1, status = 1, updated_at = ? WHERE id = ?`
+	query := `UPDATE ` + model.KycDB + `.user_resource_pack SET remaining_count = remaining_count + 1, status = 1, updated_at = ? WHERE id = ?`
 	_, err := r.db.Exec(query, time.Now(), id)
 	return err
 }
@@ -201,7 +201,7 @@ func (r *ResourcePackRepository) RefundUserPackCount(id int64) error {
 // ListUserPacks 查询用户全部资源包（含已耗尽），按购买时间倒序
 func (r *ResourcePackRepository) ListUserPacks(userID int64) ([]*model.UserResourcePack, error) {
 	query := `SELECT id, user_id, pack_id, pack_name, total_count, remaining_count, status, created_at, updated_at
-		FROM user_resource_pack
+		FROM ` + model.KycDB + `.user_resource_pack
 		WHERE user_id = ?
 		ORDER BY id DESC`
 	rows, err := r.db.Query(query, userID)
