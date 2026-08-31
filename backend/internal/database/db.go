@@ -71,10 +71,9 @@ func autoMigrate() error {
 		return err
 	}
 	return gormDB.AutoMigrate(
-		// 系统库（starloft_sys）：用户/管理员/内部账号/实名记录/余额流水/充值订单/系统配置/登录日志
+		// 系统库（starloft_sys）：用户/管理员/实名记录/余额流水/充值订单/系统配置/登录日志
 		&model.PlatformUser{},
 		&model.AdminUser{},
-		&model.InternalAccount{},
 		&model.KycRecord{},
 		&model.BalanceLog{},
 		&model.PaymentOrder{},

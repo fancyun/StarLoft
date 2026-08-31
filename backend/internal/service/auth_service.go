@@ -41,15 +41,14 @@ const (
 
 // AuthService 认证服务
 type AuthService struct {
-	finAuthClient      upstream.FinAuthInterface
-	orderRepo          *repository.AuthOrderRepository
-	userRepo           *repository.UserRepository
-	internalAccountRepo *repository.InternalAccountRepository
-	kycRecordRepo      *repository.KycRecordRepository
-	resourcePackRepo   *repository.ResourcePackRepository
-	balanceService     *BalanceService
-	configRepo         *repository.SystemConfigRepository
-	config             *config.FinAuthConfig
+	finAuthClient     upstream.FinAuthInterface
+	orderRepo         *repository.AuthOrderRepository
+	userRepo          *repository.UserRepository
+	kycRecordRepo     *repository.KycRecordRepository
+	resourcePackRepo  *repository.ResourcePackRepository
+	balanceService    *BalanceService
+	configRepo        *repository.SystemConfigRepository
+	config            *config.FinAuthConfig
 }
 
 // NewAuthService 创建认证服务
@@ -57,7 +56,6 @@ func NewAuthService(
 	finAuthClient upstream.FinAuthInterface,
 	orderRepo *repository.AuthOrderRepository,
 	userRepo *repository.UserRepository,
-	internalAccountRepo *repository.InternalAccountRepository,
 	kycRecordRepo *repository.KycRecordRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
 	balanceService *BalanceService,
@@ -65,15 +63,14 @@ func NewAuthService(
 	finAuthConfig *config.FinAuthConfig,
 ) *AuthService {
 	return &AuthService{
-		finAuthClient:       finAuthClient,
-		orderRepo:           orderRepo,
-		userRepo:            userRepo,
-		internalAccountRepo: internalAccountRepo,
-		kycRecordRepo:       kycRecordRepo,
-		resourcePackRepo:    resourcePackRepo,
-		balanceService:      balanceService,
-		configRepo:          configRepo,
-		config:              finAuthConfig,
+		finAuthClient:    finAuthClient,
+		orderRepo:        orderRepo,
+		userRepo:         userRepo,
+		kycRecordRepo:    kycRecordRepo,
+		resourcePackRepo: resourcePackRepo,
+		balanceService:   balanceService,
+		configRepo:       configRepo,
+		config:           finAuthConfig,
 	}
 }
 
@@ -94,14 +91,12 @@ func (s *AuthService) GetFreeAuthRemaining(userID int64) (int, error) {
 // StartAuth 发起认证
 // source: 1-账户实名（Web） 2-API调用
 // free: true 表示账户实名免费路径（账号终身累计失败次数达到上限（写死3次）后转为计费）
-// isInternal: true 表示内部账号调用（本司系统专用，无需实名、不计费，userID 为内部账号 ID）
 func (s *AuthService) StartAuth(
 	userID int64,
 	name, idCard, bizNo, returnURL, notifyURL string,
 	bizExtraData string,
 	source int,
 	free bool,
-	isInternal bool,
 ) (*StartAuthResult, error) {
 	// return_url 未传入时使用默认跳转地址（认证完成后返回账户实名页）
 	if returnURL == "" {
@@ -123,24 +118,17 @@ func (s *AuthService) StartAuth(
 		}
 	}
 
-	// 获取用户信息（内部账号不在 platform_user 表，跳过）
-	var user *model.PlatformUser
-	var err error
-	if !isInternal {
-		user, err = s.userRepo.GetUserByID(userID)
-		if err != nil {
-			return nil, fmt.Errorf("获取用户信息失败: %w", err)
-		}
+	// 获取用户信息
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("获取用户信息失败: %w", err)
 	}
 
 	// 确定本次认证是否计费：
 	// - API 调用（source=2）始终计费；
-	// - 账户实名（source=1）默认免费，但账号终身累计失败达到上限（写死3次）后转为计费（防止反复失败刷上游次数）；
-	// - 内部账号（isInternal）始终不计费。
+	// - 账户实名（source=1）默认免费，但账号终身累计失败达到上限（写死3次）后转为计费（防止反复失败刷上游次数）。
 	charge := false
-	if isInternal {
-		charge = false
-	} else if source == 2 {
+	if source == 2 {
 		charge = true
 	} else if source == 1 {
 		failCount, err := s.orderRepo.CountUserFreeFailures(userID)
@@ -499,13 +487,6 @@ func isInProgressMessage(msg string) bool {
 	return false
 }
 
-// isInternalAccountUser 判断订单所属账号是否为内部账号（本司系统专用）。
-// 内部账号不在 platform_user 表，实名成功后不绑定用户实名信息、不下发 API Secret。
-func (s *AuthService) isInternalAccountUser(userID int64) bool {
-	acc, err := s.internalAccountRepo.GetByID(userID)
-	return err == nil && acc != nil
-}
-
 // syncOrderResult 同步订单结果（从上游查询）
 func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 	if order.UpBizID == "" {
@@ -561,18 +542,15 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, result.ResultMessage, "", &now)
 		}
-		// 仅平台用户需要绑定实名信息并下发 API Secret；内部账号（本司系统）跳过
-		if !s.isInternalAccountUser(order.UserID) {
-			if err == nil && kycRecord != nil {
-				// ✅ 使用加密后的身份证号更新用户信息
-				err = s.userRepo.UpdateUserKYCInfo(order.UserID, kycRecord.Name, kycRecord.IDCard)
-				if err != nil {
-					log.Printf("更新用户实名信息失败 [user_id=%d]: %v", order.UserID, err)
-				}
+		// ✅ 使用加密后的身份证号更新用户实名信息
+		if err == nil && kycRecord != nil {
+			err = s.userRepo.UpdateUserKYCInfo(order.UserID, kycRecord.Name, kycRecord.IDCard)
+			if err != nil {
+				log.Printf("更新用户实名信息失败 [user_id=%d]: %v", order.UserID, err)
 			}
-			// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
-			s.ensureAPISecret(order.UserID)
 		}
+		// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
+		s.ensureAPISecret(order.UserID)
 	} else if status == 3 {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {
@@ -646,17 +624,15 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, notifyData.ResultMessage, "", &now)
 		}
-		// 仅平台用户需要绑定实名信息并下发 API Secret；内部账号（本司系统）跳过
-		if !s.isInternalAccountUser(order.UserID) {
-			if err == nil && kycRecord != nil {
-				err = s.userRepo.UpdateUserKYCInfo(order.UserID, kycRecord.Name, kycRecord.IDCard)
-				if err != nil {
-					log.Printf("更新用户实名信息失败 [user_id=%d]: %v", order.UserID, err)
-				}
+		// ✅ 使用加密后的身份证号更新用户实名信息
+		if err == nil && kycRecord != nil {
+			err = s.userRepo.UpdateUserKYCInfo(order.UserID, kycRecord.Name, kycRecord.IDCard)
+			if err != nil {
+				log.Printf("更新用户实名信息失败 [user_id=%d]: %v", order.UserID, err)
 			}
-			// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
-			s.ensureAPISecret(order.UserID)
 		}
+		// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
+		s.ensureAPISecret(order.UserID)
 	} else {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {
@@ -680,12 +656,9 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 		return
 	}
 
-	// 使用订单所属账号的 api_secret 生成签名（下游用同一 secret 校验）
-	// 内部账号用 internal_account 表的 secret；平台用户用 platform_user 表的 secret
+	// 使用订单所属平台用户的 api_secret 生成签名（下游用同一 secret 校验）
 	sign := ""
-	if acc, err := s.internalAccountRepo.GetByID(order.UserID); err == nil && acc != nil && acc.APISecret != "" {
-		sign = buildNotifySign(acc.APISecret, order)
-	} else if user, err := s.userRepo.GetUserByID(order.UserID); err == nil && user != nil && user.APISecret != "" {
+	if user, err := s.userRepo.GetUserByID(order.UserID); err == nil && user != nil && user.APISecret != "" {
 		sign = buildNotifySign(user.APISecret, order)
 	}
 

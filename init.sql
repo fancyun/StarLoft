@@ -2,7 +2,7 @@
 -- StarLoft 星楼云 · 数据库初始化脚本（分库架构）
 -- ============================================================
 -- 分库设计：同一 MySQL 实例下的多个 database
---   starloft_sys  系统库：用户/管理员/内部账号/实名记录/余额流水/充值订单/系统配置/登录日志
+--   starloft_sys  系统库：用户/管理员/实名记录/余额流水/充值订单/系统配置/登录日志
 --   starloft_kyc  实名认证产品库：认证订单/资源包
 --   starloft_cs   云服务器产品库（预留，暂不建表）
 --   starloft_sms  短信服务产品库（预留，暂不建表）
@@ -78,21 +78,6 @@ CREATE TABLE IF NOT EXISTS `admin_user` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_admin_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员';
-
--- 内部账号（本司其他系统专用，无需实名与计费）
-CREATE TABLE IF NOT EXISTS `internal_account` (
-  `id`         bigint      NOT NULL AUTO_INCREMENT,
-  `name`       varchar(64) NOT NULL,
-  `remark`     varchar(255) NOT NULL DEFAULT '',
-  `api_key`    varchar(64) NOT NULL,
-  `api_secret` varchar(64) NOT NULL,
-  `status`     tinyint     NOT NULL DEFAULT 1,
-  `created_at` datetime(3) NOT NULL,
-  `updated_at` datetime(3) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_internal_account_name` (`name`),
-  UNIQUE KEY `idx_internal_account_api_key` (`api_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='内部账号';
 
 -- 账户实名认证记录
 CREATE TABLE IF NOT EXISTS `kyc_record` (

@@ -229,25 +229,5 @@ export const adminAPI = {
   // 删除（下架）资源包
   deletePack: (id: number) => {
     return request.delete(`/admin/packs/${id}`)
-  },
-
-  // 内部账号列表
-  getInternalAccounts: (params: any) => {
-    return request.get('/admin/internal-accounts', { params })
-  },
-
-  // 创建内部账号
-  createInternalAccount: (data: { name: string; remark?: string }) => {
-    return request.post('/admin/internal-accounts', data)
-  },
-
-  // 启用/禁用内部账号
-  updateInternalAccountStatus: (id: number, data: { status: number }) => {
-    return request.put(`/admin/internal-accounts/${id}/status`, data)
-  },
-
-  // 重置内部账号 API Key/Secret
-  resetInternalAccountAPI: (id: number) => {
-    return request.post(`/admin/internal-accounts/${id}/reset-api`)
   }
 }

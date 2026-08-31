@@ -44,26 +44,22 @@ func NewAuthHandler(
 // StartAuth 发起认证（API 调用）
 func (h *AuthHandler) StartAuth(c *gin.Context) {
 	userID := c.GetInt64("user_id")
-	isInternal, _ := c.Get("is_internal")
-	isInternalFlag, _ := isInternal.(bool)
 
-	// 内部账号（本司系统）无需实名即可调用；平台用户需先完成实名
-	if !isInternalFlag {
-		user, err := h.authService.GetUserByID(userID)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    404,
-				"message": "user not found",
-			})
-			return
-		}
-		if user.IsKYCVerified != 1 {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    403,
-				"message": "用户未完成实名认证，请先实名",
-			})
-			return
-		}
+	// 平台用户需先完成实名才能调用
+	user, err := h.authService.GetUserByID(userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "user not found",
+		})
+		return
+	}
+	if user.IsKYCVerified != 1 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    403,
+			"message": "用户未完成实名认证，请先实名",
+		})
+		return
 	}
 
 	var req struct {
@@ -130,9 +126,8 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		req.ReturnURL,
 		req.NotifyURL,
 		req.BizExtraData,
-		2,              // API 业务调用
-		false,          // API 下游业务调用：始终计费（内部账号由 isInternal 强制不计费）
-		isInternalFlag, // 内部账号：无需实名、不计费
+		2, // API 业务调用：始终计费
+		false,
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {
@@ -164,26 +159,22 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 // GetAuthResult 查询认证结果
 func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 	userID := c.GetInt64("user_id")
-	isInternal, _ := c.Get("is_internal")
-	isInternalFlag, _ := isInternal.(bool)
 
-	// 内部账号（本司系统）无需实名即可调用；平台用户需先完成实名
-	if !isInternalFlag {
-		user, err := h.authService.GetUserByID(userID)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    404,
-				"message": "user not found",
-			})
-			return
-		}
-		if user.IsKYCVerified != 1 {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    403,
-				"message": "用户未完成实名认证，请先实名",
-			})
-			return
-		}
+	// 平台用户需先完成实名才能调用
+	user, err := h.authService.GetUserByID(userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    404,
+			"message": "user not found",
+		})
+		return
+	}
+	if user.IsKYCVerified != 1 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    403,
+			"message": "用户未完成实名认证，请先实名",
+		})
+		return
 	}
 
 	var req struct {
@@ -225,23 +216,9 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 // QueryBalance 查询余额
 func (h *AuthHandler) QueryBalance(c *gin.Context) {
 	userID := c.GetInt64("user_id")
-	isInternal, _ := c.Get("is_internal")
-	isInternalFlag, _ := isInternal.(bool)
 
-	// 内部账号（本司系统）不计费、无余额，仅返回平台单价供下游参考
+	// 获取平台认证单价（统一按平台价格扣费，已取消个人单价设置）
 	kycPrice := h.authService.GetPlatformKycPrice()
-	if isInternalFlag {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    0,
-			"message": "success",
-			"data": gin.H{
-				"balance":     0,
-				"kyc_price":   kycPrice,
-				"is_internal": true,
-			},
-		})
-		return
-	}
 
 	user, err := h.authService.GetUserByID(userID)
 	if err != nil {
@@ -260,7 +237,6 @@ func (h *AuthHandler) QueryBalance(c *gin.Context) {
 		return
 	}
 
-	// 获取平台认证单价（统一按平台价格扣费，已取消个人单价设置）
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
@@ -458,9 +434,8 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		req.ReturnURL,
 		notifyURL,
 		bizExtraData,
-		1,     // 账户实名
-		true,  // 账户实名免费路径；账号终身累计失败达到上限（写死3次）后自动转为计费（先扣资源包，再扣余额）
-		false, // Web 账户实名始终为平台用户，非内部账号
+		1,    // 账户实名
+		true, // 账户实名免费路径；账号终身累计失败达到上限（写死3次）后自动转为计费（先扣资源包，再扣余额）
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {

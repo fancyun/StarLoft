@@ -21,18 +21,17 @@ import (
 var adminValidator = utils.NewInputValidator()
 
 type AdminHandler struct {
-	adminRepo           *repository.AdminRepository
-	userRepo            *repository.UserRepository
-	authRepo            *repository.AuthOrderRepository
-	paymentRepo         *repository.PaymentOrderRepository
-	configRepo          *repository.SystemConfigRepository
-	balanceLogRepo      *repository.BalanceLogRepository
-	resourcePackRepo    *repository.ResourcePackRepository
-	internalAccountRepo *repository.InternalAccountRepository
-	loginLogRepo        *repository.LoginLogRepository
-	balanceSvc          *service.BalanceService
-	authSvc             *service.AuthService
-	jwtSecret           string
+	adminRepo        *repository.AdminRepository
+	userRepo         *repository.UserRepository
+	authRepo         *repository.AuthOrderRepository
+	paymentRepo      *repository.PaymentOrderRepository
+	configRepo       *repository.SystemConfigRepository
+	balanceLogRepo   *repository.BalanceLogRepository
+	resourcePackRepo *repository.ResourcePackRepository
+	loginLogRepo     *repository.LoginLogRepository
+	balanceSvc       *service.BalanceService
+	authSvc          *service.AuthService
+	jwtSecret        string
 }
 
 func NewAdminHandler(
@@ -43,25 +42,23 @@ func NewAdminHandler(
 	configRepo *repository.SystemConfigRepository,
 	balanceLogRepo *repository.BalanceLogRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
-	internalAccountRepo *repository.InternalAccountRepository,
 	loginLogRepo *repository.LoginLogRepository,
 	balanceSvc *service.BalanceService,
 	authSvc *service.AuthService,
 	jwtSecret string,
 ) *AdminHandler {
 	return &AdminHandler{
-		adminRepo:           adminRepo,
-		userRepo:            userRepo,
-		authRepo:            authRepo,
-		paymentRepo:         paymentRepo,
-		configRepo:          configRepo,
-		balanceLogRepo:      balanceLogRepo,
-		resourcePackRepo:    resourcePackRepo,
-		internalAccountRepo: internalAccountRepo,
-		loginLogRepo:        loginLogRepo,
-		balanceSvc:          balanceSvc,
-		authSvc:             authSvc,
-		jwtSecret:           jwtSecret,
+		adminRepo:        adminRepo,
+		userRepo:         userRepo,
+		authRepo:         authRepo,
+		paymentRepo:      paymentRepo,
+		configRepo:       configRepo,
+		balanceLogRepo:   balanceLogRepo,
+		resourcePackRepo: resourcePackRepo,
+		loginLogRepo:     loginLogRepo,
+		balanceSvc:       balanceSvc,
+		authSvc:          authSvc,
+		jwtSecret:        jwtSecret,
 	}
 }
 
@@ -1481,233 +1478,5 @@ func (h *AdminHandler) DeleteResourcePack(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "资源包已下架",
-	})
-}
-
-// ---------- 内部账号管理（本司其他系统专用，无需实名与计费，不可在用户端登录） ----------
-
-// GetInternalAccountList 获取内部账号列表（分页 + 关键词搜索）
-func (h *AdminHandler) GetInternalAccountList(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	keyword := c.Query("keyword")
-
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-
-	accounts, total, err := h.internalAccountRepo.List(strings.TrimSpace(keyword), page, pageSize)
-	if err != nil {
-		log.Printf("Failed to get internal account list: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to get internal account list",
-		})
-		return
-	}
-
-	accountList := make([]gin.H, 0, len(accounts))
-	for _, acc := range accounts {
-		accountList = append(accountList, gin.H{
-			"id":         acc.ID,
-			"name":       acc.Name,
-			"remark":     acc.Remark,
-			"api_key":    acc.APIKey,
-			"api_secret": acc.APISecret,
-			"status":     acc.Status,
-			"created_at": acc.CreatedAt,
-			"updated_at": acc.UpdatedAt,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"list":      accountList,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		},
-	})
-}
-
-// CreateInternalAccount 创建内部账号（创建时即生成 API Key/Secret）
-func (h *AdminHandler) CreateInternalAccount(c *gin.Context) {
-	var req struct {
-		Name   string `json:"name" binding:"required"`
-		Remark string `json:"remark"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid request parameters",
-		})
-		return
-	}
-
-	req.Name = adminValidator.SanitizeString(strings.TrimSpace(req.Name))
-	if len(req.Name) < 1 || len(req.Name) > 64 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "账号名称长度必须在1-64个字符之间",
-		})
-		return
-	}
-
-	// 名称唯一性校验
-	if _, err := h.internalAccountRepo.GetByName(req.Name); err == nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "内部账号名称已存在",
-		})
-		return
-	}
-
-	req.Remark = adminValidator.SanitizeString(req.Remark)
-	if len(req.Remark) > 255 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "备注长度不能超过255个字符",
-		})
-		return
-	}
-
-	acc := &model.InternalAccount{
-		Name:      req.Name,
-		Remark:    req.Remark,
-		APIKey:    utils.GenerateRandomKey(32),
-		APISecret: utils.GenerateRandomKey(32),
-		Status:    1, // 默认启用
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	if err := h.internalAccountRepo.Create(acc); err != nil {
-		log.Printf("Failed to create internal account: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to create internal account",
-		})
-		return
-	}
-
-	// 记录操作日志
-	h.logAdminOperation(c, "internal_account_create", "internal_account", acc.ID, "name="+acc.Name)
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "内部账号创建成功",
-		"data": gin.H{
-			"id":         acc.ID,
-			"name":       acc.Name,
-			"remark":     acc.Remark,
-			"api_key":    acc.APIKey,
-			"api_secret": acc.APISecret,
-			"status":     acc.Status,
-		},
-	})
-}
-
-// UpdateInternalAccountStatus 启用/禁用内部账号
-func (h *AdminHandler) UpdateInternalAccountStatus(c *gin.Context) {
-	accID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || accID <= 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid account id",
-		})
-		return
-	}
-
-	var req struct {
-		Status int `json:"status" binding:"required"` // 0-禁用 1-启用
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid request parameters",
-		})
-		return
-	}
-
-	if req.Status != 0 && req.Status != 1 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid status value",
-		})
-		return
-	}
-
-	if err := h.internalAccountRepo.UpdateStatus(accID, req.Status); err != nil {
-		log.Printf("Failed to update internal account status: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    404,
-			"message": "内部账号不存在",
-		})
-		return
-	}
-
-	// 记录操作日志
-	statusText := "禁用"
-	if req.Status == 1 {
-		statusText = "启用"
-	}
-	h.logAdminOperation(c, "internal_account_status", "internal_account", accID, "status="+statusText)
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-	})
-}
-
-// ResetInternalAccountAPI 重置内部账号 API Key/Secret（旧密钥立即失效）
-func (h *AdminHandler) ResetInternalAccountAPI(c *gin.Context) {
-	accID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || accID <= 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid account id",
-		})
-		return
-	}
-
-	acc, err := h.internalAccountRepo.GetByID(accID)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    404,
-			"message": "内部账号不存在",
-		})
-		return
-	}
-
-	newKey := utils.GenerateRandomKey(32)
-	newSecret := utils.GenerateRandomKey(32)
-	if err := h.internalAccountRepo.ResetAPIKey(accID, newKey, newSecret); err != nil {
-		log.Printf("Failed to reset internal account api key: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to reset internal account api key",
-		})
-		return
-	}
-
-	// 记录操作日志（不记录新密钥内容）
-	h.logAdminOperation(c, "internal_account_reset_api", "internal_account", accID, "name="+acc.Name)
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "重置成功",
-		"data": gin.H{
-			"id":         acc.ID,
-			"name":       acc.Name,
-			"api_key":    newKey,
-			"api_secret": newSecret,
-		},
 	})
 }

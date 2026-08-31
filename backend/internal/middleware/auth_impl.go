@@ -13,8 +13,8 @@ import (
 )
 
 // APIKeyMiddleware API Key authentication middleware
-// 优先匹配内部账号（internal_account），未命中再匹配平台用户（platform_user）
-func APIKeyMiddleware(userRepo *repository.UserRepository, internalRepo *repository.InternalAccountRepository, signMgr *utils.SignatureManager) gin.HandlerFunc {
+// 校验平台用户（platform_user）的 API Key 与请求签名
+func APIKeyMiddleware(userRepo *repository.UserRepository, signMgr *utils.SignatureManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get API Key and signature info from Header
 		apiKey := c.GetHeader("X-Api-Key")
@@ -64,33 +64,6 @@ func APIKeyMiddleware(userRepo *repository.UserRepository, internalRepo *reposit
 				"message": "unsupported sign version",
 			})
 			c.Abort()
-			return
-		}
-
-		// 先匹配内部账号（本司系统专用，无需实名与计费）
-		if acc, err := internalRepo.GetByAPIKey(apiKey); err == nil {
-			if acc.Status == 0 {
-				c.JSON(http.StatusForbidden, gin.H{
-					"code":    403,
-					"message": "internal account disabled",
-				})
-				c.Abort()
-				return
-			}
-			if !signMgr.VerifyHMACSHA256(acc.APISecret, string(bodyBytes), sign) {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"code":    401,
-					"message": "invalid signature",
-				})
-				c.Abort()
-				return
-			}
-			// 内部账号无需实名、不计费，标记后由 handler 走内部账号分支
-			// user_id 设为内部账号 ID，与订单归属校验保持一致
-			c.Set("is_internal", true)
-			c.Set("user_id", acc.ID)
-			c.Set("internal_account", acc)
-			c.Next()
 			return
 		}
 
