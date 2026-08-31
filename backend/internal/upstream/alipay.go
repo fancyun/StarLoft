@@ -23,6 +23,11 @@ const (
 	alipayReturnURL      = "https://kyc.starloft.cn/user/balance"           // 同步跳转地址（写死，与前端路由绑定）
 )
 
+// isConfiguredValue 判断配置值是否已实际填写（为空或 .env.example 占位符视为未配置）
+func isConfiguredValue(v string) bool {
+	return v != "" && !strings.HasPrefix(v, "your_")
+}
+
 // AlipayClient 支付宝开放平台支付客户端（电脑网站支付 alipay.trade.page.pay，RSA2 签名）
 type AlipayClient struct {
 	AppID      string
@@ -31,9 +36,9 @@ type AlipayClient struct {
 	Gateway    string
 }
 
-// NewAlipayClient 创建支付宝支付客户端；未配置 AppID 时返回 (nil, nil)
+// NewAlipayClient 创建支付宝支付客户端；未配置（AppID 或密钥未填写）时返回 (nil, nil)
 func NewAlipayClient(appID, privateKeyPEM, publicKeyPEM, gateway string) (*AlipayClient, error) {
-	if appID == "" {
+	if !isConfiguredValue(appID) || !isConfiguredValue(privateKeyPEM) || !isConfiguredValue(publicKeyPEM) {
 		return nil, nil
 	}
 	priv, err := parseRSAPrivateKey(privateKeyPEM)

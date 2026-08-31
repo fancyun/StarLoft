@@ -37,9 +37,9 @@ type WeChatPayClient struct {
 	httpClient        *http.Client
 }
 
-// NewWeChatPayClient 创建微信支付客户端；未配置商户号时返回 (nil, nil)
+// NewWeChatPayClient 创建微信支付客户端；未配置（商户号或密钥未填写）时返回 (nil, nil)
 func NewWeChatPayClient(appID, mchID, apiV3Key, mchSerialNo, mchPrivateKeyPEM, platformPublicKeyPEM string) (*WeChatPayClient, error) {
-	if mchID == "" {
+	if !isConfiguredValue(mchID) || !isConfiguredValue(mchPrivateKeyPEM) || !isConfiguredValue(platformPublicKeyPEM) {
 		return nil, nil
 	}
 	priv, err := parseRSAPrivateKey(mchPrivateKeyPEM)
