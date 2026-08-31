@@ -8,7 +8,7 @@
 
     <h2>1. 基础信息</h2>
     <ul>
-      <li>接口地址：<code>https://www.starloft.cn/api/v1</code></li>
+      <li>接口地址：<code>https://www.starloft.cn/api</code></li>
       <li>请求格式：<code>application/json</code></li>
       <li>鉴权方式：请求头携带 API Key 与签名（见下）</li>
     </ul>
@@ -56,7 +56,7 @@
     <h2>3. 接口列表</h2>
 
     <h3>3.1 创建认证订单</h3>
-    <p><span class="method post">POST</span><code>/api/v1/kyc/start</code></p>
+    <p><span class="method post">POST</span><code>/api/kyc/start</code></p>
     <p>发起一次实名认证（API 业务调用）。平台优先扣除该账户资源包次数，无资源包或资源包耗尽时按平台 KYC 单价从余额扣费，创建订单并返回认证跳转地址（<code>auth_url</code>）。认证完成后用户浏览器将直接跳转回你填写的 <code>return_url</code>，不再经过平台中转页。</p>
 
     <h4>请求参数</h4>
@@ -132,7 +132,7 @@
 }</code></pre>
 
     <h3>3.2 查询认证结果</h3>
-    <p><span class="method post">POST</span><code>/api/v1/kyc/result</code></p>
+    <p><span class="method post">POST</span><code>/api/kyc/result</code></p>
     <p>根据业务订单号或平台流水号查询认证结果（二选一）。</p>
 
     <h4>请求参数</h4>
@@ -213,7 +213,7 @@
     </table>
 
     <h3>3.3 查询余额</h3>
-    <p><span class="method post">POST</span><code>/api/v1/kyc/balance/query</code></p>
+    <p><span class="method post">POST</span><code>/api/kyc/balance/query</code></p>
     <p>查询当前 API Key 所属账户的余额与平台实名认证单价（已取消个人单价，统一按平台价格扣费）。</p>
 
     <h4>请求示例</h4>
@@ -387,7 +387,7 @@ sign = 小写hex( HMAC-SHA256(api_secret, canonical) )</code></pre>
 SIGN=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "your_api_secret" | awk '{print $2}')
 TS=$(date +%s)
 
-curl -X POST "https://www.starloft.cn/api/v1/kyc/balance/query" \
+curl -X POST "https://www.starloft.cn/api/kyc/balance/query" \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: your_api_key" \
   -H "X-Sign: $SIGN" \

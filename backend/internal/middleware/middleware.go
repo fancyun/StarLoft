@@ -69,7 +69,7 @@ func RequestLogger() gin.HandlerFunc {
 }
 
 func isSensitivePath(path string) bool {
-	sensitivePaths := []string{"/api/v1/user/login", "/api/v1/admin/login", "/api/v1/user/register"}
+	sensitivePaths := []string{"/console/login", "/admin/login", "/console/register"}
 	for _, sp := range sensitivePaths {
 		if path == sp {
 			return true

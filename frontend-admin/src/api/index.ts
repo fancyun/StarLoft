@@ -22,111 +22,111 @@ interface StatsRevenueResponse {
 export const adminAPI = {
   // 管理员登录
   login: (data: { username: string; password: string }) => {
-    return request.post('/admin/login', data)
+    return request.post('/login', data)
   },
 
   // 获取用户列表
   getUsers: (params: any) => {
-    return request.get('/admin/users', { params })
+    return request.get('/users', { params })
   },
 
   // 更新用户状态
   updateUserStatus: (id: number, data: { status: number }) => {
-    return request.put(`/admin/users/${id}/status`, data)
+    return request.put(`/users/${id}/status`, data)
   },
 
   // 删除用户
   deleteUser: (id: number) => {
-    return request.delete(`/admin/users/${id}`)
+    return request.delete(`/users/${id}`)
   },
 
   // 手动注册用户
   registerUser: (data: { phone: string; username: string; email: string; password: string }) => {
-    return request.post('/admin/users/register', data)
+    return request.post('/users/register', data)
   },
 
   // 为用户手动充值（需银行流水单号）
   rechargeUser: (id: number, data: { amount: number; bank_serial_no: string; remark?: string }) => {
-    return request.post(`/admin/users/${id}/recharge`, data)
+    return request.post(`/users/${id}/recharge`, data)
   },
 
   // 获取用户财务统计
   getUserFinanceStats: (id: number) => {
-    return request.get(`/admin/users/${id}/finance/stats`)
+    return request.get(`/users/${id}/finance/stats`)
   },
 
   // 获取用户余额流水
   getUserBalanceLogs: (id: number, params?: { page?: number; page_size?: number }) => {
-    return request.get(`/admin/users/${id}/balance-logs`, { params })
+    return request.get(`/users/${id}/balance-logs`, { params })
   },
 
   // 获取用户认证订单
   getUserAuthOrders: (id: number, params?: { page?: number; page_size?: number }) => {
-    return request.get(`/admin/users/${id}/auth-orders`, { params })
+    return request.get(`/users/${id}/auth-orders`, { params })
   },
 
   // 获取认证订单列表
   getOrders: (params: any) => {
-    return request.get('/admin/orders', { params })
+    return request.get('/orders', { params })
   },
 
   // 获取支付订单列表
   getPayments: (params: any) => {
-    return request.get('/admin/payments', { params })
+    return request.get('/payments', { params })
   },
 
   // 获取系统配置
   getConfig: () => {
-    return request.get('/admin/config')
+    return request.get('/config')
   },
 
   // 更新系统配置
   updateConfig: (data: any) => {
-    return request.put('/admin/config', data)
+    return request.put('/config', data)
   },
 
   // 获取统计概览
   getStatsOverview: (): Promise<StatsOverview> => {
-    return request.get('/admin/stats/overview')
+    return request.get('/stats/overview')
   },
 
   // 获取订单统计
   getStatsOrders: (params: any): Promise<StatsOrdersResponse> => {
-    return request.get('/admin/stats/orders', { params })
+    return request.get('/stats/orders', { params })
   },
 
   // 获取收入统计
   getStatsRevenue: (params: any): Promise<StatsRevenueResponse> => {
-    return request.get('/admin/stats/revenue', { params })
+    return request.get('/stats/revenue', { params })
   },
 
   // 获取最近订单
   getRecentOrders: (limit: number) => {
-    return request.get(`/admin/orders/recent?limit=${limit}`)
+    return request.get(`/orders/recent?limit=${limit}`)
   },
 
   // 修改管理员密码
   changePassword: (data: { old_password: string; new_password: string }) => {
-    return request.post('/admin/change-password', data)
+    return request.post('/change-password', data)
   },
 
   // 获取资源包列表
   getPacks: () => {
-    return request.get('/admin/packs')
+    return request.get('/packs')
   },
 
   // 创建资源包
   createPack: (data: { name: string; total_count: number; price: number; stock?: number; status?: number; description?: string }) => {
-    return request.post('/admin/packs', data)
+    return request.post('/packs', data)
   },
 
   // 更新资源包
   updatePack: (id: number, data: any) => {
-    return request.put(`/admin/packs/${id}`, data)
+    return request.put(`/packs/${id}`, data)
   },
 
   // 删除（下架）资源包
   deletePack: (id: number) => {
-    return request.delete(`/admin/packs/${id}`)
+    return request.delete(`/packs/${id}`)
   }
 }

@@ -614,7 +614,7 @@ func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 			return
 		}
 		data["code_url"] = codeURL
-		data["qr_url"] = "/api/v1/public/qr?data=" + url.QueryEscape(codeURL) + "&size=280"
+		data["qr_url"] = "/console/qr?data=" + url.QueryEscape(codeURL) + "&size=280"
 	}
 
 	c.JSON(http.StatusOK, gin.H{

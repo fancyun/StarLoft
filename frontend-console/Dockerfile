@@ -1,25 +1,5 @@
 # ========================
-# Stage 1: 构建控制台前端（console.starloft.cn）
-# ========================
-FROM node:20-alpine AS console-builder
-
-WORKDIR /app/console
-
-# 复制 package 文件
-COPY frontend-console/package*.json ./
-
-# 安装依赖
-RUN npm install --prefer-offline --no-audit
-
-# 复制源代码
-COPY frontend-console/ .
-
-# 构建生产版本（增加Node.js内存限制到4GB）
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build
-
-# ========================
-# Stage 2: 构建门户前端（www.starloft.cn）
+# Stage 1: 构建门户前端（www.starloft.cn）
 # ========================
 FROM node:20-alpine AS portal-builder
 
@@ -33,6 +13,26 @@ RUN npm install --prefer-offline --no-audit
 
 # 复制源代码
 COPY frontend-portal/ .
+
+# 构建生产版本（增加Node.js内存限制到4GB）
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN npm run build
+
+# ========================
+# Stage 2: 构建控制台前端（console.starloft.cn）
+# ========================
+FROM node:20-alpine AS console-builder
+
+WORKDIR /app/console
+
+# 复制 package 文件
+COPY frontend-console/package*.json ./
+
+# 安装依赖
+RUN npm install --prefer-offline --no-audit
+
+# 复制源代码
+COPY frontend-console/ .
 
 # 构建生产版本（增加Node.js内存限制到4GB）
 ENV NODE_OPTIONS="--max-old-space-size=4096"
@@ -168,8 +168,8 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # API代理（控制台与后端同域访问）
-    location /api/ {
+    # 控制台 API 代理（控制台与后端同域访问）
+    location /console/ {
         proxy_pass http://backend:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -215,8 +215,8 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # API代理（管理后台与后端同域访问）
-    location /api/ {
+    # 管理后台 API 代理（管理后台与后端同域访问）
+    location /admin/ {
         proxy_pass http://backend:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -233,8 +233,8 @@ server {
 EOF
 
 # 从builder复制构建产物
-COPY --from=console-builder /app/console/dist /usr/share/nginx/html/console
 COPY --from=portal-builder /app/portal/dist /usr/share/nginx/html/www
+COPY --from=console-builder /app/console/dist /usr/share/nginx/html/console
 COPY --from=admin-builder /app/admin/dist /usr/share/nginx/html/admin
 
 # 暴露端口

@@ -105,20 +105,20 @@ services:
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/public/config"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/console/config"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # 前端服务（Nginx 多站点：www.starloft.cn 门户 + console.starloft.cn 控制台 + 反向代理）
-  # 镜像内一次构建两个前端应用，通过不同 server 块按域名分发
-  frontend-console:
+  # 前端服务（Nginx 多站点：www.starloft.cn 门户 + console.starloft.cn 控制台 + admin.starloft.cn 管理后台 + 反向代理）
+  # 镜像内一次构建三个前端应用，通过不同 server 块按域名分发
+  frontend:
     build:
       context: .
       dockerfile: frontend-console/Dockerfile
       shm_size: '2gb'  # 增加共享内存
-    container_name: kyc_frontend_console
+    container_name: kyc_frontend
     restart: unless-stopped
     depends_on:
       - backend

@@ -82,7 +82,7 @@ docker compose up -d
 1. 在 `frontend-portal/src/config/products.ts` 登记产品信息（key / 名称 / 特性 / 场景 / 控制台地址）
 2. 在 `frontend-portal/src/router/index.ts` 注册对应产品路由（复用 `ProductPage.vue`，`meta.product` 指定 key）
 3. 在 `frontend-console/src/router/index.ts` 为控制台增加对应产品路由与侧边栏入口
-4. 重新构建前端镜像即可上线（`docker compose up -d --build frontend-console`）
+4. 重新构建前端镜像即可上线（`docker compose up -d --build frontend`）
 
 ---
 

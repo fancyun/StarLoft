@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import { useAdminStore } from '@/stores/admin'
 
 const request = axios.create({
-  baseURL: '/api/v1',
+  baseURL: '/admin',
   timeout: 10000
 })
 

@@ -45,7 +45,7 @@
           <td>API 地址</td>
           <td>是</td>
           <td>KYC 系统的 API 地址</td>
-          <td><code>https://www.starloft.cn/api/v1</code></td>
+          <td><code>https://www.starloft.cn/api</code></td>
         </tr>
         <tr>
           <td>API Key</td>
@@ -130,17 +130,17 @@
     </table>
 
     <h2>4. 对接接口</h2>
-    <p>插件对接以下接口，鉴权方式详见 <router-link to="/docs/api/v1">API v1 文档</router-link>：</p>
+    <p>插件对接以下接口，鉴权方式详见 <router-link to="/docs/api">API v1 文档</router-link>：</p>
     <ul>
-      <li><span class="method post">POST</span> <code>/api/v1/kyc/start</code> — 创建认证订单</li>
-      <li><span class="method post">POST</span> <code>/api/v1/kyc/result</code> — 查询认证结果</li>
-      <li><span class="method post">POST</span> <code>/api/v1/kyc/balance/query</code> — 查询余额</li>
+      <li><span class="method post">POST</span> <code>/api/kyc/start</code> — 创建认证订单</li>
+      <li><span class="method post">POST</span> <code>/api/kyc/result</code> — 查询认证结果</li>
+      <li><span class="method post">POST</span> <code>/api/kyc/balance/query</code> — 查询余额</li>
     </ul>
 
     <h2>5. 故障排查</h2>
     <h3>5.1 API 连接失败</h3>
     <ul>
-      <li>确认 API 地址正确（包含 <code>/api/v1</code>）</li>
+      <li>确认 API 地址正确（包含 <code>/api</code>）</li>
       <li>确认 API Key 与 Secret 正确</li>
       <li>确认 KYC 系统运行正常、服务器可访问</li>
     </ul>

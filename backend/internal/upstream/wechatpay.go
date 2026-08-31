@@ -23,7 +23,7 @@ import (
 
 const (
 	wechatAPIBase   = "https://api.mch.weixin.qq.com"
-	wechatNotifyURL = "https://www.starloft.cn/api/v1/callback/wechat" // 异步通知地址（写死，与后端回调路由绑定）
+	wechatNotifyURL = "https://www.starloft.cn/api/callback/wechat" // 异步通知地址（写死，与后端回调路由绑定）
 )
 
 // WeChatPayClient 微信支付（APIv3 Native支付）客户端

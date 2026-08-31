@@ -56,7 +56,7 @@ EXPOSE 8080
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8080/api/v1/public/config || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/console/config || exit 1
 
 # 启动应用
 CMD ["./kyc_server"]
