@@ -36,8 +36,8 @@ services:
       # 仅便于宿主机用数据库客户端直连查看，后端走内部网络不依赖此映射
       - "3306:3306"
     volumes:
-      # 数据库数据存放于项目内 ./data/mysql（bind mount，替代具名数据卷）
-      - ./data/mysql:/var/lib/mysql
+      # 数据库数据存放于项目内 ./data（bind mount，替代具名数据卷）
+      - ./data:/var/lib/mysql
       # 首次初始化（数据目录为空时）自动执行 init.sql；.md 文档会被 MySQL 初始化目录忽略
       - ./database:/docker-entrypoint-initdb.d:ro
     healthcheck:

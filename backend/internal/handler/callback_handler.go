@@ -142,7 +142,19 @@ func (h *CallbackHandler) AlipayCallback(c *gin.Context) {
 		return
 	}
 
-	// 幂等处理：仅当订单待支付时才入账
+	// 资源包订单：事务内原子完成「标记已支付 + 发放资源包」，幂等
+	if order.Intent == "resource_pack" {
+		if err := h.balanceService.SettleResourcePackPaid(order.ID, tradeNo); err != nil {
+			log.Printf("资源包支付落地失败: order_id=%d, err=%v", order.ID, err)
+			c.String(http.StatusOK, "failure")
+			return
+		}
+		log.Printf("支付宝回调处理成功: out_trade_no=%s, user_id=%d, amount=%.2f", outTradeNo, order.UserID, order.Amount)
+		c.String(http.StatusOK, "success")
+		return
+	}
+
+	// 充值订单：幂等处理，仅当订单待支付时才入账
 	changed, err := h.paymentRepo.MarkOrderPaidIfPending(order.ID, tradeNo)
 	if err != nil {
 		log.Printf("更新支付订单状态失败: order_id=%d, err=%v", order.ID, err)
@@ -233,7 +245,19 @@ func (h *CallbackHandler) WeChatCallback(c *gin.Context) {
 		return
 	}
 
-	// 幂等处理：仅当订单待支付时才入账
+	// 资源包订单：事务内原子完成「标记已支付 + 发放资源包」，幂等
+	if order.Intent == "resource_pack" {
+		if err := h.balanceService.SettleResourcePackPaid(order.ID, tx.TransactionID); err != nil {
+			log.Printf("资源包支付落地失败: order_id=%d, err=%v", order.ID, err)
+			c.String(http.StatusInternalServerError, "FAIL")
+			return
+		}
+		log.Printf("微信回调处理成功: out_trade_no=%s, user_id=%d, amount=%.2f", tx.OutTradeNo, order.UserID, order.Amount)
+		c.String(http.StatusOK, "SUCCESS")
+		return
+	}
+
+	// 充值订单：幂等处理，仅当订单待支付时才入账
 	changed, err := h.paymentRepo.MarkOrderPaidIfPending(order.ID, tx.TransactionID)
 	if err != nil {
 		log.Printf("更新支付订单状态失败: order_id=%d, err=%v", order.ID, err)

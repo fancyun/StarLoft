@@ -103,6 +103,10 @@ type PaymentOrder struct {
 	ExpireTime     *time.Time `json:"expire_time,omitempty"` // 过期时间
 	PaidAt         *time.Time `json:"paid_at,omitempty"` // 支付时间
 	RefundedAt     *time.Time `json:"refunded_at,omitempty"` // 退款时间
+	Intent         string     `json:"intent" gorm:"size:20;not null;default:'recharge';index"` // 支付用途：recharge-充余额 resource_pack-购买资源包
+	BizNo          string     `json:"biz_no,omitempty" gorm:"size:50;index"`                   // 关联业务单号（购买资源包时为资源包ID）
+	BalanceAmount  float64    `json:"balance_amount" gorm:"type:decimal(10,2);default:0"`      // 组合支付中的余额支付部分
+	StockReserved  int        `json:"stock_reserved" gorm:"type:tinyint;not null;default:0"`   // 资源包占库存标记：1-已扣减库存待释放
 	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }

@@ -51,12 +51,12 @@ func NewAlipayClient(appID, privateKeyPEM, publicKeyPEM string) (*AlipayClient, 
 }
 
 // BuildPagePayURL 构建电脑网站支付跳转链接（浏览器 GET 访问即可拉起支付宝收银台）
-func (c *AlipayClient) BuildPagePayURL(outTradeNo string, amount float64) (string, error) {
+func (c *AlipayClient) BuildPagePayURL(outTradeNo string, amount float64, subject string) (string, error) {
 	bizContent, err := json.Marshal(map[string]string{
 		"out_trade_no": outTradeNo,
 		"product_code": "FAST_INSTANT_TRADE_PAY",
 		"total_amount": fmt.Sprintf("%.2f", amount),
-		"subject":      "账户余额充值",
+		"subject":      subject,
 	})
 	if err != nil {
 		return "", err

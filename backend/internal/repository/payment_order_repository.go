@@ -23,8 +23,8 @@ func NewPaymentOrderRepository(db *sql.DB) *PaymentOrderRepository {
 func (r *PaymentOrderRepository) CreateOrder(order *model.PaymentOrder) error {
 	query := `INSERT INTO ` + model.SysDB + `.payment_order 
 		(pay_order_no, user_id, amount, channel, status, 
-		expire_time, created_at, updated_at, refund_status) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		expire_time, created_at, updated_at, refund_status, intent, biz_no, balance_amount, stock_reserved) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		order.PayOrderNo,
@@ -36,6 +36,10 @@ func (r *PaymentOrderRepository) CreateOrder(order *model.PaymentOrder) error {
 		time.Now(),
 		time.Now(),
 		order.RefundStatus,
+		order.Intent,
+		order.BizNo,
+		order.BalanceAmount,
+		order.StockReserved,
 	)
 	if err != nil {
 		return err
@@ -49,11 +53,84 @@ func (r *PaymentOrderRepository) CreateOrder(order *model.PaymentOrder) error {
 	return nil
 }
 
+// CreateOrderTx 在事务中创建支付订单（用于购买资源包组合支付的原子落库）
+func (r *PaymentOrderRepository) CreateOrderTx(tx *sql.Tx, order *model.PaymentOrder) error {
+	query := `INSERT INTO ` + model.SysDB + `.payment_order 
+		(pay_order_no, user_id, amount, channel, status, 
+		expire_time, created_at, updated_at, refund_status, intent, biz_no, balance_amount, stock_reserved) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	result, err := tx.Exec(query,
+		order.PayOrderNo,
+		order.UserID,
+		order.Amount,
+		order.Channel,
+		order.Status,
+		order.ExpireTime,
+		time.Now(),
+		time.Now(),
+		order.RefundStatus,
+		order.Intent,
+		order.BizNo,
+		order.BalanceAmount,
+		order.StockReserved,
+	)
+	if err != nil {
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	order.ID = id
+	return nil
+}
+
+// GetOrderByID 根据ID查询支付订单
+func (r *PaymentOrderRepository) GetOrderByID(orderID int64) (*model.PaymentOrder, error) {
+	query := `SELECT id, pay_order_no, user_id, amount, 
+		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
+		refund_status, COALESCE(refund_amount, 0), refunded_at, intent, COALESCE(biz_no, ''), 
+		COALESCE(balance_amount, 0), COALESCE(stock_reserved, 0) 
+		FROM ` + model.SysDB + `.payment_order WHERE id = ?`
+
+	order := &model.PaymentOrder{}
+	err := r.db.QueryRow(query, orderID).Scan(
+		&order.ID,
+		&order.PayOrderNo,
+		&order.UserID,
+		&order.Amount,
+		&order.Channel,
+		&order.ChannelTradeNo,
+		&order.Status,
+		&order.ExpireTime,
+		&order.PaidAt,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+		&order.RefundStatus,
+		&order.RefundAmount,
+		&order.RefundedAt,
+		&order.Intent,
+		&order.BizNo,
+		&order.BalanceAmount,
+		&order.StockReserved,
+	)
+	if err == sql.ErrNoRows {
+		return nil, ErrPaymentOrderNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
 // GetOrderByPayOrderNo 根据支付流水号查询订单
 func (r *PaymentOrderRepository) GetOrderByPayOrderNo(payOrderNo string) (*model.PaymentOrder, error) {
 	query := `SELECT id, pay_order_no, user_id, amount, 
 		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
-		refund_status, COALESCE(refund_amount, 0), refunded_at 
+		refund_status, COALESCE(refund_amount, 0), refunded_at, intent, COALESCE(biz_no, ''), 
+		COALESCE(balance_amount, 0), COALESCE(stock_reserved, 0) 
 		FROM ` + model.SysDB + `.payment_order WHERE pay_order_no = ?`
 
 	order := &model.PaymentOrder{}
@@ -72,9 +149,13 @@ func (r *PaymentOrderRepository) GetOrderByPayOrderNo(payOrderNo string) (*model
 		&order.RefundStatus,
 		&order.RefundAmount,
 		&order.RefundedAt,
+		&order.Intent,
+		&order.BizNo,
+		&order.BalanceAmount,
+		&order.StockReserved,
 	)
 	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
+		return nil, ErrPaymentOrderNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -97,6 +178,83 @@ func (r *PaymentOrderRepository) MarkOrderPaidIfPending(orderID int64, channelTr
 		return false, err
 	}
 	return n > 0, nil
+}
+
+// MarkOrderPaidIfPendingTx 在事务中标记支付单为已支付（幂等，供资源包等组合支付落地使用）
+func (r *PaymentOrderRepository) MarkOrderPaidIfPendingTx(tx *sql.Tx, orderID int64, channelTradeNo string) (bool, error) {
+	query := `UPDATE ` + model.SysDB + `.payment_order 
+		SET status = 1, channel_trade_no = ?, paid_at = ?, updated_at = ? 
+		WHERE id = ? AND status = 0`
+	result, err := tx.Exec(query, channelTradeNo, time.Now(), time.Now(), orderID)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// CloseOrderIfPendingTx 在事务中关闭待支付订单（状态 0→3，幂等，供资源包超时释放库存使用）
+func (r *PaymentOrderRepository) CloseOrderIfPendingTx(tx *sql.Tx, orderID int64) (bool, error) {
+	query := `UPDATE ` + model.SysDB + `.payment_order 
+		SET status = 3, updated_at = ? 
+		WHERE id = ? AND status = 0`
+	result, err := tx.Exec(query, time.Now(), orderID)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// GetExpiredPendingResourcePackOrders 查询已过期且仍待支付的资源包支付订单（用于定时释放库存）
+func (r *PaymentOrderRepository) GetExpiredPendingResourcePackOrders(now time.Time) ([]*model.PaymentOrder, error) {
+	query := `SELECT id, pay_order_no, user_id, amount, 
+		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
+		refund_status, COALESCE(refund_amount, 0), refunded_at, intent, COALESCE(biz_no, ''), 
+		COALESCE(balance_amount, 0), COALESCE(stock_reserved, 0) 
+		FROM ` + model.SysDB + `.payment_order 
+		WHERE intent = 'resource_pack' AND status = 0 AND expire_time IS NOT NULL AND expire_time < ?`
+
+	rows, err := r.db.Query(query, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := make([]*model.PaymentOrder, 0)
+	for rows.Next() {
+		order := &model.PaymentOrder{}
+		if err := rows.Scan(
+			&order.ID,
+			&order.PayOrderNo,
+			&order.UserID,
+			&order.Amount,
+			&order.Channel,
+			&order.ChannelTradeNo,
+			&order.Status,
+			&order.ExpireTime,
+			&order.PaidAt,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+			&order.RefundStatus,
+			&order.RefundAmount,
+			&order.RefundedAt,
+			&order.Intent,
+			&order.BizNo,
+			&order.BalanceAmount,
+			&order.StockReserved,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+	return orders, nil
 }
 
 // GetAllOrders 获取所有支付订单列表（管理员，带分页和筛选）
@@ -132,7 +290,8 @@ func (r *PaymentOrderRepository) GetAllOrders(page, pageSize int, status *int, u
 	// 查询列表
 	query := `SELECT id, pay_order_no, user_id, amount, 
 		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
-		refund_status, COALESCE(refund_amount, 0), refunded_at 
+		refund_status, COALESCE(refund_amount, 0), refunded_at, intent, COALESCE(biz_no, ''), 
+		COALESCE(balance_amount, 0), COALESCE(stock_reserved, 0) 
 		FROM ` + model.SysDB + `.payment_order ` + whereClause + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
 	args = append(args, pageSize, offset)
@@ -160,6 +319,10 @@ func (r *PaymentOrderRepository) GetAllOrders(page, pageSize int, status *int, u
 			&order.RefundStatus,
 			&order.RefundAmount,
 			&order.RefundedAt,
+			&order.Intent,
+			&order.BizNo,
+			&order.BalanceAmount,
+			&order.StockReserved,
 		)
 		if err != nil {
 			return nil, 0, err

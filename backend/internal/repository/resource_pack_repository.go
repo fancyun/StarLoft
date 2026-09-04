@@ -130,6 +130,40 @@ func (r *ResourcePackRepository) DecrementStockTx(tx *sql.Tx, packID int64) (boo
 	return true, nil
 }
 
+// ReserveStockTx 下单占库存（在购买事务中调用）：有限库存时扣减 1，数量为 -1 时不限量不扣减。
+// 返回 reserved 表示是否实际扣减了库存（超时释放时据此决定是否加回）。库存不足返回 ErrPackSoldOut。
+func (r *ResourcePackRepository) ReserveStockTx(tx *sql.Tx, packID int64) (bool, error) {
+	query := `SELECT stock FROM ` + model.KycDB + `.resource_pack WHERE id = ? FOR UPDATE`
+	var stock int
+	err := tx.QueryRow(query, packID).Scan(&stock)
+	if err == sql.ErrNoRows {
+		return false, ErrPackNotFound
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if stock == -1 {
+		// 不限量，无需占库存
+		return false, nil
+	}
+	if stock <= 0 {
+		return false, ErrPackSoldOut
+	}
+
+	_, err = tx.Exec(`UPDATE ` + model.KycDB + `.resource_pack SET stock = stock - 1, updated_at = ? WHERE id = ?`, time.Now(), packID)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// ReleaseStockTx 释放已占库存（超时/取消时加回 1，供下单占库存的资源包订单使用）
+func (r *ResourcePackRepository) ReleaseStockTx(tx *sql.Tx, packID int64) error {
+	_, err := tx.Exec(`UPDATE ` + model.KycDB + `.resource_pack SET stock = stock + 1, updated_at = ? WHERE id = ?`, time.Now(), packID)
+	return err
+}
+
 // ---------- 用户资源包 ----------
 
 // CreateUserPackTx 在事务中创建用户资源包

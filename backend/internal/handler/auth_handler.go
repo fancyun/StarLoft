@@ -586,7 +586,7 @@ func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 			})
 			return
 		}
-		payURL, err := h.alipay().BuildPagePayURL(order.PayOrderNo, order.Amount)
+		payURL, err := h.alipay().BuildPagePayURL(order.PayOrderNo, order.Amount, "账户余额充值")
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    500,
@@ -745,6 +745,101 @@ func (h *AuthHandler) PurchaseResourcePack(c *gin.Context) {
 		"data": gin.H{
 			"user_pack": up,
 		},
+	})
+}
+
+// PurchaseResourcePackOnline 在线购买资源包（支持组合支付：余额支付一部分 + 支付宝/微信支付剩余部分）
+func (h *AuthHandler) PurchaseResourcePackOnline(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	packID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || packID <= 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid pack id",
+		})
+		return
+	}
+
+	var req struct {
+		Channel string `json:"channel" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    400,
+			"message": "invalid request parameters",
+		})
+		return
+	}
+
+	result, err := h.balanceService.PurchaseResourcePackWithPay(userID, packID, req.Channel)
+	if err != nil {
+		switch err {
+		case repository.ErrPackSoldOut:
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": "资源包已售罄"})
+		case repository.ErrPackOffSale:
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": "资源包已下架"})
+		case repository.ErrPackNotFound:
+			c.JSON(http.StatusOK, gin.H{"code": 404, "message": "资源包不存在"})
+		default:
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": "购买资源包失败"})
+		}
+		return
+	}
+
+	// 余额已全额支付，直接发放资源包
+	if result.FullyPaidByBalance {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    0,
+			"message": "购买成功",
+			"data": gin.H{
+				"user_pack":       result.UserPack,
+				"fully_paid":      true,
+				"balance_amount":  result.BalanceAmount,
+			},
+		})
+		return
+	}
+
+	order := result.PaymentOrder
+	data := gin.H{
+		"pay_order_no":   order.PayOrderNo,
+		"amount":         result.ExternalAmount,
+		"balance_part":   result.BalanceAmount,
+		"expire_time":    order.ExpireTime.Unix(),
+		"channel":        order.Channel,
+		"fully_paid":     false,
+	}
+
+	switch req.Channel {
+	case "alipay":
+		if h.alipay() == nil {
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": "支付宝支付未配置"})
+			return
+		}
+		payURL, err := h.alipay().BuildPagePayURL(order.PayOrderNo, order.Amount, "购买资源包")
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": "生成支付宝支付链接失败"})
+			return
+		}
+		data["pay_url"] = payURL
+	case "wechat":
+		if h.wechat() == nil {
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": "微信支付未配置"})
+			return
+		}
+		codeURL, err := h.wechat().CreateNativeOrder(order.PayOrderNo, order.Amount, "购买资源包")
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": "生成微信支付二维码失败"})
+			return
+		}
+		data["code_url"] = codeURL
+		data["qr_url"] = "/console/qr?data=" + url.QueryEscape(codeURL) + "&size=280"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data":    data,
 	})
 }
 

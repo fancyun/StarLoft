@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
+func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.BalanceService) {
 	r := gin.New()
 
 	// 全局中间件
@@ -125,10 +125,11 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 			auth.GET("/recharge/result", authHandler.GetRechargeResult)
 			auth.POST("/api-key/reset", userHandler.ResetAPIKey)
 			auth.POST("/change-password", userHandler.ChangePassword)
-			// 资源包（使用余额购买，不支持直接为资源包付费）
-			auth.GET("/packs", authHandler.ListResourcePacks)                  // 在售资源包列表
-			auth.POST("/packs/:id/purchase", authHandler.PurchaseResourcePack) // 使用余额购买资源包
-			auth.GET("/packs/mine", authHandler.MyResourcePacks)               // 我的资源包
+			// 资源包（余额购买 / 在线组合支付）
+			auth.GET("/packs", authHandler.ListResourcePacks)                    // 在售资源包列表
+			auth.POST("/packs/:id/purchase", authHandler.PurchaseResourcePack)   // 使用余额购买资源包
+			auth.POST("/packs/:id/pay", authHandler.PurchaseResourcePackOnline)  // 在线购买（余额+支付宝/微信组合支付）
+			auth.GET("/packs/mine", authHandler.MyResourcePacks)                 // 我的资源包
 		}
 	}
 
@@ -205,5 +206,5 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		}
 	}
 
-	return r, authService
+	return r, authService, balanceService
 }

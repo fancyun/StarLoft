@@ -36,10 +36,10 @@ func main() {
 	log.Println("Redis 连接成功")
 
 	// 初始化路由
-	r, authService := router.Setup(cfg)
+	r, authService, balanceService := router.Setup(cfg)
 
 	// 启动定时任务
-	cronManager := cron.NewCronManager(authService)
+	cronManager := cron.NewCronManager(authService, balanceService)
 	if err := cronManager.Start(); err != nil {
 		log.Fatalf("启动定时任务失败: %v", err)
 	}
