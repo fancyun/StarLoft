@@ -62,8 +62,7 @@ func (AuthOrder) TableName() string { return KycDB + ".auth_order" }
 
 type AuthOrder struct {
 	ID            int64      `json:"id" gorm:"primaryKey;autoIncrement"`
-	PlatformBizNo string     `json:"platform_biz_no" gorm:"size:50;not null;uniqueIndex"` // 平台业务流水号
-	BizNo         string     `json:"biz_no,omitempty" gorm:"size:50;index"`               // 用户业务流水号
+	BizNo         string     `json:"biz_no" gorm:"size:50;not null;uniqueIndex"` // 全平台唯一业务流水号（平台调用时随机生成）
 	UserID        int64      `json:"user_id" gorm:"not null;index"`
 	UserPhone     string     `json:"user_phone,omitempty" gorm:"-"` // 联表查询时的用户手机号（管理后台订单列表用）
 	ReturnURL     string     `json:"return_url,omitempty" gorm:"size:500"` // 认证完成后跳转的URL

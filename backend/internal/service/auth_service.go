@@ -98,7 +98,7 @@ func (s *AuthService) GetFreeAuthRemaining(userID int64) (int, error) {
 // free: 保留参数，账户实名始终免费，不再使用。
 func (s *AuthService) StartAuth(
 	userID int64,
-	name, idCard, bizNo, returnURL, notifyURL string,
+	name, idCard, returnURL, notifyURL string,
 	bizExtraData string,
 	source int,
 	free bool,
@@ -108,25 +108,15 @@ func (s *AuthService) StartAuth(
 		returnURL = finAuthReturnURL
 	}
 
+	// 生成全平台唯一业务流水号（纯随机数，唯一性由密码学随机源保证，调用时平台随机生成）
+	bizNo := utils.GenerateRandomDigits(20)
+
 	// 账户实名（source=1）：只写系统库实名记录，不产生认证订单、不计费
 	if source == 1 {
 		return s.startAccountAuth(userID, name, idCard, bizNo, returnURL, notifyURL, bizExtraData)
 	}
 
 	// 注意：notifyURL 由 API 流程（source=2）的下游显式传入。
-
-	// 幂等去重：同一下游 biz_no 若已存在进行中订单，直接复用，避免重复创建任务/重复扣费
-	if existing, err := s.orderRepo.GetOrderByBizNo(userID, bizNo); err == nil && existing != nil {
-		if existing.Status == 0 || existing.Status == 1 {
-			authURL := s.BuildAuthURL(existing.UpToken)
-			return &StartAuthResult{
-				Order:   existing,
-				AuthURL: authURL,
-				Token:   existing.UpToken,
-				BizID:   existing.UpBizID,
-			}, nil
-		}
-	}
 
 	// 获取用户信息
 	user, err := s.userRepo.GetUserByID(userID)
@@ -161,13 +151,11 @@ func (s *AuthService) StartAuth(
 		}
 	}
 
-	// 生成平台流水号（纯随机数，无需业务前缀，唯一性由密码学随机源保证）
-	platformBizNo := utils.GenerateRandomDigits(20)
-
 	// 创建 KYC 认证记录（保存实名信息，关联订单流程）
 	kycRecord := &model.KycRecord{
 		UserID: userID,
 		Source: 2,
+		BizNo:  bizNo,
 		Name:   name,
 		IDCard: idCard,
 		Status: 1, // 认证中
@@ -179,7 +167,6 @@ func (s *AuthService) StartAuth(
 
 	// 创建订单（不保存姓名和身份证号，cost 记录平台KYC单价）
 	order := &model.AuthOrder{
-		PlatformBizNo: platformBizNo,
 		BizNo:         bizNo,
 		UserID:        userID,
 		ReturnURL:     returnURL,
@@ -217,7 +204,7 @@ func (s *AuthService) StartAuth(
 		SignVersion:    upstream.SignVersionHMACSHA256,
 		ReturnURL:      upstreamReturnURL,
 		NotifyURL:      upstreamNotifyURL,
-		BizNo:          platformBizNo,
+		BizNo:          bizNo,
 		SceneID:        s.config.SceneID,
 		ComparisonType: "1", // 人脸核身模式
 		UUID:           fmt.Sprintf("%d", userID),
@@ -261,31 +248,17 @@ func (s *AuthService) startAccountAuth(
 	userID int64,
 	name, idCard, bizNo, returnURL, notifyURL, bizExtraData string,
 ) (*StartAuthResult, error) {
-	// 幂等去重：若已有进行中的实名记录且已获取上游 token，直接复用，避免重复创建任务
-	if pending, err := s.kycRecordRepo.GetPendingByUserID(userID); err == nil && pending != nil && pending.UpToken != "" {
-		return &StartAuthResult{
-			Record:  pending,
-			AuthURL: s.BuildAuthURL(pending.UpToken),
-			Token:   pending.UpToken,
-			BizID:   pending.UpBizID,
-		}, nil
-	}
-
-	// 生成平台流水号（纯随机数，唯一性由密码学随机源保证）
-	platformBizNo := utils.GenerateRandomDigits(20)
-
 	// 创建实名记录（状态：认证中）
 	kycRecord := &model.KycRecord{
-		UserID:        userID,
-		Source:        1,
-		PlatformBizNo: platformBizNo,
-		BizNo:         bizNo,
-		ReturnURL:     returnURL,
-		NotifyURL:     notifyURL,
-		BizExtraData:  bizExtraData,
-		Name:          name,
-		IDCard:        idCard,
-		Status:        1,
+		UserID:       userID,
+		Source:       1,
+		BizNo:        bizNo,
+		ReturnURL:    returnURL,
+		NotifyURL:    notifyURL,
+		BizExtraData: bizExtraData,
+		Name:         name,
+		IDCard:       idCard,
+		Status:       1,
 	}
 	if err := s.kycRecordRepo.Create(kycRecord); err != nil {
 		return nil, fmt.Errorf("create kyc record failed: %w", err)
@@ -301,7 +274,7 @@ func (s *AuthService) startAccountAuth(
 		SignVersion:    upstream.SignVersionHMACSHA256,
 		ReturnURL:      upstreamReturnURL,
 		NotifyURL:      upstreamNotifyURL,
-		BizNo:          platformBizNo,
+		BizNo:          bizNo,
 		SceneID:        s.config.SceneID,
 		ComparisonType: "1", // 人脸核身模式
 		UUID:           fmt.Sprintf("%d", userID),
@@ -421,20 +394,13 @@ func (s *AuthService) BuildAuthURL(token string) string {
 }
 
 // GetAuthResult 查询认证结果
-func (s *AuthService) GetAuthResult(userID int64, bizNo, platformBizNo string) (*model.AuthOrder, error) {
-	var order *model.AuthOrder
-	var err error
-
-	if platformBizNo != "" {
-		order, err = s.orderRepo.GetOrderByPlatformBizNo(platformBizNo)
-	} else {
-		order, err = s.orderRepo.GetOrderByBizNo(userID, bizNo)
-	}
+func (s *AuthService) GetAuthResult(userID int64, bizNo string) (*model.AuthOrder, error) {
+	order, err := s.orderRepo.GetOrderByBizNo(bizNo)
 	if err != nil {
 		return nil, err
 	}
 
-	// 越权防护：按 platform_biz_no 查询不受 user_id 过滤，必须显式校验订单归属
+	// 越权防护：按 biz_no 查询不受 user_id 过滤，必须显式校验订单归属
 	if order.UserID != userID {
 		return nil, errors.New("order not found")
 	}
@@ -443,7 +409,7 @@ func (s *AuthService) GetAuthResult(userID int64, bizNo, platformBizNo string) (
 	if order.Status == 0 || order.Status == 1 {
 		s.syncOrderResult(order)
 		// 重新查询
-		order, _ = s.orderRepo.GetOrderByPlatformBizNo(order.PlatformBizNo)
+		order, _ = s.orderRepo.GetOrderByBizNo(order.BizNo)
 	}
 
 	return order, nil
@@ -836,13 +802,12 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 	}
 
 	payload := map[string]interface{}{
-		"biz_no":          order.BizNo,
-		"platform_biz_no": order.PlatformBizNo,
-		"status":          order.Status,
-		"result_code":     order.ResultCode,
-		"result_message":  order.ResultMessage,
-		"cost":            order.Cost,
-		"sign":            sign,
+		"biz_no":         order.BizNo,
+		"status":         order.Status,
+		"result_code":    order.ResultCode,
+		"result_message": order.ResultMessage,
+		"cost":           order.Cost,
+		"sign":           sign,
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -871,12 +836,11 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 // 下游（如 zjmf_v10 插件）用相同算法与自己的 api_secret 校验，杜绝伪造回调。
 func buildNotifySign(apiSecret string, order *model.AuthOrder) string {
 	fields := map[string]string{
-		"biz_no":          order.BizNo,
-		"cost":            strconv.FormatFloat(order.Cost, 'f', 2, 64),
-		"platform_biz_no": order.PlatformBizNo,
-		"result_code":     order.ResultCode,
-		"result_message":  order.ResultMessage,
-		"status":          strconv.Itoa(order.Status),
+		"biz_no":         order.BizNo,
+		"cost":           strconv.FormatFloat(order.Cost, 'f', 2, 64),
+		"result_code":    order.ResultCode,
+		"result_message": order.ResultMessage,
+		"status":         strconv.Itoa(order.Status),
 	}
 
 	keys := make([]string, 0, len(fields))

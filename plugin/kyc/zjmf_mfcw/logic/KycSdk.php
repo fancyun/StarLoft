@@ -325,7 +325,6 @@ class KycSdk
         //      "result_code": 1000,
         //      "result_message": "SUCCESS",
         //      "data": {
-        //         "platform_biz_no": "xxx",
         //         "biz_no": "xxx",
         //         "result_code": 6000,         // <= 订单自身状态 code
         //         "result_message": "PROCESSING"// <= 订单自身状态 message
@@ -364,12 +363,12 @@ class KycSdk
      * 创建实名认证订单
      * 
      * @param array $params 参数
-     *   - biz_no: 业务订单号
      *   - name: 真实姓名
      *   - id_card: 身份证号
      *   - return_url: 前端回调地址
      *   - notify_url: 后端回调地址
      *   - biz_extra_data: 业务扩展数据（可选）
+     *   说明: biz_no 由平台随机生成下发,无需(也不应)由下游传入。
      * @return array
      */
     public function startKyc($params)
@@ -381,8 +380,7 @@ class KycSdk
      * 查询认证结果
      * 
      * @param array $params 参数
-     *   - biz_no: 业务订单号（可选）
-     *   - platform_biz_no: 平台订单号（可选）
+     *   - biz_no: 全平台唯一流水号（即 start 接口下发的 biz_no）
      * @return array
      */
     public function queryResult($params)

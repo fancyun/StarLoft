@@ -21,8 +21,7 @@
         </div>
 
         <el-table :data="records" style="width: 100%" v-loading="loading">
-          <el-table-column prop="platform_biz_no" label="平台流水号" width="180" />
-          <el-table-column prop="biz_no" label="业务流水号" width="180" />
+          <el-table-column prop="biz_no" label="流水号" width="180" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
               <el-tag v-if="row.status === 2" type="success">已完成</el-tag>

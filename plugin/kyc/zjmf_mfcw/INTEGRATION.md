@@ -164,7 +164,6 @@ X-Timestamp: <unix_timestamp>
 **请求体：**
 ```json
 {
-  "biz_no": "12938475602193847560",
   "name": "张三",
   "id_card": "110101199001011234",
   "return_url": "https://yourdomain.com/certification/zjmf_mfcw/result?uid=1",
@@ -173,13 +172,15 @@ X-Timestamp: <unix_timestamp>
 }
 ```
 
+> `biz_no` 由平台随机生成并在响应下发给下游，无需（也不应）由下游传入。
+
 **响应：**
 ```json
 {
   "code": 0,
   "message": "success",
   "data": {
-    "platform_biz_no": "46382671905182934716",
+    "biz_no": "46382671905182934716",
     "auth_url": "https://auth.finauth.com/verify?token=xxx",
     "expired_time": 1234567890,
     "expired_in": 900
@@ -192,7 +193,7 @@ X-Timestamp: <unix_timestamp>
 **请求体：**
 ```json
 {
-  "platform_biz_no": "46382671905182934716"
+  "biz_no": "46382671905182934716"
 }
 ```
 
@@ -202,8 +203,7 @@ X-Timestamp: <unix_timestamp>
   "code": 0,
   "message": "success",
   "data": {
-    "platform_biz_no": "46382671905182934716",
-    "biz_no": "12938475602193847560",
+    "biz_no": "46382671905182934716",
     "status": 2,
     "result_code": "1000",
     "result_message": "认证成功",

@@ -392,12 +392,12 @@ func (h *AdminHandler) GetRecentAuthOrders(c *gin.Context) {
 	records := make([]gin.H, 0, len(orders))
 	for _, o := range orders {
 		records = append(records, gin.H{
-			"platform_biz_no": o.PlatformBizNo,
-			"user_phone":      o.UserPhone,
-			"name":            o.Name,
-			"status":          o.Status,
-			"cost":            o.Cost,
-			"created_at":      o.CreatedAt,
+			"biz_no":       o.BizNo,
+			"user_phone":   o.UserPhone,
+			"name":         o.Name,
+			"status":       o.Status,
+			"cost":         o.Cost,
+			"created_at":   o.CreatedAt,
 		})
 	}
 
@@ -624,7 +624,6 @@ func (h *AdminHandler) GetAuthOrderList(c *gin.Context) {
 	for _, order := range orders {
 		orderList = append(orderList, gin.H{
 			"id":              order.ID,
-			"platform_biz_no": order.PlatformBizNo,
 			"biz_no":          order.BizNo,
 			"user_id":         order.UserID,
 			"user_phone":      order.UserPhone,
@@ -676,7 +675,6 @@ func (h *AdminHandler) GetAuthOrderDetail(c *gin.Context) {
 		"message": "success",
 		"data": gin.H{
 			"id":              order.ID,
-			"platform_biz_no": order.PlatformBizNo,
 			"biz_no":          order.BizNo,
 			"user_id":         order.UserID,
 			"return_url":      order.ReturnURL,

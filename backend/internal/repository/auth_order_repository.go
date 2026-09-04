@@ -18,13 +18,12 @@ func NewAuthOrderRepository(db *sql.DB) *AuthOrderRepository {
 // CreateOrder 创建认证订单
 func (r *AuthOrderRepository) CreateOrder(order *model.AuthOrder) error {
 	query := `INSERT INTO ` + model.KycDB + `.auth_order
-		(platform_biz_no, biz_no, user_id, return_url, notify_url, 
+		(biz_no, user_id, return_url, notify_url, 
 		biz_extra_data, status, cost, source, pay_type, user_pack_id, is_refunded, notify_times, 
 			notify_status, created_at, updated_at) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
-		order.PlatformBizNo,
 		order.BizNo,
 		order.UserID,
 		order.ReturnURL,
@@ -53,20 +52,19 @@ func (r *AuthOrderRepository) CreateOrder(order *model.AuthOrder) error {
 	return nil
 }
 
-// GetOrderByPlatformBizNo 根据平台流水号查询订单
-func (r *AuthOrderRepository) GetOrderByPlatformBizNo(platformBizNo string) (*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-		notify_status, created_at, updated_at, finished_at 
-		FROM ` + model.KycDB + `.auth_order WHERE platform_biz_no = ?`
+// orderColumns 认证订单通用查询列
+const orderColumns = `id, biz_no, user_id, 
+	COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
+	COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
+	COALESCE(result_code, ''), COALESCE(result_message, ''),
+	status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
+	notify_status, created_at, updated_at, finished_at`
 
+// scanOrder 将查询结果扫描到 AuthOrder
+func scanOrder(row interface{ Scan(...interface{}) error }) (*model.AuthOrder, error) {
 	order := &model.AuthOrder{}
-	err := r.db.QueryRow(query, platformBizNo).Scan(
+	err := row.Scan(
 		&order.ID,
-		&order.PlatformBizNo,
 		&order.BizNo,
 		&order.UserID,
 		&order.ReturnURL,
@@ -89,6 +87,18 @@ func (r *AuthOrderRepository) GetOrderByPlatformBizNo(platformBizNo string) (*mo
 		&order.UpdatedAt,
 		&order.FinishedAt,
 	)
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
+// GetOrderByBizNo 根据唯一业务流水号查询订单
+func (r *AuthOrderRepository) GetOrderByBizNo(bizNo string) (*model.AuthOrder, error) {
+	query := `SELECT ` + orderColumns + ` 
+		FROM ` + model.KycDB + `.auth_order WHERE biz_no = ?`
+
+	order, err := scanOrder(r.db.QueryRow(query, bizNo))
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
@@ -100,18 +110,12 @@ func (r *AuthOrderRepository) GetOrderByPlatformBizNo(platformBizNo string) (*mo
 
 // GetOrderByID 根据订单ID查询订单
 func (r *AuthOrderRepository) GetOrderByID(orderID int64) (*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''), COALESCE(result_data, ''),
-		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-		notify_status, created_at, updated_at, finished_at 
+	query := `SELECT ` + orderColumns + `, COALESCE(result_data, '')
 		FROM ` + model.KycDB + `.auth_order WHERE id = ?`
 
 	order := &model.AuthOrder{}
 	err := r.db.QueryRow(query, orderID).Scan(
 		&order.ID,
-		&order.PlatformBizNo,
 		&order.BizNo,
 		&order.UserID,
 		&order.ReturnURL,
@@ -122,7 +126,6 @@ func (r *AuthOrderRepository) GetOrderByID(orderID int64) (*model.AuthOrder, err
 		&order.UpRequestID,
 		&order.ResultCode,
 		&order.ResultMessage,
-		&order.ResultData,
 		&order.Status,
 		&order.Cost,
 		&order.Source,
@@ -134,6 +137,7 @@ func (r *AuthOrderRepository) GetOrderByID(orderID int64) (*model.AuthOrder, err
 		&order.CreatedAt,
 		&order.UpdatedAt,
 		&order.FinishedAt,
+		&order.ResultData,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
@@ -146,17 +150,17 @@ func (r *AuthOrderRepository) GetOrderByID(orderID int64) (*model.AuthOrder, err
 
 // RecentAuthOrder 最近认证订单（含用户手机号和姓名）
 type RecentAuthOrder struct {
-	PlatformBizNo string
-	UserPhone     string
-	Name          string
-	Status        int
-	Cost          float64
-	CreatedAt     time.Time
+	BizNo     string
+	UserPhone string
+	Name      string
+	Status    int
+	Cost      float64
+	CreatedAt time.Time
 }
 
 // GetRecentOrders 获取最近认证订单列表（含用户手机号和姓名）
 func (r *AuthOrderRepository) GetRecentOrders(limit int) ([]*RecentAuthOrder, error) {
-	query := `SELECT ao.platform_biz_no, u.phone, 
+	query := `SELECT ao.biz_no, u.phone, 
 		COALESCE((SELECT kr.name FROM ` + model.SysDB + `.kyc_record kr WHERE kr.user_id = ao.user_id ORDER BY kr.id DESC LIMIT 1), ''), 
 		ao.status, ao.cost, ao.created_at
 		FROM ` + model.KycDB + `.auth_order ao
@@ -172,7 +176,7 @@ func (r *AuthOrderRepository) GetRecentOrders(limit int) ([]*RecentAuthOrder, er
 	orders := make([]*RecentAuthOrder, 0)
 	for rows.Next() {
 		o := &RecentAuthOrder{}
-		err := rows.Scan(&o.PlatformBizNo, &o.UserPhone, &o.Name, &o.Status, &o.Cost, &o.CreatedAt)
+		err := rows.Scan(&o.BizNo, &o.UserPhone, &o.Name, &o.Status, &o.Cost, &o.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -231,51 +235,6 @@ func (r *AuthOrderRepository) GetDailyIncomeStats(startDate, endDate string) (ma
 	return result, nil
 }
 
-// GetOrderByBizNo 根据用户业务流水号查询订单
-func (r *AuthOrderRepository) GetOrderByBizNo(userID int64, bizNo string) (*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-		notify_status, created_at, updated_at, finished_at 
-		FROM ` + model.KycDB + `.auth_order WHERE user_id = ? AND biz_no = ? ORDER BY id DESC LIMIT 1`
-
-	order := &model.AuthOrder{}
-	err := r.db.QueryRow(query, userID, bizNo).Scan(
-		&order.ID,
-		&order.PlatformBizNo,
-		&order.BizNo,
-		&order.UserID,
-		&order.ReturnURL,
-		&order.NotifyURL,
-		&order.BizExtraData,
-		&order.UpToken,
-		&order.UpBizID,
-		&order.UpRequestID,
-		&order.ResultCode,
-		&order.ResultMessage,
-		&order.Status,
-		&order.Cost,
-		&order.Source,
-		&order.PayType,
-		&order.UserPackID,
-		&order.IsRefunded,
-		&order.NotifyTimes,
-		&order.NotifyStatus,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-		&order.FinishedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return order, nil
-}
-
 // UpdateOrderUpstreamInfo 更新订单上游信息
 func (r *AuthOrderRepository) UpdateOrderUpstreamInfo(orderID int64, token, bizID, requestID string) error {
 	query := `UPDATE ` + model.KycDB + `.auth_order 
@@ -287,40 +246,10 @@ func (r *AuthOrderRepository) UpdateOrderUpstreamInfo(orderID int64, token, bizI
 
 // GetOrderByUpBizID 根据上游业务ID查询订单
 func (r *AuthOrderRepository) GetOrderByUpBizID(upBizID string) (*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-			COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-			COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-			COALESCE(result_code, ''), COALESCE(result_message, ''),
-			status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-			notify_status, created_at, updated_at, finished_at 
-			FROM ` + model.KycDB + `.auth_order WHERE up_biz_id = ?`
+	query := `SELECT ` + orderColumns + ` 
+		FROM ` + model.KycDB + `.auth_order WHERE up_biz_id = ?`
 
-	order := &model.AuthOrder{}
-	err := r.db.QueryRow(query, upBizID).Scan(
-		&order.ID,
-		&order.PlatformBizNo,
-		&order.BizNo,
-		&order.UserID,
-		&order.ReturnURL,
-		&order.NotifyURL,
-		&order.BizExtraData,
-		&order.UpToken,
-		&order.UpBizID,
-		&order.UpRequestID,
-		&order.ResultCode,
-		&order.ResultMessage,
-		&order.Status,
-		&order.Cost,
-		&order.Source,
-		&order.PayType,
-		&order.UserPackID,
-		&order.IsRefunded,
-		&order.NotifyTimes,
-		&order.NotifyStatus,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-		&order.FinishedAt,
-	)
+	order, err := scanOrder(r.db.QueryRow(query, upBizID))
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
@@ -355,12 +284,7 @@ func (r *AuthOrderRepository) UpdateOrderRefundFlag(orderID int64) error {
 
 // GetPendingOrders 查询所有处理中且未退款的订单（供定时任务主动同步上游结果）
 func (r *AuthOrderRepository) GetPendingOrders() ([]*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-		notify_status, created_at, updated_at, finished_at 
+	query := `SELECT ` + orderColumns + ` 
 		FROM ` + model.KycDB + `.auth_order WHERE status IN (0, 1) AND is_refunded = 0 AND up_biz_id IS NOT NULL AND up_biz_id != ''`
 
 	rows, err := r.db.Query(query)
@@ -371,32 +295,7 @@ func (r *AuthOrderRepository) GetPendingOrders() ([]*model.AuthOrder, error) {
 
 	orders := make([]*model.AuthOrder, 0)
 	for rows.Next() {
-		order := &model.AuthOrder{}
-		err := rows.Scan(
-			&order.ID,
-			&order.PlatformBizNo,
-			&order.BizNo,
-			&order.UserID,
-			&order.ReturnURL,
-			&order.NotifyURL,
-			&order.BizExtraData,
-			&order.UpToken,
-			&order.UpBizID,
-			&order.UpRequestID,
-			&order.ResultCode,
-			&order.ResultMessage,
-			&order.Status,
-			&order.Cost,
-			&order.Source,
-			&order.PayType,
-			&order.UserPackID,
-			&order.IsRefunded,
-			&order.NotifyTimes,
-			&order.NotifyStatus,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-			&order.FinishedAt,
-		)
+		order, err := scanOrder(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -408,41 +307,11 @@ func (r *AuthOrderRepository) GetPendingOrders() ([]*model.AuthOrder, error) {
 
 // GetLatestPendingOrder 获取用户最新进行中的订单（用于继续认证）
 func (r *AuthOrderRepository) GetLatestPendingOrder(userID int64) (*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-			COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-			COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-			COALESCE(result_code, ''), COALESCE(result_message, ''), 
-			status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-			notify_status, created_at, updated_at, finished_at 
-			FROM ` + model.KycDB + `.auth_order WHERE user_id = ? AND status IN (0, 1) 
-			ORDER BY created_at DESC LIMIT 1`
+	query := `SELECT ` + orderColumns + ` 
+		FROM ` + model.KycDB + `.auth_order WHERE user_id = ? AND status IN (0, 1) 
+		ORDER BY created_at DESC LIMIT 1`
 
-	order := &model.AuthOrder{}
-	err := r.db.QueryRow(query, userID).Scan(
-		&order.ID,
-		&order.PlatformBizNo,
-		&order.BizNo,
-		&order.UserID,
-		&order.ReturnURL,
-		&order.NotifyURL,
-		&order.BizExtraData,
-		&order.UpToken,
-		&order.UpBizID,
-		&order.UpRequestID,
-		&order.ResultCode,
-		&order.ResultMessage,
-		&order.Status,
-		&order.Cost,
-		&order.Source,
-		&order.PayType,
-		&order.UserPackID,
-		&order.IsRefunded,
-		&order.NotifyTimes,
-		&order.NotifyStatus,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-		&order.FinishedAt,
-	)
+	order, err := scanOrder(r.db.QueryRow(query, userID))
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
@@ -483,7 +352,7 @@ func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, user
 	}
 
 	// 查询列表
-	query := `SELECT ao.id, ao.platform_biz_no, COALESCE(ao.biz_no, ''), ao.user_id, 
+	query := `SELECT ao.id, ao.biz_no, ao.user_id, 
 		COALESCE(ao.return_url, ''), COALESCE(ao.notify_url, ''), COALESCE(ao.biz_extra_data, ''), 
 		COALESCE(ao.up_token, ''), COALESCE(ao.up_biz_id, ''), COALESCE(ao.up_request_id, ''), 
 		COALESCE(ao.result_code, ''), COALESCE(ao.result_message, ''),
@@ -505,7 +374,6 @@ func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, user
 		order := &model.AuthOrder{}
 		err := rows.Scan(
 			&order.ID,
-			&order.PlatformBizNo,
 			&order.BizNo,
 			&order.UserID,
 			&order.ReturnURL,
@@ -547,12 +415,7 @@ func (r *AuthOrderRepository) GetUserAuthOrders(userID int64, page, pageSize int
 
 	// 查询订单列表
 	offset := (page - 1) * pageSize
-	query := `SELECT 
-		id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''), status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, 
-		notify_times, notify_status, created_at, updated_at, finished_at
+	query := `SELECT ` + orderColumns + `
 		FROM ` + model.KycDB + `.auth_order 
 		WHERE user_id = ?
 		ORDER BY created_at DESC 
@@ -566,32 +429,7 @@ func (r *AuthOrderRepository) GetUserAuthOrders(userID int64, page, pageSize int
 
 	orders := make([]*model.AuthOrder, 0)
 	for rows.Next() {
-		order := &model.AuthOrder{}
-		err := rows.Scan(
-			&order.ID,
-			&order.PlatformBizNo,
-			&order.BizNo,
-			&order.UserID,
-			&order.ReturnURL,
-			&order.NotifyURL,
-			&order.BizExtraData,
-			&order.UpToken,
-			&order.UpBizID,
-			&order.UpRequestID,
-			&order.ResultCode,
-			&order.ResultMessage,
-			&order.Status,
-			&order.Cost,
-			&order.Source,
-			&order.PayType,
-			&order.UserPackID,
-			&order.IsRefunded,
-			&order.NotifyTimes,
-			&order.NotifyStatus,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-			&order.FinishedAt,
-		)
+		order, err := scanOrder(rows)
 		if err != nil {
 			return nil, 0, err
 		}

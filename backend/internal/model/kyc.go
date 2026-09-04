@@ -14,8 +14,7 @@ type KycRecord struct {
 	UserID         int64         `json:"user_id" gorm:"not null;index"`          // 用户ID
 	Source         int           `json:"source" gorm:"type:tinyint;not null;default:2"` // 来源：1-账户实名 2-API调用
 	AuthOrderID    sql.NullInt64 `json:"auth_order_id,omitempty" gorm:"index"`   // 关联认证订单ID（通过下单完成实名时关联；账户实名不关联订单）
-	PlatformBizNo  string        `json:"platform_biz_no,omitempty" gorm:"size:50;index"` // 平台业务流水号
-	BizNo          string        `json:"biz_no,omitempty" gorm:"size:50;index"`            // 用户业务流水号
+	BizNo          string        `json:"biz_no" gorm:"size:50;not null;uniqueIndex"` // 全平台唯一业务流水号（平台调用时随机生成）
 	ReturnURL      string        `json:"return_url,omitempty" gorm:"size:500"`  // 认证完成后跳转的URL
 	NotifyURL      string        `json:"notify_url,omitempty" gorm:"size:500"`  // 异步通知回调URL
 	BizExtraData   string        `json:"biz_extra_data,omitempty" gorm:"type:text"` // 额外业务数据

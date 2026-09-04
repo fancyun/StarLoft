@@ -63,7 +63,6 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 	}
 
 	var req struct {
-		BizNo        string `json:"biz_no" binding:"required"`
 		Name         string `json:"name" binding:"required"`
 		IDCard       string `json:"id_card" binding:"required"`
 		ReturnURL    string `json:"return_url" binding:"required"`
@@ -122,7 +121,6 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		userID,
 		req.Name,
 		req.IDCard,
-		req.BizNo,
 		req.ReturnURL,
 		req.NotifyURL,
 		req.BizExtraData,
@@ -148,10 +146,10 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"platform_biz_no": result.Order.PlatformBizNo,
-			"auth_url":        result.AuthURL,
-			"expired_time":    result.Order.CreatedAt.Add(15 * time.Minute).Unix(),
-			"expired_in":      900,
+			"biz_no":        result.Order.BizNo,
+			"auth_url":      result.AuthURL,
+			"expired_time":  result.Order.CreatedAt.Add(15 * time.Minute).Unix(),
+			"expired_in":    900,
 		},
 	})
 }
@@ -178,8 +176,7 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 	}
 
 	var req struct {
-		BizNo         string `json:"biz_no"`
-		PlatformBizNo string `json:"platform_biz_no"`
+		BizNo string `json:"biz_no" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -190,7 +187,7 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 		return
 	}
 
-	order, err := h.authService.GetAuthResult(userID, req.BizNo, req.PlatformBizNo)
+	order, err := h.authService.GetAuthResult(userID, req.BizNo)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    404,
@@ -203,12 +200,11 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"platform_biz_no": order.PlatformBizNo,
-			"biz_no":          order.BizNo,
-			"result_code":     order.ResultCode,
-			"result_message":  order.ResultMessage,
-			"status":          order.Status,
-			"cost":            order.Cost,
+			"biz_no":         order.BizNo,
+			"result_code":    order.ResultCode,
+			"result_message": order.ResultMessage,
+			"status":         order.Status,
+			"cost":           order.Cost,
 		},
 	})
 }
@@ -293,12 +289,12 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 	// 如果状态为进行中，返回关联的认证 token 与认证地址（用于继续认证，直接跳转上游）
 	if kycRecord != nil && kycRecord.Status == 1 {
 		pendingToken := kycRecord.UpToken
-		pendingBizNo := kycRecord.PlatformBizNo
+		pendingBizNo := kycRecord.BizNo
 		// 兼容历史：API 调用（source=2）产生的实名记录不存上游 token，回退查订单
 		if pendingToken == "" {
 			if pendingOrder, err := h.authService.GetLatestPendingOrder(userID); err == nil && pendingOrder != nil {
 				pendingToken = pendingOrder.UpToken
-				pendingBizNo = pendingOrder.PlatformBizNo
+				pendingBizNo = pendingOrder.BizNo
 			}
 		}
 		if pendingToken != "" {
@@ -424,9 +420,6 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		return
 	}
 
-	// 生成业务流水号（用于标识这是用户实名认证）
-	bizNo := fmt.Sprintf("WEB_%d_%d", userID, time.Now().Unix())
-
 	// 标记这是用户实名认证
 	bizExtraData := fmt.Sprintf(`{"type":"user_auth","user_id":%d}`, userID)
 
@@ -435,7 +428,6 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		userID,
 		req.Name,
 		req.IDCard,
-		bizNo,
 		req.ReturnURL,
 		notifyURL,
 		bizExtraData,
@@ -461,10 +453,10 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"platform_biz_no": result.Record.PlatformBizNo,
-			"auth_url":        result.AuthURL,
-			"expired_time":    result.Record.CreatedAt.Add(15 * time.Minute).Unix(),
-			"expired_in":      900,
+			"biz_no":       result.Record.BizNo,
+			"auth_url":     result.AuthURL,
+			"expired_time": result.Record.CreatedAt.Add(15 * time.Minute).Unix(),
+			"expired_in":   900,
 		},
 	})
 }

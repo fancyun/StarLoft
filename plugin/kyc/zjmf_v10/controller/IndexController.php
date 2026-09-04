@@ -23,8 +23,7 @@ class IndexController
      * KYC 平台在认证终态（成功/失败/取消/超时）时向 notify_url 推送：
      *   POST application/json
      *   {
-     *     "biz_no":          "下游业务订单号",
-     *     "platform_biz_no": "平台流水号(即插件保存的 certify_id)",
+     *     "biz_no":          "全平台唯一流水号(即插件保存的 certify_id)",
      *     "status":          2,        // 0待认证 1认证中 2成功 3失败 4已取消 5超时
      *     "result_code":     "1000",
      *     "result_message":  "认证成功",
@@ -55,9 +54,9 @@ class IndexController
             return;
         }
 
-        $platformBizNo = trim((string)($data['platform_biz_no'] ?? ''));
-        if ($platformBizNo === '') {
-            echo json_encode(['code' => 400, 'message' => '缺少 platform_biz_no']);
+        $bizNo = trim((string)($data['biz_no'] ?? ''));
+        if ($bizNo === '') {
+            echo json_encode(['code' => 400, 'message' => '缺少 biz_no']);
             return;
         }
 
@@ -74,8 +73,8 @@ class IndexController
         $localStatus = $map[$status] ?? 4;
         $resultMsg = trim((string)($data['result_message'] ?? $data['result_code'] ?? ''));
 
-        // 定位并更新本地实名记录（按 certify_id = platform_biz_no）
-        $updated = $this->updateByCertifyId($platformBizNo, $localStatus, $resultMsg);
+        // 定位并更新本地实名记录（按 certify_id = biz_no）
+        $updated = $this->updateByCertifyId($bizNo, $localStatus, $resultMsg);
 
         if (!$updated) {
             echo json_encode(['code' => 404, 'message' => '未找到对应实名记录']);
@@ -168,7 +167,7 @@ HTML;
     }
 
     /**
-     * 按 certify_id（平台流水号）定位并更新本机实名记录状态
+     * 按 certify_id（全平台唯一流水号 biz_no）定位并更新本机实名记录状态
      *
      * 兼容 v10 常见认证表名；找不到记录时返回 false。
      *

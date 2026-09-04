@@ -131,7 +131,7 @@ class ZjmfV10
 
                 if ($exStatus === 4 && $exCertifyId !== '') {
                     $needRecreate = false;
-                    $query = $sdk->queryResult(['platform_biz_no' => $exCertifyId]);
+                    $query = $sdk->queryResult(['biz_no' => $exCertifyId]);
                     $cat   = KycSdk::classifyError($query);
 
                     if ($cat === KycSdk::ERR_CAT_SUCCESS) {
@@ -172,11 +172,6 @@ class ZjmfV10
 
             // ============ 真正创建新任务 ============
             $uid   = $this->resolveCurrentUid($certifi);
-            // 随机业务单号：每次认证唯一（同一用户允许多次实名），纯随机数无前缀
-            $bizNo = '';
-            for ($i = 0; $i < 20; $i++) {
-                $bizNo .= random_int(0, 9);
-            }
             $domain = $this->resolveDomain();
             $notifyUrl = $domain . '/certification/zjmf_v10/index/notifyHandle';
             $returnUrl = !empty($config['return_url'])
@@ -184,7 +179,6 @@ class ZjmfV10
                 : $domain . '/certification/zjmf_v10/index/result';
 
             $result = $sdk->startKyc([
-                'biz_no'         => $bizNo,
                 'name'           => $name,
                 'id_card'        => $idCard,
                 'return_url'     => $returnUrl,
@@ -226,14 +220,14 @@ class ZjmfV10
 
             // 创建成功 -> 写库
             $orderData = is_array($result['data'] ?? null) ? $result['data'] : [];
-            $platformBizNo = (string)($orderData['platform_biz_no'] ?? '');
+            $bizNo = (string)($orderData['biz_no'] ?? '');
             $authUrl = (string)($orderData['auth_url'] ?? '');
 
             $this->updateLocalCertiStatus($certifi, [
                 'status'     => 4,
                 'auth_fail'  => '',
-                'certify_id' => $platformBizNo,
-                'notes'      => "KYC平台流水号: {$platformBizNo}\n业务订单号: {$bizNo}\n创建时间: " . date('Y-m-d H:i:s'),
+                'certify_id' => $bizNo,
+                'notes'      => "KYC平台流水号: {$bizNo}\n创建时间: " . date('Y-m-d H:i:s'),
             ]);
 
             if ($authUrl === '') {
@@ -300,7 +294,7 @@ class ZjmfV10
         try {
             $config = $this->getPluginConfig();
             $sdk    = new KycSdk($config);
-            $result = $sdk->queryResult(['platform_biz_no' => $certifyId]);
+            $result = $sdk->queryResult(['biz_no' => $certifyId]);
             $cat    = KycSdk::classifyError($result);
 
             // --- 成功响应 -> 按 data 订单自身状态分 ---
@@ -479,7 +473,7 @@ class ZjmfV10
      * 校验 KYC 平台异步回调签名（HMAC-SHA256）
      *
      * 与后端 buildNotifySign 算法一致：
-     * 对固定字段(biz_no/cost/platform_biz_no/result_code/result_message/status)按 key 字典序
+     * 对固定字段(biz_no/cost/result_code/result_message/status)按 key 字典序
      * 拼接为 "k=v&k=v..." 的原始字符串（不做 URL 编码），再以插件自己的 api_secret
      * 计算 HMAC-SHA256 十六进制小写签名。可有效防止伪造回调。
      *
@@ -501,7 +495,6 @@ class ZjmfV10
         $fields = [
             'biz_no'          => (string)($data['biz_no'] ?? ''),
             'cost'            => sprintf('%.2f', (float)($data['cost'] ?? 0)),
-            'platform_biz_no' => (string)($data['platform_biz_no'] ?? ''),
             'result_code'     => (string)($data['result_code'] ?? ''),
             'result_message'  => (string)($data['result_message'] ?? ''),
             'status'          => (string)(int)($data['status'] ?? 0),
@@ -646,7 +639,7 @@ class ZjmfV10
     }
 
     /**
-     * 解析认证任务号（平台流水号 platform_biz_no）
+     * 解析认证任务号（全平台唯一流水号 biz_no）
      * 兼容字段名: certify_id / certif_id / certifi_id / certifyId / certifiId / certifId
      */
     protected function resolveCertifyId($certifi)

@@ -85,8 +85,7 @@ CREATE TABLE IF NOT EXISTS `kyc_record` (
   `user_id`       bigint       NOT NULL,
   `source`        tinyint      NOT NULL DEFAULT 2 COMMENT '来源：1-账户实名 2-API调用',
   `auth_order_id` bigint       NULL,
-  `platform_biz_no` varchar(50) NULL,
-  `biz_no`        varchar(50) NULL,
+  `biz_no`        varchar(50)  NOT NULL COMMENT '全平台唯一业务流水号（平台调用时随机生成）',
   `return_url`    varchar(500) NULL,
   `notify_url`    varchar(500) NULL,
   `biz_extra_data` text        NULL,
@@ -105,8 +104,7 @@ CREATE TABLE IF NOT EXISTS `kyc_record` (
   PRIMARY KEY (`id`),
   KEY `idx_kyc_record_user_id` (`user_id`),
   KEY `idx_kyc_record_source` (`source`),
-  KEY `idx_kyc_record_platform_biz_no` (`platform_biz_no`),
-  KEY `idx_kyc_record_biz_no` (`biz_no`),
+  UNIQUE KEY `idx_kyc_record_biz_no` (`biz_no`),
   KEY `idx_kyc_record_up_biz_id` (`up_biz_id`),
   KEY `idx_kyc_record_auth_order_id` (`auth_order_id`),
   KEY `idx_kyc_record_status` (`status`)
@@ -202,8 +200,7 @@ USE `starloft_kyc`;
 -- 认证订单
 CREATE TABLE IF NOT EXISTS `auth_order` (
   `id`              bigint       NOT NULL AUTO_INCREMENT,
-  `platform_biz_no` varchar(50)  NOT NULL,
-  `biz_no`          varchar(50)  NULL,
+  `biz_no`          varchar(50)  NOT NULL COMMENT '全平台唯一业务流水号（平台调用时随机生成）',
   `user_id`         bigint       NOT NULL,
   `return_url`      varchar(500) NULL,
   `notify_url`      varchar(500) NULL,
@@ -226,8 +223,7 @@ CREATE TABLE IF NOT EXISTS `auth_order` (
   `updated_at`      datetime(3)  NOT NULL,
   `finished_at`     datetime(3)  NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_auth_order_platform_biz_no` (`platform_biz_no`),
-  KEY `idx_auth_order_biz_no` (`biz_no`),
+  UNIQUE KEY `idx_auth_order_biz_no` (`biz_no`),
   KEY `idx_auth_order_user_id` (`user_id`),
   KEY `idx_auth_order_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='认证订单';

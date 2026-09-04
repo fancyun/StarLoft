@@ -111,8 +111,7 @@ POST /certification/zjmf_v10/index/notifyHandle
 Content-Type: application/json
 
 {
-    "biz_no":          "12938475602193847560",
-    "platform_biz_no": "46382671905182934716",
+    "biz_no":         "46382671905182934716",
     "status":          2,
     "result_code":     "1000",
     "result_message":  "认证成功",
@@ -123,8 +122,7 @@ Content-Type: application/json
 
 字段说明：
 
-- `biz_no`：下游业务订单号
-- `platform_biz_no`：平台流水号（插件保存为认证记录的 `certify_id`）
+- `biz_no`：全平台唯一流水号（插件保存为认证记录的 `certify_id`）
 - `status`：0待认证 1认证中 2成功 3失败 4已取消 5超时
 - `result_code` / `result_message`：上游结果码与说明
 - `cost`：本次认证扣费金额
@@ -132,13 +130,13 @@ Content-Type: application/json
 
 **签名算法**（与插件 `verifyNotifySign()` 一致）：
 
-1. 取 `biz_no` / `cost` / `platform_biz_no` / `result_code` / `result_message` / `status` 六个字段
+1. 取 `biz_no` / `cost` / `result_code` / `result_message` / `status` 五个字段
 2. 按 key 字典序拼接为原始字符串（不做 URL 编码）：`k1=v1&k2=v2&...`
 3. `sign = 小写hex( HMAC-SHA256(api_secret, 拼接串) )`
 
 其中 `cost` 固定保留两位小数（如 `1.50`），`status` 为整数。`api_secret` 即插件配置的 API Secret。
 
-插件收到通知后先校验 `sign`，校验通过再按 `platform_biz_no` 定位认证记录并更新状态：
+插件收到通知后先校验 `sign`，校验通过再按 `biz_no`（即 `certify_id`）定位认证记录并更新状态：
 `status=2 → 通过`、`status=3/4/5 → 失败`。
 
 ## API 接口说明
@@ -172,7 +170,6 @@ $sign = hash_hmac('sha256', $body, $this->apiSecret); // 小写十六进制
 POST /api/kyc/start
 
 {
-    "biz_no":         "12938475602193847560",   // 业务订单号（唯一）
     "name":           "张三",                              // 真实姓名
     "id_card":        "110101199001011234",               // 身份证号
     "return_url":     "https://yourdomain.com/certification/zjmf_v10/index/result",
@@ -181,6 +178,8 @@ POST /api/kyc/start
 }
 ```
 
+> `biz_no` 由平台随机生成（20 位数字）并在响应下发给下游，无需（也不应）由下游传入。
+
 响应：
 
 ```json
@@ -188,7 +187,7 @@ POST /api/kyc/start
     "code": 0,
     "message": "success",
     "data": {
-        "platform_biz_no": "46382671905182934716",
+        "biz_no": "46382671905182934716",
         "auth_url": "https://auth.finauth.com/verify?token=xxx",
         "expired_time": 1737000900,
         "expired_in": 900
@@ -202,7 +201,7 @@ POST /api/kyc/start
 POST /api/kyc/result
 
 {
-    "platform_biz_no": "46382671905182934716"
+    "biz_no": "46382671905182934716"
 }
 ```
 
@@ -213,8 +212,7 @@ POST /api/kyc/result
     "code": 0,
     "message": "success",
     "data": {
-        "platform_biz_no": "46382671905182934716",
-        "biz_no": "12938475602193847560",
+        "biz_no": "46382671905182934716",
         "status": 2,
         "result_code": "1000",
         "result_message": "认证成功",

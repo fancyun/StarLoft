@@ -19,7 +19,7 @@ use certification\zjmf_mfcw\logic\KycSdk;
  *                 到上限后强制返回 status=2(终态失败),杜绝平台系统以 2s/次无限轮询回调地址
  *  - 修复 resolveCurrentUid(): 优先从框架传入的 $certifi 记录提取 uid,并补充 Cookie 与更多 Session 键名,
  *                 避免 uid 解析为 0 导致"认证中复用"幂等失效、同一用户被重复发单扣费
- *  - biz_no 改为随机单号: 每次认证唯一,同一用户允许多次实名,不再使用固定单号
+ *  - biz_no 改为全平台唯一流水号: 每次认证唯一,同一用户允许多次实名,该单号由平台随机生成
  *
  * @author StarLoft
  * @version 1.1.2
@@ -100,7 +100,7 @@ class ZjmfMfcwPlugin extends Plugin
                 if ($exStatus === 4 && $exCertifyId !== '') {
                     $needRecreate = false;
                     // 先尝试查一下这个任务号还活不活着(可能 KYC 平台侧任务已过期/已出结果但魔方没收到通知)
-                    $query = $sdk->queryResult(['platform_biz_no' => $exCertifyId]);
+                    $query = $sdk->queryResult(['biz_no' => $exCertifyId]);
                     $cat   = KycSdk::classifyError($query);
 
                     if ($cat === KycSdk::ERR_CAT_SUCCESS) {
@@ -143,17 +143,11 @@ class ZjmfMfcwPlugin extends Plugin
 
             // ============ 真正创建新任务 ============
             $uid   = $this->resolveCurrentUid($certifi);
-            // 随机业务单号：每次认证唯一（同一用户允许多次实名），纯随机数无前缀
-            $bizNo = '';
-            for ($i = 0; $i < 20; $i++) {
-                $bizNo .= random_int(0, 9);
-            }
             $domain = $this->resolveDomain();
             $notifyUrl = $domain . '/certification/zjmf_mfcw/callback?uid=' . $uid;
             $returnUrl = $domain . '/certification/zjmf_mfcw/result?uid=' . $uid;
 
             $result = $sdk->startKyc([
-                'biz_no'        => $bizNo,
                 'name'          => $name,
                 'id_card'       => $idCard,
                 'return_url'    => $returnUrl,
@@ -197,11 +191,12 @@ class ZjmfMfcwPlugin extends Plugin
 
             // 创建成功 -> 写库
             $orderData = $result['data'];
+            $bizNo = (string)($orderData['biz_no'] ?? '');
             $data = [
                 'status'     => 4,
                 'auth_fail'  => '',
-                'certify_id' => $orderData['platform_biz_no'],
-                'notes'      => "KYC平台流水号: {$orderData['platform_biz_no']}\n业务订单号: {$bizNo}\n创建时间: " . date('Y-m-d H:i:s'),
+                'certify_id' => $bizNo,
+                'notes'      => "KYC平台流水号: {$bizNo}\n创建时间: " . date('Y-m-d H:i:s'),
             ];
             updatePersonalCertifiStatus($data);
 
@@ -280,7 +275,7 @@ HTML;
         try {
             $config = $this->getConfig();
             $sdk    = new KycSdk($config);
-            $result = $sdk->queryResult(['platform_biz_no' => $certifyId]);
+            $result = $sdk->queryResult(['biz_no' => $certifyId]);
             $cat    = KycSdk::classifyError($result);
 
             // --- 成功响应(顶层 result_code=1000/SUCCESS) -> 按 data.result_code(订单自身状态)分 ---
@@ -470,7 +465,7 @@ HTML;
     }
 
     /**
-     * 解析本次查询的认证任务号（平台流水号 platform_biz_no）
+     * 解析本次查询的认证任务号（全平台唯一流水号 biz_no）
      *
      * 修复: 魔方财务框架传入 getStatus() 的任务号字段名在不同版本/表结构下可能为
      *   certify_id / certif_id / certifi_id / certifyId 等，且该值可能为空，

@@ -16,8 +16,8 @@ func NewKycRecordRepository(db *sql.DB) *KycRecordRepository {
 }
 
 // kycRecordColumns 实名认证记录常用查询列
-const kycRecordColumns = `id, user_id, source, auth_order_id, COALESCE(platform_biz_no, ''), 
-	COALESCE(biz_no, ''), COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
+const kycRecordColumns = `id, user_id, source, auth_order_id, COALESCE(biz_no, ''), 
+	COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
 	COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
 	name, id_card, status, COALESCE(result_code, ''), COALESCE(result_message, ''), COALESCE(result_data, ''), 
 	verified_at, created_at, updated_at`
@@ -30,7 +30,6 @@ func scanKycRecord(row interface{ Scan(...interface{}) error }) (*model.KycRecor
 		&record.UserID,
 		&record.Source,
 		&record.AuthOrderID,
-		&record.PlatformBizNo,
 		&record.BizNo,
 		&record.ReturnURL,
 		&record.NotifyURL,
@@ -57,16 +56,15 @@ func scanKycRecord(row interface{ Scan(...interface{}) error }) (*model.KycRecor
 // Create 创建实名认证记录
 func (r *KycRecordRepository) Create(record *model.KycRecord) error {
 	query := `INSERT INTO ` + model.SysDB + `.kyc_record 
-		(user_id, source, auth_order_id, platform_biz_no, biz_no, return_url, notify_url, 
+		(user_id, source, auth_order_id, biz_no, return_url, notify_url, 
 		biz_extra_data, up_token, up_biz_id, up_request_id, name, id_card, status, result_code, 
 		result_message, result_data, verified_at, created_at, updated_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		record.UserID,
 		record.Source,
 		record.AuthOrderID,
-		record.PlatformBizNo,
 		record.BizNo,
 		record.ReturnURL,
 		record.NotifyURL,
