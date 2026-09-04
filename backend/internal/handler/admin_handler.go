@@ -11,6 +11,7 @@ import (
 
 	"starloftrpa/internal/model"
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/runtime"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/utils"
 
@@ -31,6 +32,7 @@ type AdminHandler struct {
 	loginLogRepo     *repository.LoginLogRepository
 	balanceSvc       *service.BalanceService
 	authSvc          *service.AuthService
+	rt               *runtime.Runtime
 	jwtSecret        string
 }
 
@@ -45,6 +47,7 @@ func NewAdminHandler(
 	loginLogRepo *repository.LoginLogRepository,
 	balanceSvc *service.BalanceService,
 	authSvc *service.AuthService,
+	rt *runtime.Runtime,
 	jwtSecret string,
 ) *AdminHandler {
 	return &AdminHandler{
@@ -58,6 +61,7 @@ func NewAdminHandler(
 		loginLogRepo:     loginLogRepo,
 		balanceSvc:       balanceSvc,
 		authSvc:          authSvc,
+		rt:               rt,
 		jwtSecret:        jwtSecret,
 	}
 }
@@ -232,6 +236,18 @@ func (h *AdminHandler) UpdateSystemConfig(c *gin.Context) {
 		return
 	}
 
+	// 业务配置更新后重载运行时快照（重建第三方客户端），使修改即时生效，无需重启
+	if h.rt != nil {
+		if err := h.rt.Reload(); err != nil {
+			log.Printf("配置更新后重载运行时快照失败: %v", err)
+			c.JSON(http.StatusOK, gin.H{
+				"code":    500,
+				"message": "配置已保存但加载失败，部分功能可能未生效，请检查配置后重试",
+			})
+			return
+		}
+	}
+
 	// 记录配置更新操作日志（脱敏：不记录敏感配置值）
 	h.logAdminOperation(c, "config_update", "config", 0, "keys="+strings.Join(sortedKeys(stringReq), ","))
 
@@ -392,12 +408,12 @@ func (h *AdminHandler) GetRecentAuthOrders(c *gin.Context) {
 	records := make([]gin.H, 0, len(orders))
 	for _, o := range orders {
 		records = append(records, gin.H{
-			"biz_no":       o.BizNo,
-			"user_phone":   o.UserPhone,
-			"name":         o.Name,
-			"status":       o.Status,
-			"cost":         o.Cost,
-			"created_at":   o.CreatedAt,
+			"biz_no":     o.BizNo,
+			"user_phone": o.UserPhone,
+			"name":       o.Name,
+			"status":     o.Status,
+			"cost":       o.Cost,
+			"created_at": o.CreatedAt,
 		})
 	}
 
@@ -623,17 +639,17 @@ func (h *AdminHandler) GetAuthOrderList(c *gin.Context) {
 	orderList := make([]gin.H, 0, len(orders))
 	for _, order := range orders {
 		orderList = append(orderList, gin.H{
-			"id":              order.ID,
-			"biz_no":          order.BizNo,
-			"user_id":         order.UserID,
-			"user_phone":      order.UserPhone,
-			"status":          order.Status,
-			"cost":            order.Cost,
-			"result_code":     order.ResultCode,
-			"result_message":  order.ResultMessage,
-			"is_refunded":     order.IsRefunded,
-			"created_at":      order.CreatedAt,
-			"finished_at":     order.FinishedAt,
+			"id":             order.ID,
+			"biz_no":         order.BizNo,
+			"user_id":        order.UserID,
+			"user_phone":     order.UserPhone,
+			"status":         order.Status,
+			"cost":           order.Cost,
+			"result_code":    order.ResultCode,
+			"result_message": order.ResultMessage,
+			"is_refunded":    order.IsRefunded,
+			"created_at":     order.CreatedAt,
+			"finished_at":    order.FinishedAt,
 		})
 	}
 
@@ -674,26 +690,26 @@ func (h *AdminHandler) GetAuthOrderDetail(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"id":              order.ID,
-			"biz_no":          order.BizNo,
-			"user_id":         order.UserID,
-			"return_url":      order.ReturnURL,
-			"notify_url":      order.NotifyURL,
-			"biz_extra_data":  order.BizExtraData,
-			"up_token":        order.UpToken,
-			"up_biz_id":       order.UpBizID,
-			"up_request_id":   order.UpRequestID,
-			"result_code":     order.ResultCode,
-			"result_message":  order.ResultMessage,
-			"result_data":     order.ResultData,
-			"status":          order.Status,
-			"cost":            order.Cost,
-			"is_refunded":     order.IsRefunded,
-			"notify_times":    order.NotifyTimes,
-			"notify_status":   order.NotifyStatus,
-			"created_at":      order.CreatedAt,
-			"updated_at":      order.UpdatedAt,
-			"finished_at":     order.FinishedAt,
+			"id":             order.ID,
+			"biz_no":         order.BizNo,
+			"user_id":        order.UserID,
+			"return_url":     order.ReturnURL,
+			"notify_url":     order.NotifyURL,
+			"biz_extra_data": order.BizExtraData,
+			"up_token":       order.UpToken,
+			"up_biz_id":      order.UpBizID,
+			"up_request_id":  order.UpRequestID,
+			"result_code":    order.ResultCode,
+			"result_message": order.ResultMessage,
+			"result_data":    order.ResultData,
+			"status":         order.Status,
+			"cost":           order.Cost,
+			"is_refunded":    order.IsRefunded,
+			"notify_times":   order.NotifyTimes,
+			"notify_status":  order.NotifyStatus,
+			"created_at":     order.CreatedAt,
+			"updated_at":     order.UpdatedAt,
+			"finished_at":    order.FinishedAt,
 		},
 	})
 }

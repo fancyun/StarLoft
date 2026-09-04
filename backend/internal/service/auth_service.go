@@ -38,41 +38,43 @@ const freeFailLimit = 3
 // 上游（FinAuth）回调与跳转地址（写死，与后端回调路由/前端页面绑定）
 const (
 	finAuthNotifyURL = "https://www.starloft.cn/api/callback/finauth" // 上游异步通知地址：认证结果由平台接收并落地
-	finAuthReturnURL = "/user/kyc"                                       // 上游同步跳转默认地址：未传入 return_url 时兜底，认证完成后返回账户实名页
+	finAuthReturnURL = "/user/kyc"                                    // 上游同步跳转默认地址：未传入 return_url 时兜底，认证完成后返回账户实名页
 )
 
 // AuthService 认证服务
 type AuthService struct {
-	finAuthClient     upstream.FinAuthInterface
-	orderRepo         *repository.AuthOrderRepository
-	userRepo          *repository.UserRepository
-	kycRecordRepo     *repository.KycRecordRepository
-	resourcePackRepo  *repository.ResourcePackRepository
-	balanceService    *BalanceService
-	configRepo        *repository.SystemConfigRepository
-	config            *config.FinAuthConfig
+	// finAuthClient / finAuthCfg 为取器闭包，从运行时快照获取当前生效的 FinAuth 客户端与配置，
+	// 业务配置在后台修改后无需重启即对后续认证生效。
+	finAuthClient    func() upstream.FinAuthInterface
+	finAuthCfg       func() config.FinAuthConfig
+	orderRepo        *repository.AuthOrderRepository
+	userRepo         *repository.UserRepository
+	kycRecordRepo    *repository.KycRecordRepository
+	resourcePackRepo *repository.ResourcePackRepository
+	balanceService   *BalanceService
+	configRepo       *repository.SystemConfigRepository
 }
 
 // NewAuthService 创建认证服务
 func NewAuthService(
-	finAuthClient upstream.FinAuthInterface,
+	finAuthClient func() upstream.FinAuthInterface,
+	finAuthCfg func() config.FinAuthConfig,
 	orderRepo *repository.AuthOrderRepository,
 	userRepo *repository.UserRepository,
 	kycRecordRepo *repository.KycRecordRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
 	balanceService *BalanceService,
 	configRepo *repository.SystemConfigRepository,
-	finAuthConfig *config.FinAuthConfig,
 ) *AuthService {
 	return &AuthService{
 		finAuthClient:    finAuthClient,
+		finAuthCfg:       finAuthCfg,
 		orderRepo:        orderRepo,
 		userRepo:         userRepo,
 		kycRecordRepo:    kycRecordRepo,
 		resourcePackRepo: resourcePackRepo,
 		balanceService:   balanceService,
 		configRepo:       configRepo,
-		config:           finAuthConfig,
 	}
 }
 
@@ -92,9 +94,10 @@ func (s *AuthService) GetFreeAuthRemaining(userID int64) (int, error) {
 
 // StartAuth 发起认证
 // source: 1-账户实名（Web） 2-API调用
-// - 账户实名（source=1）：完全不经过实名认证产品库（starloft_kyc），无认证订单、无计费，
-//   认证信息单独储存在系统库的实名记录表（kyc_record）中。
-// - API 调用（source=2）：走认证订单 + 计费流程。
+//   - 账户实名（source=1）：完全不经过实名认证产品库（starloft_kyc），无认证订单、无计费，
+//     认证信息单独储存在系统库的实名记录表（kyc_record）中。
+//   - API 调用（source=2）：走认证订单 + 计费流程。
+//
 // free: 保留参数，账户实名始终免费，不再使用。
 func (s *AuthService) StartAuth(
 	userID int64,
@@ -167,17 +170,17 @@ func (s *AuthService) StartAuth(
 
 	// 创建订单（不保存姓名和身份证号，cost 记录平台KYC单价）
 	order := &model.AuthOrder{
-		BizNo:         bizNo,
-		UserID:        userID,
-		ReturnURL:     returnURL,
-		NotifyURL:     notifyURL,
-		BizExtraData:  bizExtraData,
-		Cost:          kycPrice,
-		Source:        source,
-		PayType:       payType,
-		Status:        0, // 待认证
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		BizNo:        bizNo,
+		UserID:       userID,
+		ReturnURL:    returnURL,
+		NotifyURL:    notifyURL,
+		BizExtraData: bizExtraData,
+		Cost:         kycPrice,
+		Source:       source,
+		PayType:      payType,
+		Status:       0, // 待认证
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 	if payType == 2 {
 		order.UserPackID = userPack.ID
@@ -205,7 +208,7 @@ func (s *AuthService) StartAuth(
 		ReturnURL:      upstreamReturnURL,
 		NotifyURL:      upstreamNotifyURL,
 		BizNo:          bizNo,
-		SceneID:        s.config.SceneID,
+		SceneID:        s.finAuthCfg().SceneID,
 		ComparisonType: "1", // 人脸核身模式
 		UUID:           fmt.Sprintf("%d", userID),
 		BizExtraData:   bizExtraData,
@@ -214,7 +217,7 @@ func (s *AuthService) StartAuth(
 		IDCardNumber:   idCard,
 	}
 
-	tokenResp, err := s.finAuthClient.GetToken(req)
+	tokenResp, err := s.finAuthClient().GetToken(req)
 	if err != nil {
 		log.Printf("获取 FinAuth Token 失败: %v", err)
 		// 将结果标记为连接超时并退还预扣费用（资源包/余额）
@@ -275,7 +278,7 @@ func (s *AuthService) startAccountAuth(
 		ReturnURL:      upstreamReturnURL,
 		NotifyURL:      upstreamNotifyURL,
 		BizNo:          bizNo,
-		SceneID:        s.config.SceneID,
+		SceneID:        s.finAuthCfg().SceneID,
 		ComparisonType: "1", // 人脸核身模式
 		UUID:           fmt.Sprintf("%d", userID),
 		BizExtraData:   bizExtraData,
@@ -284,7 +287,7 @@ func (s *AuthService) startAccountAuth(
 		IDCardNumber:   idCard,
 	}
 
-	tokenResp, err := s.finAuthClient.GetToken(req)
+	tokenResp, err := s.finAuthClient().GetToken(req)
 	if err != nil {
 		log.Printf("获取 FinAuth Token 失败: %v", err)
 		// 账户实名不计费，仅将实名记录标记为失败（连接超时）
@@ -390,7 +393,7 @@ func (s *AuthService) BuildAuthURL(token string) string {
 	if token == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s/finauth/lite/do?token=%s", s.config.BaseURL, token)
+	return fmt.Sprintf("%s/finauth/lite/do?token=%s", s.finAuthCfg().BaseURL, token)
 }
 
 // GetAuthResult 查询认证结果
@@ -453,7 +456,7 @@ func (s *AuthService) syncKycRecordResult(record *model.KycRecord) {
 		SignVersion: upstream.SignVersionHMACSHA256,
 	}
 
-	result, err := s.finAuthClient.GetResult(req)
+	result, err := s.finAuthClient().GetResult(req)
 	if err != nil {
 		log.Printf("同步实名记录结果失败 [record_id=%d, biz_id=%s]: %v", record.ID, record.UpBizID, err)
 		return
@@ -633,7 +636,7 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 		SignVersion: upstream.SignVersionHMACSHA256,
 	}
 
-	result, err := s.finAuthClient.GetResult(req)
+	result, err := s.finAuthClient().GetResult(req)
 	if err != nil {
 		log.Printf("同步订单结果失败 [biz_id=%s]: %v", order.UpBizID, err)
 		return
@@ -704,7 +707,7 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 // data: JSON 字符串，sign: HMAC 签名
 func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 	// 1. 验证签名
-	if !s.finAuthClient.VerifySign(data, sign) {
+	if !s.finAuthClient().VerifySign(data, sign) {
 		log.Printf("回调签名验证失败: data=%s, sign=%s", data, sign)
 		return errors.New("signature verification failed")
 	}

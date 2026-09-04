@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/runtime"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/upstream"
 	"starloftrpa/internal/utils"
@@ -21,25 +22,25 @@ type AuthHandler struct {
 	authService      *service.AuthService
 	balanceService   *service.BalanceService
 	resourcePackRepo *repository.ResourcePackRepository
-	alipayClient     *upstream.AlipayClient
-	wechatClient     *upstream.WeChatPayClient
+	rt               *runtime.Runtime
 }
 
 func NewAuthHandler(
 	authService *service.AuthService,
 	balanceService *service.BalanceService,
 	resourcePackRepo *repository.ResourcePackRepository,
-	alipayClient *upstream.AlipayClient,
-	wechatClient *upstream.WeChatPayClient,
+	rt *runtime.Runtime,
 ) *AuthHandler {
 	return &AuthHandler{
 		authService:      authService,
 		balanceService:   balanceService,
 		resourcePackRepo: resourcePackRepo,
-		alipayClient:     alipayClient,
-		wechatClient:     wechatClient,
+		rt:               rt,
 	}
 }
+
+func (h *AuthHandler) alipay() *upstream.AlipayClient    { return h.rt.Alipay() }
+func (h *AuthHandler) wechat() *upstream.WeChatPayClient { return h.rt.Wechat() }
 
 // StartAuth 发起认证（API 调用）
 func (h *AuthHandler) StartAuth(c *gin.Context) {
@@ -146,10 +147,10 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"biz_no":        result.Order.BizNo,
-			"auth_url":      result.AuthURL,
-			"expired_time":  result.Order.CreatedAt.Add(15 * time.Minute).Unix(),
-			"expired_in":    900,
+			"biz_no":       result.Order.BizNo,
+			"auth_url":     result.AuthURL,
+			"expired_time": result.Order.CreatedAt.Add(15 * time.Minute).Unix(),
+			"expired_in":   900,
 		},
 	})
 }
@@ -578,14 +579,14 @@ func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 	// 按渠道生成支付信息
 	switch req.Channel {
 	case "alipay":
-		if h.alipayClient == nil {
+		if h.alipay() == nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    500,
 				"message": "支付宝支付未配置",
 			})
 			return
 		}
-		payURL, err := h.alipayClient.BuildPagePayURL(order.PayOrderNo, order.Amount)
+		payURL, err := h.alipay().BuildPagePayURL(order.PayOrderNo, order.Amount)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    500,
@@ -595,14 +596,14 @@ func (h *AuthHandler) CreateRecharge(c *gin.Context) {
 		}
 		data["pay_url"] = payURL
 	case "wechat":
-		if h.wechatClient == nil {
+		if h.wechat() == nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    500,
 				"message": "微信支付未配置",
 			})
 			return
 		}
-		codeURL, err := h.wechatClient.CreateNativeOrder(order.PayOrderNo, order.Amount, "账户余额充值")
+		codeURL, err := h.wechat().CreateNativeOrder(order.PayOrderNo, order.Amount, "账户余额充值")
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    500,

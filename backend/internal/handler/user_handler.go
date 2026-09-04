@@ -9,6 +9,7 @@ import (
 
 	"starloftrpa/internal/model"
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/runtime"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/utils"
 )
@@ -16,33 +17,33 @@ import (
 var validator = utils.NewInputValidator()
 
 type UserHandler struct {
-	userService    *service.UserService
-	smsService     *service.SMSService
-	emailService   *service.EmailService
-	captchaService *service.CaptchaService
-	jwtManager     *utils.JWTManager
-	authService    *service.AuthService
-	loginLogRepo   *repository.LoginLogRepository
+	userService  *service.UserService
+	rt           *runtime.Runtime
+	jwtManager   *utils.JWTManager
+	authService  *service.AuthService
+	loginLogRepo *repository.LoginLogRepository
 }
 
 func NewUserHandler(
 	userService *service.UserService,
-	smsService *service.SMSService,
-	emailService *service.EmailService,
-	captchaService *service.CaptchaService,
+	rt *runtime.Runtime,
 	jwtManager *utils.JWTManager,
 	authService *service.AuthService,
 	loginLogRepo *repository.LoginLogRepository,
 ) *UserHandler {
 	return &UserHandler{
-		userService:    userService,
-		smsService:     smsService,
-		emailService:   emailService,
-		captchaService: captchaService,
-		jwtManager:     jwtManager,
-		authService:    authService,
-		loginLogRepo:   loginLogRepo,
+		userService:  userService,
+		rt:           rt,
+		jwtManager:   jwtManager,
+		authService:  authService,
+		loginLogRepo: loginLogRepo,
 	}
+}
+
+func (h *UserHandler) sms() *service.SMSService     { return h.rt.SMS() }
+func (h *UserHandler) email() *service.EmailService { return h.rt.Email() }
+func (h *UserHandler) captcha() *service.CaptchaService {
+	return h.rt.Captcha()
 }
 
 // SendCode 发送短信验证码
@@ -64,7 +65,7 @@ func (h *UserHandler) SendCode(c *gin.Context) {
 
 	// 验证人机验证码
 	remoteIP := c.ClientIP()
-	err := h.captchaService.VerifyCaptcha(req.CaptchaTicket, req.CaptchaRand, remoteIP)
+	err := h.captcha().VerifyCaptcha(req.CaptchaTicket, req.CaptchaRand, remoteIP)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -74,7 +75,7 @@ func (h *UserHandler) SendCode(c *gin.Context) {
 	}
 
 	// 发送短信验证码
-	err = h.smsService.SendVerificationCode(req.Phone)
+	err = h.sms().SendVerificationCode(req.Phone)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
@@ -122,7 +123,7 @@ func (h *UserHandler) SendEmailCode(c *gin.Context) {
 
 	// 验证人机验证码
 	remoteIP := c.ClientIP()
-	err := h.captchaService.VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
+	err := h.captcha().VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -132,7 +133,7 @@ func (h *UserHandler) SendEmailCode(c *gin.Context) {
 	}
 
 	// 邮件服务未配置时不允许发送
-	if !h.emailService.Enabled() {
+	if !h.email().Enabled() {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
 			"message": "邮件服务未配置，无法发送邮箱验证码",
@@ -141,7 +142,7 @@ func (h *UserHandler) SendEmailCode(c *gin.Context) {
 	}
 
 	// 发送邮箱验证码
-	err = h.emailService.SendVerificationCode(req.Email)
+	err = h.email().SendVerificationCode(req.Email)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
@@ -200,7 +201,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 	// 验证人机验证码
 	remoteIP := c.ClientIP()
-	err := h.captchaService.VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
+	err := h.captcha().VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -210,7 +211,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	// 验证短信验证码
-	valid, err := h.smsService.VerifyCode(req.Phone, req.SMSCode)
+	valid, err := h.sms().VerifyCode(req.Phone, req.SMSCode)
 	if err != nil || !valid {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -220,14 +221,14 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	// 验证邮箱验证码
-	if !h.emailService.Enabled() {
+	if !h.email().Enabled() {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
 			"message": "邮件服务未配置，无法注册",
 		})
 		return
 	}
-	valid, err = h.emailService.VerifyCode(req.Email, req.EmailCode)
+	valid, err = h.email().VerifyCode(req.Email, req.EmailCode)
 	if err != nil || !valid {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -352,7 +353,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	// 验证人机验证码
 	remoteIP := c.ClientIP()
-	err := h.captchaService.VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
+	err := h.captcha().VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -369,7 +370,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		user, loginErr = h.userService.Login(req.Account, req.Password)
 	case "sms_code":
 		// 验证短信验证码
-		valid, verr := h.smsService.VerifyCode(req.Account, req.SMSCode)
+		valid, verr := h.sms().VerifyCode(req.Account, req.SMSCode)
 		if verr != nil || !valid {
 			loginErr = errors.New("短信验证码错误或已过期")
 		} else {
@@ -477,18 +478,18 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"user_id":             user.ID,
-			"phone":               user.Phone,
-			"username":            user.Username,
-			"email":               user.Email,
-			"is_kyc_verified":     user.IsKYCVerified,
-			"kyc_name":            kycName,
-			"kyc_id_card":         kycIDCard,
-			"balance":             user.Balance,
-			"api_key":             user.APIKey,
+			"user_id":         user.ID,
+			"phone":           user.Phone,
+			"username":        user.Username,
+			"email":           user.Email,
+			"is_kyc_verified": user.IsKYCVerified,
+			"kyc_name":        kycName,
+			"kyc_id_card":     kycIDCard,
+			"balance":         user.Balance,
+			"api_key":         user.APIKey,
 			// api_secret 仅返回给用户本人（用于 API 管理页展示/复制）；实名前为空字符串
-			"api_secret":          user.APISecret,
-			"created_at":          user.CreatedAt,
+			"api_secret": user.APISecret,
+			"created_at": user.CreatedAt,
 			// 账户实名免费认证次数（free_auth_limit 终身免费上限，free_auth_remaining 剩余免费次数）
 			"free_auth_limit":     3,
 			"free_auth_remaining": freeAuthRemaining,
@@ -566,7 +567,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 
 	// 验证人机验证码
 	remoteIP := c.ClientIP()
-	err := h.captchaService.VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
+	err := h.captcha().VerifyCaptcha(req.CaptchaTicket, req.CaptchaRandstr, remoteIP)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
@@ -584,7 +585,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 		})
 		return
 	}
-	valid, err := h.smsService.VerifyCode(user.Phone, req.SMSCode)
+	valid, err := h.sms().VerifyCode(user.Phone, req.SMSCode)
 	if err != nil || !valid {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    400,

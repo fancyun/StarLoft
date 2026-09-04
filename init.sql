@@ -269,9 +269,33 @@ CREATE TABLE IF NOT EXISTS `user_resource_pack` (
 REPLACE INTO `starloft_sys`.`admin_user` (`username`, `password_hash`, `nickname`, `status`, `created_at`, `updated_at`)
 VALUES ('admin', '$2a$10$U8urafJV5ggvfeHunkalMuH4Wkdq7gWK1kI5X2q076ZWEJwGn5Dce', '管理员', 1, NOW(3), NOW(3));
 
--- 默认系统配置（密钥类配置统一在 .env 环境变量中管理）
+-- 默认系统配置（第三方业务配置已迁移至数据库，由管理员在后台修改，无需重启；
+-- 值为空时兜底使用 .env 环境变量/JWT/Redis 等基础设施配置仍在 .env 管理）
 REPLACE INTO `starloft_sys`.`system_config` (`config_key`, `config_value`, `description`, `created_at`, `updated_at`) VALUES
-('kyc_price', '1.00', 'KYC单价', NOW(3), NOW(3));
+('kyc_price', '1.00', 'KYC单价', NOW(3), NOW(3)),
+('finauth_api_key', '', 'FinAuth API Key', NOW(3), NOW(3)),
+('finauth_api_secret', '', 'FinAuth API Secret', NOW(3), NOW(3)),
+('finauth_scene_id', '', 'FinAuth 场景ID', NOW(3), NOW(3)),
+('finauth_base_url', '', 'FinAuth 接口地址', NOW(3), NOW(3)),
+('tencent_secret_id', '', '腾讯云 SecretId（短信/验证码/邮件共用）', NOW(3), NOW(3)),
+('tencent_secret_key', '', '腾讯云 SecretKey（短信/验证码/邮件共用）', NOW(3), NOW(3)),
+('tencent_sms_sdk_app_id', '', '腾讯云短信 SDKAppID', NOW(3), NOW(3)),
+('tencent_sms_sign_name', '', '腾讯云短信签名', NOW(3), NOW(3)),
+('tencent_sms_template_id', '', '腾讯云短信模板ID', NOW(3), NOW(3)),
+('tencent_captcha_app_id', '', '腾讯云验证码 AppID', NOW(3), NOW(3)),
+('tencent_captcha_secret', '', '腾讯云验证码 SecretKey', NOW(3), NOW(3)),
+('alipay_app_id', '', '支付宝应用AppID', NOW(3), NOW(3)),
+('alipay_private_key', '', '支付宝应用私钥（PEM）', NOW(3), NOW(3)),
+('alipay_public_key', '', '支付宝公钥（PEM）', NOW(3), NOW(3)),
+('wechat_app_id', '', '微信支付绑定AppID', NOW(3), NOW(3)),
+('wechat_mch_id', '', '微信支付商户号', NOW(3), NOW(3)),
+('wechat_api_v3_key', '', '微信支付 APIv3 密钥', NOW(3), NOW(3)),
+('wechat_mch_serial_no', '', '微信支付商户API证书序列号', NOW(3), NOW(3)),
+('wechat_mch_private_key', '', '微信支付商户API私钥（PEM）', NOW(3), NOW(3)),
+('wechat_platform_public_key', '', '微信支付公钥（PEM）', NOW(3), NOW(3)),
+('ses_from', '', '腾讯云 SES 发件人地址', NOW(3), NOW(3)),
+('ses_template_id', '', '腾讯云 SES 模板ID', NOW(3), NOW(3)),
+('ses_region', '', '腾讯云 SES 地域（如 ap-guangzhou）', NOW(3), NOW(3));
 
 -- 资源包种子数据（单价分档：0.7/0.6/0.5/0.4 元每次，库存 -1 不限量）
 INSERT INTO `starloft_kyc`.`resource_pack` (`name`, `total_count`, `price`, `stock`, `status`, `description`, `created_at`, `updated_at`) VALUES

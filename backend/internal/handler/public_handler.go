@@ -7,18 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 	qrcode "github.com/skip2/go-qrcode"
 
-	"starloftrpa/internal/config"
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/runtime"
 )
 
 type PublicHandler struct {
-	config     *config.Config
+	rt         *runtime.Runtime
 	configRepo *repository.SystemConfigRepository
 }
 
-func NewPublicHandler(cfg *config.Config, configRepo *repository.SystemConfigRepository) *PublicHandler {
+func NewPublicHandler(rt *runtime.Runtime, configRepo *repository.SystemConfigRepository) *PublicHandler {
 	return &PublicHandler{
-		config:     cfg,
+		rt:         rt,
 		configRepo: configRepo,
 	}
 }
@@ -37,7 +37,7 @@ func (h *PublicHandler) GetPublicConfig(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"captcha_app_id": h.config.Tencent.Captcha.CaptchaAppID,
+			"captcha_app_id": h.rt.CaptchaAppID(),
 			"kyc_price":      kycPrice,
 		},
 	})

@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/runtime"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/upstream"
 
@@ -19,8 +20,7 @@ type CallbackHandler struct {
 	authService    *service.AuthService
 	balanceService *service.BalanceService
 	paymentRepo    *repository.PaymentOrderRepository
-	alipayClient   *upstream.AlipayClient
-	wechatClient   *upstream.WeChatPayClient
+	rt             *runtime.Runtime
 }
 
 // NewCallbackHandler 创建回调处理器
@@ -28,17 +28,18 @@ func NewCallbackHandler(
 	authService *service.AuthService,
 	balanceService *service.BalanceService,
 	paymentRepo *repository.PaymentOrderRepository,
-	alipayClient *upstream.AlipayClient,
-	wechatClient *upstream.WeChatPayClient,
+	rt *runtime.Runtime,
 ) *CallbackHandler {
 	return &CallbackHandler{
 		authService:    authService,
 		balanceService: balanceService,
 		paymentRepo:    paymentRepo,
-		alipayClient:   alipayClient,
-		wechatClient:   wechatClient,
+		rt:             rt,
 	}
 }
+
+func (h *CallbackHandler) alipay() *upstream.AlipayClient    { return h.rt.Alipay() }
+func (h *CallbackHandler) wechat() *upstream.WeChatPayClient { return h.rt.Wechat() }
 
 // FinAuthCallback 处理 FinAuth 异步回调（notify_url）
 // 文档: https://www.yljz.com/document/finauth-guide-docs/h5_will_plus_return_notify_url
@@ -95,7 +96,7 @@ func (h *CallbackHandler) FinAuthCallback(c *gin.Context) {
 // AlipayCallback 处理支付宝异步通知（notify_url，RSA2 验签）
 // 支付宝要求返回纯文本 "success" 表示通知处理成功
 func (h *CallbackHandler) AlipayCallback(c *gin.Context) {
-	if h.alipayClient == nil {
+	if h.alipay() == nil {
 		log.Printf("支付宝回调: 支付宝支付未配置")
 		c.String(http.StatusOK, "failure")
 		return
@@ -120,7 +121,7 @@ func (h *CallbackHandler) AlipayCallback(c *gin.Context) {
 	log.Printf("收到支付宝回调: out_trade_no=%s, trade_no=%s, trade_status=%s", outTradeNo, tradeNo, tradeStatus)
 
 	// 验证签名
-	if !h.alipayClient.VerifyNotify(params) {
+	if !h.alipay().VerifyNotify(params) {
 		log.Printf("支付宝回调签名验证失败: out_trade_no=%s", outTradeNo)
 		c.String(http.StatusOK, "failure")
 		return
@@ -168,7 +169,7 @@ func (h *CallbackHandler) AlipayCallback(c *gin.Context) {
 // WeChatCallback 处理微信支付异步通知（APIv3，公钥验签 + AES-GCM 解密）
 // 微信要求返回 200 且响应体为 "SUCCESS" 表示处理成功，否则会重试
 func (h *CallbackHandler) WeChatCallback(c *gin.Context) {
-	if h.wechatClient == nil {
+	if h.wechat() == nil {
 		log.Printf("微信回调: 微信支付未配置")
 		c.String(http.StatusInternalServerError, "FAIL")
 		return
@@ -189,7 +190,7 @@ func (h *CallbackHandler) WeChatCallback(c *gin.Context) {
 	log.Printf("收到微信回调: BodyLen=%d, serial=%s", len(bodyBytes), serial)
 
 	// 验证签名
-	if !h.wechatClient.VerifyNotify(timestamp, nonce, bodyStr, signature) {
+	if !h.wechat().VerifyNotify(timestamp, nonce, bodyStr, signature) {
 		log.Printf("微信回调签名验证失败: serial=%s", serial)
 		c.String(http.StatusInternalServerError, "FAIL")
 		return
@@ -202,7 +203,7 @@ func (h *CallbackHandler) WeChatCallback(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "FAIL")
 		return
 	}
-	plain, err := h.wechatClient.DecryptNotify(notify.Resource.Ciphertext, notify.Resource.Nonce, notify.Resource.AssociatedData)
+	plain, err := h.wechat().DecryptNotify(notify.Resource.Ciphertext, notify.Resource.Nonce, notify.Resource.AssociatedData)
 	if err != nil {
 		log.Printf("微信回调报文解密失败: %v", err)
 		c.String(http.StatusInternalServerError, "FAIL")

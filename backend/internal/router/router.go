@@ -6,8 +6,8 @@ import (
 	"starloftrpa/internal/handler"
 	"starloftrpa/internal/middleware"
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/runtime"
 	"starloftrpa/internal/service"
-	"starloftrpa/internal/upstream"
 	"starloftrpa/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -35,77 +35,25 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	resourcePackRepo := repository.NewResourcePackRepository(db)
 	loginLogRepo := repository.NewLoginLogRepository(db)
 
-	// 初始化上游服务客户端
-	finAuthClient := upstream.NewFinAuthClient(
-		cfg.FinAuth.BaseURL,
-		cfg.FinAuth.APIKey,
-		cfg.FinAuth.APISecret,
-	)
-
-	// 初始化支付客户端
-	alipayClient, err := upstream.NewAlipayClient(
-		cfg.Alipay.AppID,
-		cfg.Alipay.PrivateKey,
-		cfg.Alipay.PublicKey,
-	)
+	// 初始化运行时：从数据库业务配置构建第三方客户端快照（管理员后台修改后即时生效）
+	rt, err := runtime.New(cfg, configRepo)
 	if err != nil {
-		panic("初始化支付宝支付客户端失败: " + err.Error())
+		panic("初始化运行时配置失败: " + err.Error())
 	}
-
-	wechatClient, err := upstream.NewWeChatPayClient(
-		cfg.WeChatPay.AppID,
-		cfg.WeChatPay.MchID,
-		cfg.WeChatPay.APIv3Key,
-		cfg.WeChatPay.MchSerialNo,
-		cfg.WeChatPay.MchPrivateKey,
-		cfg.WeChatPay.PlatformPubKey,
-	)
-	if err != nil {
-		panic("初始化微信支付客户端失败: " + err.Error())
-	}
-
-	// 初始化短信服务
-	smsService, err := service.NewSMSService(
-		cfg.Tencent.SecretID,
-		cfg.Tencent.SecretKey,
-		cfg.Tencent.SMS.SDKAppID,
-		cfg.Tencent.SMS.SignName,
-		cfg.Tencent.SMS.TemplateID,
-	)
-	if err != nil {
-		panic("初始化短信服务失败: " + err.Error())
-	}
-
-	// 初始化验证码服务
-	captchaService := service.NewCaptchaService(
-		cfg.Tencent.SecretID,
-		cfg.Tencent.SecretKey,
-		cfg.Tencent.Captcha.CaptchaAppID,
-		cfg.Tencent.Captcha.AppSecretKey,
-	)
-
-	// 初始化邮箱服务（腾讯云 SES，未配置时返回 nil，不启用邮箱验证码）
-	emailService := service.NewEmailService(
-		cfg.Tencent.SecretID,
-		cfg.Tencent.SecretKey,
-		cfg.Email.From,
-		cfg.Email.TemplateID,
-		cfg.Email.Region,
-	)
 
 	// 初始化 Service
 	userService := service.NewUserService(userRepo, configRepo)
 	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, configRepo, db)
 
 	authService := service.NewAuthService(
-		finAuthClient,
+		rt.FinAuth,
+		rt.FinAuthCfg,
 		authRepo,
 		userRepo,
 		kycRecordRepo,
 		resourcePackRepo,
 		balanceService,
 		configRepo,
-		&cfg.FinAuth,
 	)
 
 	// 初始化 JWT Manager
@@ -113,19 +61,17 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 	signMgr := utils.NewSignatureManager()
 
 	// 初始化 Handler
-	publicHandler := handler.NewPublicHandler(cfg, configRepo)
+	publicHandler := handler.NewPublicHandler(rt, configRepo)
 
 	userHandler := handler.NewUserHandler(
 		userService,
-		smsService,
-		emailService,
-		captchaService,
+		rt,
 		jwtManager,
 		authService,
 		loginLogRepo,
 	)
 
-	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo, alipayClient, wechatClient)
+	authHandler := handler.NewAuthHandler(authService, balanceService, resourcePackRepo, rt)
 
 	adminHandler := handler.NewAdminHandler(adminRepo,
 		userRepo,
@@ -137,6 +83,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		loginLogRepo,
 		balanceService,
 		authService,
+		rt,
 		cfg.JWT.AdminSecret,
 	)
 
@@ -144,8 +91,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService) {
 		authService,
 		balanceService,
 		paymentRepo,
-		alipayClient,
-		wechatClient,
+		rt,
 	)
 
 	dashboardHandler := handler.NewDashboardHandler(db)
