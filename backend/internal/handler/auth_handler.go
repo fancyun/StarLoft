@@ -290,29 +290,34 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 		resp["record_status"] = -1 // 无记录
 	}
 
-	// 如果状态为进行中，返回关联的认证订单 token 与认证地址（用于继续认证，直接跳转上游）
+	// 如果状态为进行中，返回关联的认证 token 与认证地址（用于继续认证，直接跳转上游）
 	if kycRecord != nil && kycRecord.Status == 1 {
-		pendingOrder, err := h.authService.GetLatestPendingOrder(userID)
-		if err == nil && pendingOrder != nil && pendingOrder.UpToken != "" {
-			resp["pending_token"] = pendingOrder.UpToken
-			resp["pending_auth_url"] = h.authService.BuildAuthURL(pendingOrder.UpToken)
+		pendingToken := kycRecord.UpToken
+		pendingBizNo := kycRecord.PlatformBizNo
+		// 兼容历史：API 调用（source=2）产生的实名记录不存上游 token，回退查订单
+		if pendingToken == "" {
+			if pendingOrder, err := h.authService.GetLatestPendingOrder(userID); err == nil && pendingOrder != nil {
+				pendingToken = pendingOrder.UpToken
+				pendingBizNo = pendingOrder.PlatformBizNo
+			}
 		}
-		if err == nil && pendingOrder != nil && pendingOrder.PlatformBizNo != "" {
-			resp["pending_biz_no"] = pendingOrder.PlatformBizNo
+		if pendingToken != "" {
+			resp["pending_token"] = pendingToken
+			resp["pending_auth_url"] = h.authService.BuildAuthURL(pendingToken)
 		}
-		// 返回下游的 return_url（API 调用方传入的，用于结果页跳转回下游）
-		if err == nil && pendingOrder != nil && pendingOrder.ReturnURL != "" {
-			resp["return_url"] = pendingOrder.ReturnURL
+		if pendingBizNo != "" {
+			resp["pending_biz_no"] = pendingBizNo
+		}
+		// 返回下游的 return_url（认证完成后跳转回下游地址）
+		if kycRecord.ReturnURL != "" {
+			resp["return_url"] = kycRecord.ReturnURL
 		}
 	}
 
 	// 如果已有结果（状态 2/3），也返回 return_url 用于结果页跳转
 	if kycRecord != nil && (kycRecord.Status == 2 || kycRecord.Status == 3) {
-		if resp["return_url"] == nil {
-			latestOrder, err := h.authService.GetLatestOrder(userID)
-			if err == nil && latestOrder != nil && latestOrder.ReturnURL != "" {
-				resp["return_url"] = latestOrder.ReturnURL
-			}
+		if resp["return_url"] == nil && kycRecord.ReturnURL != "" {
+			resp["return_url"] = kycRecord.ReturnURL
 		}
 	}
 
@@ -327,9 +332,9 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 func (h *AuthHandler) SyncKycResult(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
-	order, err := h.authService.SyncOrderByToken(userID)
+	record, err := h.authService.SyncKycRecord(userID)
 	if err != nil {
-		// 没有进行中的订单，返回当前状态
+		// 没有进行中的认证记录，返回当前状态
 		kycRecord, _ := h.authService.GetLatestKycRecord(userID)
 		if kycRecord != nil {
 			c.JSON(http.StatusOK, gin.H{
@@ -357,10 +362,10 @@ func (h *AuthHandler) SyncKycResult(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"synced":       true,
-			"order_status": order.Status,
-			"up_token":     order.UpToken,
-			"return_url":   order.ReturnURL,
+			"synced":        true,
+			"record_status": record.Status,
+			"up_token":      record.UpToken,
+			"return_url":    record.ReturnURL,
 		},
 	})
 }
@@ -425,7 +430,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 	// 标记这是用户实名认证
 	bizExtraData := fmt.Sprintf(`{"type":"user_auth","user_id":%d}`, userID)
 
-	// 发起认证（return_url 透传至上游，认证完成后浏览器直接回到 /user/kyc）
+	// 发起认证（账户实名 source=1：不写认证订单、不计费，实名信息单独储存在系统库实名记录表）
 	result, err := h.authService.StartAuth(
 		userID,
 		req.Name,
@@ -435,7 +440,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		notifyURL,
 		bizExtraData,
 		1,    // 账户实名
-		true, // 账户实名免费路径；账号终身累计失败达到上限（写死3次）后自动转为计费（先扣资源包，再扣余额）
+		true, // retained参数，账户实名始终免费，不再使用
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {
@@ -456,9 +461,9 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"platform_biz_no": result.Order.PlatformBizNo,
+			"platform_biz_no": result.Record.PlatformBizNo,
 			"auth_url":        result.AuthURL,
-			"expired_time":    result.Order.CreatedAt.Add(15 * time.Minute).Unix(),
+			"expired_time":    result.Record.CreatedAt.Add(15 * time.Minute).Unix(),
 			"expired_in":      900,
 		},
 	})
@@ -492,7 +497,7 @@ func (h *AuthHandler) GetUserAuthRecords(c *gin.Context) {
 		req.PageSize = 100
 	}
 
-	orders, total, err := h.authService.GetUserAuthRecords(userID, req.Page, req.PageSize)
+	records, total, err := h.authService.GetUserAuthRecords(userID, req.Page, req.PageSize)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,
@@ -505,7 +510,7 @@ func (h *AuthHandler) GetUserAuthRecords(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"list":      orders,
+			"list":      records,
 			"total":     total,
 			"page":      req.Page,
 			"page_size": req.PageSize,

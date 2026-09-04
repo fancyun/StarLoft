@@ -206,31 +206,6 @@ func (r *AuthOrderRepository) GetDailyOrderStats(startDate, endDate string) (map
 	return result, nil
 }
 
-// GetUserDailyAuthCount 按天统计指定用户的认证调用次数
-func (r *AuthOrderRepository) GetUserDailyAuthCount(userID int64, startDate, endDate string) (map[string]int64, error) {
-	query := `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, COUNT(*) AS c
-		FROM ` + model.KycDB + `.auth_order
-		WHERE user_id = ? AND DATE(created_at) >= ? AND DATE(created_at) <= ?
-		GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')`
-
-	rows, err := r.db.Query(query, userID, startDate, endDate)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	result := make(map[string]int64)
-	for rows.Next() {
-		var d string
-		var c int64
-		if err := rows.Scan(&d, &c); err != nil {
-			return nil, err
-		}
-		result[d] = c
-	}
-	return result, nil
-}
-
 // GetDailyIncomeStats 按天统计认证收入（仅统计已完成的认证订单）
 func (r *AuthOrderRepository) GetDailyIncomeStats(startDate, endDate string) (map[string]float64, error) {
 	query := `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, COALESCE(SUM(cost), 0) AS amount
@@ -362,19 +337,6 @@ func (r *AuthOrderRepository) UpdateOrderPayType(orderID int64, payType int, use
 	return err
 }
 
-// CountUserFreeFailures 统计账户实名（source=1）已失败（status=3）的认证次数（账号终身累计）
-// 用于免费实名失败次数限制：累计失败达到上限后，再次发起实名需扣费
-func (r *AuthOrderRepository) CountUserFreeFailures(userID int64) (int, error) {
-	query := `SELECT COUNT(*) FROM ` + model.KycDB + `.auth_order 
-		WHERE user_id = ? AND source = 1 AND status = 3`
-	var count int
-	err := r.db.QueryRow(query, userID).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
 // UpdateOrderResult 更新订单认证结果
 func (r *AuthOrderRepository) UpdateOrderResult(orderID int64, resultCode, resultMessage string, status int) error {
 	query := `UPDATE ` + model.KycDB + `.auth_order 
@@ -442,116 +404,6 @@ func (r *AuthOrderRepository) GetPendingOrders() ([]*model.AuthOrder, error) {
 	}
 
 	return orders, nil
-}
-
-// GetUserOrders 查询用户订单列表（分页）
-func (r *AuthOrderRepository) GetUserOrders(userID int64, page, pageSize int) ([]*model.AuthOrder, int64, error) {
-	// 查询总数
-	countQuery := `SELECT COUNT(*) FROM ` + model.KycDB + `.auth_order WHERE user_id = ?`
-	var total int64
-	err := r.db.QueryRow(countQuery, userID).Scan(&total)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// 查询订单列表
-	offset := (page - 1) * pageSize
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id, 
-		COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''), 
-		COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''), 
-		COALESCE(result_code, ''), COALESCE(result_message, ''),
-		status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times, 
-		notify_status, created_at, updated_at, finished_at 
-		FROM ` + model.KycDB + `.auth_order WHERE user_id = ? 
-		ORDER BY created_at DESC LIMIT ? OFFSET ?`
-
-	rows, err := r.db.Query(query, userID, pageSize, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	orders := make([]*model.AuthOrder, 0)
-	for rows.Next() {
-		order := &model.AuthOrder{}
-		err := rows.Scan(
-			&order.ID,
-			&order.PlatformBizNo,
-			&order.BizNo,
-			&order.UserID,
-			&order.ReturnURL,
-			&order.NotifyURL,
-			&order.BizExtraData,
-			&order.UpToken,
-			&order.UpBizID,
-			&order.UpRequestID,
-			&order.ResultCode,
-			&order.ResultMessage,
-			&order.Status,
-			&order.Cost,
-			&order.Source,
-			&order.PayType,
-			&order.UserPackID,
-			&order.IsRefunded,
-			&order.NotifyTimes,
-			&order.NotifyStatus,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-			&order.FinishedAt,
-		)
-		if err != nil {
-			return nil, 0, err
-		}
-		orders = append(orders, order)
-	}
-
-	return orders, total, nil
-}
-
-// GetLatestOrderByUserID 获取用户最新订单（不限状态）
-func (r *AuthOrderRepository) GetLatestOrderByUserID(userID int64) (*model.AuthOrder, error) {
-	query := `SELECT id, platform_biz_no, COALESCE(biz_no, ''), user_id,
-			COALESCE(return_url, ''), COALESCE(notify_url, ''), COALESCE(biz_extra_data, ''),
-			COALESCE(up_token, ''), COALESCE(up_biz_id, ''), COALESCE(up_request_id, ''),
-			COALESCE(result_code, ''), COALESCE(result_message, ''),
-			status, cost, source, pay_type, COALESCE(user_pack_id, 0), is_refunded, notify_times,
-			notify_status, created_at, updated_at, finished_at
-			FROM ` + model.KycDB + `.auth_order WHERE user_id = ?
-			ORDER BY created_at DESC LIMIT 1`
-
-	order := &model.AuthOrder{}
-	err := r.db.QueryRow(query, userID).Scan(
-		&order.ID,
-		&order.PlatformBizNo,
-		&order.BizNo,
-		&order.UserID,
-		&order.ReturnURL,
-		&order.NotifyURL,
-		&order.BizExtraData,
-		&order.UpToken,
-		&order.UpBizID,
-		&order.UpRequestID,
-		&order.ResultCode,
-		&order.ResultMessage,
-		&order.Status,
-		&order.Cost,
-		&order.Source,
-		&order.PayType,
-		&order.UserPackID,
-		&order.IsRefunded,
-		&order.NotifyTimes,
-		&order.NotifyStatus,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-		&order.FinishedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return order, nil
 }
 
 // GetLatestPendingOrder 获取用户最新进行中的订单（用于继续认证）
