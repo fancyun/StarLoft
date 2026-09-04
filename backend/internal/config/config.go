@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"starloftrpa/internal/model"
 )
 
 type Config struct {
@@ -143,12 +145,9 @@ func loadFromEnv(cfg *Config) {
 	if password := os.Getenv("DB_PASSWORD"); password != "" {
 		cfg.Database.Password = password
 	}
-	if dbname := os.Getenv("DB_NAME"); dbname != "" {
-		cfg.Database.DBName = dbname
-	}
-	if kycDB := os.Getenv("KYC_DB_NAME"); kycDB != "" {
-		cfg.Database.KycDBName = kycDB
-	}
+	// 分库库名写死为固定常量（与 init.sql 建库一致，不支持通过环境变量修改）
+	cfg.Database.DBName = model.SysDB
+	cfg.Database.KycDBName = model.KycDB
 	if maxIdle := os.Getenv("DB_MAX_IDLE_CONNS"); maxIdle != "" {
 		if n, err := strconv.Atoi(maxIdle); err == nil {
 			cfg.Database.MaxIdleConns = n

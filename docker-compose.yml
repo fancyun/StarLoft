@@ -29,7 +29,8 @@ services:
     environment:
       # 本地 root 密码取自 .env 的 DB_PASSWORD（后端容器使用同一密码连接）
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME:-starloft_sys}
+      # 分库库名固定（与 database/init.sql 一致），init.sql 会创建全部库
+      MYSQL_DATABASE: starloft_sys
       TZ: Asia/Shanghai
     ports:
       # 仅便于宿主机用数据库客户端直连查看，后端走内部网络不依赖此映射
@@ -70,8 +71,6 @@ services:
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME:-starloft_sys}
-      KYC_DB_NAME: ${KYC_DB_NAME:-starloft_kyc}
       DB_MAX_IDLE_CONNS: ${DB_MAX_IDLE_CONNS:-50}
       DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS:-200}
       

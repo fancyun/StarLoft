@@ -18,14 +18,6 @@ import (
 var DB *sql.DB
 
 func Init(cfg config.DatabaseConfig) error {
-	// 注入分库库名（连接默认库为系统库，产品库通过全限定表名跨库访问，同一实例事务可跨库）
-	if cfg.DBName != "" {
-		model.SysDB = cfg.DBName
-	}
-	if cfg.KycDBName != "" {
-		model.KycDB = cfg.KycDBName
-	}
-
 	// 构建DSN（连接系统库），添加TLS支持
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=preferred",
 		cfg.User,
