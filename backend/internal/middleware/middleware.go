@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"time"
 
@@ -47,7 +50,9 @@ func Recovery() gin.HandlerFunc {
 	}
 }
 
-// RequestLogger 请求日志中间件(不记录敏感信息)，写入 access.log
+// RequestLogger 请求日志中间件（记录全部 HTTP 访问，按类别 + 用户身份写入 access.log）
+// 覆盖：用户操作（console）、平台 API 调用（api）、上游回调（callback）、管理操作（admin）。
+// 所有访问、调用、操作均在此统一按类别落 log，日志不做自动删除。
 func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -58,13 +63,39 @@ func RequestLogger() gin.HandlerFunc {
 
 		latency := time.Since(start)
 		statusCode := c.Writer.Status()
+		category := categorizeAccess(path)
 
-		// 不记录敏感路径的详细信息
-		if isSensitivePath(path) {
-			utils.AccessLogger.Printf("[%s] %s - %d (%v)", method, path, statusCode, latency)
-		} else {
-			utils.AccessLogger.Printf("[%s] %s - %d (%v) - IP: %s", method, path, statusCode, latency, c.ClientIP())
+		// 识别已登录用户/管理员身份（JWT 中间件写入 user_id）
+		identity := "-"
+		if uid, ok := c.Get("user_id"); ok {
+			if id, ok2 := uid.(int64); ok2 && id > 0 {
+				identity = fmt.Sprintf("id=%d", id)
+			}
 		}
+
+		// 敏感路径（登录/注册）不记录客户端 IP，保护隐私
+		ip := c.ClientIP()
+		if isSensitivePath(path) {
+			ip = "-"
+		}
+
+		utils.AccessLogger.Printf("category=%s user=%s [%s] %s - %d (%v) ip=%s", category, identity, method, path, statusCode, latency, ip)
+	}
+}
+
+// categorizeAccess 依据路径前缀划分访问类别
+func categorizeAccess(path string) string {
+	switch {
+	case strings.HasPrefix(path, "/admin/"):
+		return "admin"
+	case strings.HasPrefix(path, "/api/callback/"):
+		return "callback"
+	case strings.HasPrefix(path, "/api/"):
+		return "api"
+	case strings.HasPrefix(path, "/console/"):
+		return "console"
+	default:
+		return "other"
 	}
 }
 

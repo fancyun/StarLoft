@@ -24,17 +24,16 @@ var (
 )
 
 const (
-	defaultMaxSize   = 100 // 单个日志文件最大 100MB
-	defaultMaxBackup = 10  // 最多保留 10 个备份
+	defaultMaxSize = 100 // 单个日志文件最大 100MB
 )
 
-// rotatingFileWriter 按大小自动轮转的文件写入器（仅使用标准库实现）
+// rotatingFileWriter 按大小自动轮转的文件写入器（仅使用标准库实现）。
+// 轮转后的历史备份一律保留，不自动删除（文件名带递增序号）。
 type rotatingFileWriter struct {
-	mu        sync.Mutex
-	dir       string
-	filename  string
-	maxSize   int64
-	maxBackup int
+	mu       sync.Mutex
+	dir      string
+	filename string
+	maxSize  int64
 
 	file *os.File
 	size int64
@@ -43,10 +42,9 @@ type rotatingFileWriter struct {
 // newRotatingFileWriter 创建轮转文件写入器
 func newRotatingFileWriter(dir, filename string) (*rotatingFileWriter, error) {
 	w := &rotatingFileWriter{
-		dir:       dir,
-		filename:  filename,
-		maxSize:   defaultMaxSize * 1024 * 1024,
-		maxBackup: defaultMaxBackup,
+		dir:      dir,
+		filename: filename,
+		maxSize:  defaultMaxSize * 1024 * 1024,
 	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
@@ -74,29 +72,34 @@ func (w *rotatingFileWriter) open() error {
 	return nil
 }
 
-// rotate 将当前文件轮转为带序号的文件
+// nextBackupIndex 计算下一个备份序号（取现有备份中的最大值 + 1），保证历史备份永不删除、永不覆盖
+func (w *rotatingFileWriter) nextBackupIndex() int {
+	max := 0
+	entries, _ := os.ReadDir(w.dir)
+	prefix := w.filename + "."
+	for _, e := range entries {
+		name := e.Name()
+		if len(name) <= len(prefix) || name[:len(prefix)] != prefix || e.IsDir() {
+			continue
+		}
+		var idx int
+		if _, err := fmt.Sscanf(name[len(prefix):], "%d", &idx); err == nil && idx > max {
+			max = idx
+		}
+	}
+	return max + 1
+}
+
+// rotate 将当前文件轮转为带递增序号的历史备份，重新打开新文件（历史备份保留）
 func (w *rotatingFileWriter) rotate() {
 	if w.file != nil {
 		w.file.Close()
 		w.file = nil
 	}
 
-	// 删除最旧的备份，为轮转腾出空间
+	// 当前文件改为 filename.<递增序号>，保留历史
 	base := filepath.Join(w.dir, w.filename)
-	oldest := filepath.Join(w.dir, fmt.Sprintf("%s.%d", w.filename, w.maxBackup))
-	_ = os.Remove(oldest)
-
-	// 从新到旧依次改名：filename.N-1 -> filename.N
-	for i := w.maxBackup - 1; i >= 1; i-- {
-		from := filepath.Join(w.dir, fmt.Sprintf("%s.%d", w.filename, i))
-		to := filepath.Join(w.dir, fmt.Sprintf("%s.%d", w.filename, i+1))
-		if _, err := os.Stat(from); err == nil {
-			_ = os.Rename(from, to)
-		}
-	}
-
-	// 当前文件改名为 filename.1
-	_ = os.Rename(base, filepath.Join(w.dir, w.filename+".1"))
+	_ = os.Rename(base, filepath.Join(w.dir, fmt.Sprintf("%s.%d", w.filename, w.nextBackupIndex())))
 
 	// 重新打开
 	_ = w.open()
