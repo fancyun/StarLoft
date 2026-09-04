@@ -41,19 +41,20 @@ admin.starloft.cn     管理后台（frontend-admin）：数据统计、用户/�
 
 ### 使用Docker部署（推荐）
 
-> 说明：MySQL 使用云数据库服务（不包含在容器编排中），容器仅包含 Redis、后端、前端（Nginx 多站点）。
+> 说明：MySQL 默认使用本机 Docker 容器中的 mysql 服务（docker-compose 已编排），首次启动自动执行 `database/init.sql` 完成建库与初始化；也可改为连接云数据库服务。容器还包含 Redis、后端、前端（Nginx 多站点）。
 
 ```bash
 # 1. 克隆代码
 git clone https://github.com/starloft/kyc.git
 cd kyc
 
-# 2. 导入数据库初始化脚本（云数据库 MySQL 8.0+，分库架构）
-# 脚本会先删除旧库再创建 4 个库（starloft_sys 系统库 / starloft_kyc 实名认证库 / starloft_cs、starloft_sms 预留产品库）与全部表结构，
-# 并插入初始化数据（默认管理员、系统配置、资源包套餐）。
+# 2. 初始化数据库（分库架构：新建/重建 4 个库 + 全部表结构 + 初始化数据）
+# Docker 部署下，本机 mysql 服务首次启动会自动执行 database/init.sql 完成初始化，无需手动导入。
+# 云数据库部署时需手动导入（脚本会先删除旧库再创建 starloft_sys/starloft_kyc/starloft_cs/starloft_sms
+# 4 个库与全部表结构，并插入初始化数据：默认管理员、系统配置、资源包套餐）。
 # 注意：脚本会 DROP DATABASE 永久删除旧库数据，仅限确认无存量数据需要保留时执行！
 # 连接账号需拥有上述 4 个库的读写权限。
-mysql -h <DB_HOST> -u <DB_USER> -p < init.sql
+mysql -h <DB_HOST> -u <DB_USER> -p < database/init.sql
 
 # 3. 配置环境变量
 cp .env.example .env
@@ -100,7 +101,7 @@ docker compose up -d
 
 ```
 后端: Go 1.20+ + Gin框架
-数据库: MySQL 8.0（云服务）
+数据库: MySQL 8.0（本机 Docker 或云服务）
 缓存: Redis 7.0
 前端: Vue 3 + Vite（门户 frontend-portal / 控制台 frontend-console / 管理后台 frontend-admin）
 部署: Docker + Docker Compose + Nginx（TLS终止，多站点分发）
@@ -117,7 +118,9 @@ docker compose up -d
 StarLoftKYC/
 ├── README.md              # 项目入口（本文件）
 ├── 更新文档.md            # 版本变更日志
-├── init.sql               # 数据库初始化脚本（分库：创建 4 个库 + 全部表结构 + 初始化数据）
+├── database/             # 数据库资源
+│   ├── init.sql          # 数据库初始化脚本（分库：创建 4 个库 + 全部表结构 + 初始化数据）
+│   └── 数据库架构文档.md    # 数据库架构说明文档
 ├── docker-compose.yml     # Docker编排
 ├── .env.example           # 环境变量模板
 ├── backend/               # Go后端服务
