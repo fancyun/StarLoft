@@ -36,8 +36,9 @@ services:
       # 仅便于宿主机用数据库客户端直连查看，后端走内部网络不依赖此映射
       - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
-      # 首次初始化（数据卷为空时）自动执行 init.sql；.md 文档会被 MySQL 初始化目录忽略
+      # 数据库数据存放于项目内 ./data/mysql（bind mount，替代具名数据卷）
+      - ./data/mysql:/var/lib/mysql
+      # 首次初始化（数据目录为空时）自动执行 init.sql；.md 文档会被 MySQL 初始化目录忽略
       - ./database:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysql -uroot -p'${DB_PASSWORD}' -N -e 'SELECT COUNT(*) FROM starloft_sys.platform_user LIMIT 1;'"]
@@ -122,13 +123,14 @@ services:
       SES_TEMPLATE_ID: ${SES_TEMPLATE_ID:-}
       SES_REGION: ${SES_REGION:-ap-guangzhou}
       
-      # 日志目录（映射到 backend_logs 数据卷）
+      # 日志目录（挂载宿主项目 ./logs）
       LOG_DIR: /app/logs
       
       # 时区
       TZ: Asia/Shanghai
     volumes:
-      - backend_logs:/app/logs
+      # 日志存放于项目内 ./logs（bind mount，替代具名数据卷）
+      - ./logs:/app/logs
     # 不暴露端口到宿主机，仅内部网络访问
     expose:
       - "8080"
@@ -166,8 +168,4 @@ services:
 # 数据卷
 volumes:
   redis_data:
-    driver: local
-  mysql_data:
-    driver: local
-  backend_logs:
     driver: local
