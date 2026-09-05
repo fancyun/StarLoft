@@ -496,6 +496,7 @@ const sendCode = async () => {
 .sms-btn {
   flex-shrink: 0;
   width: 128px;
+  height: 46px;
   padding: 0;
   border-radius: 6px;
   font-size: 13px;
