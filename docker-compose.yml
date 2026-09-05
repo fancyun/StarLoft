@@ -29,6 +29,8 @@ services:
     environment:
       # 本地 root 密码取自 .env 的 DB_PASSWORD（后端容器使用同一密码连接）
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      # 允许空密码：DB_PASSWORD 为空时 root 免密登录（测试/本地联调用，生产请务必设置强密码）
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
       # 分库库名固定（与 database/init.sql 一致），init.sql 会创建全部库
       MYSQL_DATABASE: starloft_sys
       TZ: Asia/Shanghai
