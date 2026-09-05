@@ -8,7 +8,7 @@ interface StatsOrdersResponse {
 
 // 公开API（无需登录）
 export const publicAPI = {
-  // 获取系统配置
+  // 获取公开配置（验证码 AppID / KYC 单价）
   getConfig: () => {
     return request.get('/config')
   }

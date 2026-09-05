@@ -193,8 +193,6 @@ CREATE TABLE IF NOT EXISTS `payment_order` (
   KEY `idx_payment_order_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付订单';
 
--- 系统配置（已取消：业务配置全部转入 .env 环境变量管理，不再建表存储）
-
 -- 用户登录记录
 CREATE TABLE IF NOT EXISTS `user_login_log` (
   `id`          bigint       NOT NULL AUTO_INCREMENT,

@@ -214,7 +214,7 @@
 
     <h3>3.3 查询余额</h3>
     <p><span class="method post">POST</span><code>/api/kyc/balance/query</code></p>
-    <p>查询当前 API Key 所属账户的余额与平台实名认证单价（已取消个人单价，统一按平台价格扣费）。</p>
+    <p>查询当前 API Key 所属账户的余额与平台 KYC 认证单价（统一按平台价格扣费）。</p>
 
     <h4>请求示例</h4>
     <p>请求体为空 JSON：</p>

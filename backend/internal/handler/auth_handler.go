@@ -180,7 +180,7 @@ func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 func (h *AuthHandler) QueryBalance(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
-	// 获取平台认证单价（统一按平台价格扣费，已取消个人单价设置）
+	// 获取平台 KYC 认证单价（统一按平台价格扣费）
 	kycPrice := h.authService.GetPlatformKycPrice()
 
 	user, err := h.authService.GetUserByID(userID)
@@ -249,7 +249,7 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 	if kycRecord != nil && kycRecord.Status == 1 {
 		pendingToken := kycRecord.UpToken
 		pendingBizNo := kycRecord.BizNo
-		// 兼容历史：API 调用（source=2）产生的实名记录不存上游 token，回退查订单
+		// API 调用（source=2）的记录若未存上游 token，回退查询最近待处理订单
 		if pendingToken == "" {
 			if pendingOrder, err := h.authService.GetLatestPendingOrder(userID); err == nil && pendingOrder != nil {
 				pendingToken = pendingOrder.UpToken
@@ -283,7 +283,7 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 	})
 }
 
-// SyncKycResult 同步上游认证结果（保留兼容；/kyc 页面现统一走公开结果查询接口）
+// SyncKycResult 同步上游认证结果
 func (h *AuthHandler) SyncKycResult(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -451,7 +451,7 @@ func (h *AuthHandler) StartAuthForWeb(c *gin.Context) {
 		notifyURL,
 		bizExtraData,
 		1,    // 账户实名
-		true, // retained参数，账户实名始终免费，不再使用
+		true, // 账户实名（source=1）固定为免费
 	)
 	if err != nil {
 		if err == service.ErrInsufficientBalance {

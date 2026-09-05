@@ -102,7 +102,7 @@ func (s *AuthService) GetFreeAuthRemaining(userID int64) (int, error) {
 // 认证信息单独储存在系统库的实名记录表（kyc_personal）中。
 //   - API 调用（source=2）：走认证订单 + 计费流程。
 //
-// free: 保留参数，账户实名始终免费，不再使用。
+// free: 账户实名（source=1）固定为免费。
 func (s *AuthService) StartAuth(
 	userID int64,
 	name, idCard, returnURL, notifyURL string,
@@ -732,8 +732,7 @@ func (s *AuthService) applyUserVerified(userID int64, verified int, name, number
 	s.ensureAPISecret(userID)
 }
 
-// ensureAPISecret 实名成功后生成并下发 API Secret（API Key 已于注册时自动生成）
-// 仅对历史存量用户（注册时未生成 Key）一并补全 API Key
+// ensureAPISecret 实名成功后为缺少 API 密钥的用户补全平台密钥对（API Key/API Secret）
 func (s *AuthService) ensureAPISecret(userID int64) {
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
@@ -743,7 +742,7 @@ func (s *AuthService) ensureAPISecret(userID int64) {
 	if user.APISecret != "" {
 		return
 	}
-	// 历史存量用户可能在注册时未生成 API Key（此前设计注册不生成 Key），实名成功后一并补全
+	// API Key 为空时一并补全，确保用户具备完整密钥对
 	if user.APIKey == "" {
 		apiKey := utils.GenerateRandomKey(32)
 		if err := s.userRepo.UpdateUserAPIKey(userID, apiKey, ""); err != nil {

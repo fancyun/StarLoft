@@ -26,7 +26,7 @@
 ```
 www.starloft.cn       门户站点（frontend-portal）：平台首页 / 产品页 / 文档中心
 console.starloft.cn   控制台（frontend-console）：登录注册、产品控制台
-admin.starloft.cn     管理后台（frontend-admin）：数据统计、用户/订单/资源包/系统配置管理
+admin.starloft.cn     管理后台（frontend-admin）：数据统计、用户/订单/资源包管理
 └─ /api/ 反向代理      → backend 后端服务（Go + Gin）
 ```
 
@@ -51,7 +51,7 @@ cd kyc
 # 2. 初始化数据库（分库架构：新建/重建 4 个库 + 全部表结构 + 初始化数据）
 # Docker 部署下，本机 mysql 服务首次启动会自动执行 database/init.sql 完成初始化，无需手动导入。
 # 云数据库部署时需手动导入（脚本会先删除旧库再创建 starloft_sys/starloft_kyc/starloft_cs/starloft_sms
-# 4 个库与全部表结构，并插入初始化数据：默认管理员、系统配置、资源包套餐）。
+# 4 个库与全部表结构，并插入初始化数据：默认管理员、资源包套餐）。
 # 注意：脚本会 DROP DATABASE 永久删除旧库数据，仅限确认无存量数据需要保留时执行！
 # 连接账号需拥有上述 4 个库的读写权限。
 mysql -h <DB_HOST> -u <DB_USER> -p < database/init.sql
@@ -138,7 +138,7 @@ StarLoftKYC/
 │       └── api/           # 接口封装
 ├── frontend-admin/        # 管理后台前端（admin.starloft.cn）
 │   └── src/
-│       ├── views/admin/   # 页面（数据统计 / 用户 / 订单 / 资源包 / 系统配置）
+│       ├── views/admin/   # 页面（数据统计 / 用户 / 订单 / 资源包）
 │       ├── layouts/       # 管理后台布局
 │       ├── stores/        # 管理员状态（admin_token）
 │       └── api/           # 管理后台接口（/admin/*）
@@ -175,7 +175,7 @@ StarLoftKYC/
 - ✅ 认证订单管理（订单详情/失败原因）
 - ✅ 资源包管理（创建/库存/上架下架）
 - ✅ 人工充值（需填写银行流水单号）
-- ✅ 系统配置（KYC 单价等）
+- ✅ 配置统一走 .env（第三方业务配置 / KYC 单价，重启生效）
 
 ### 开发者功能
 - ✅ RESTful API 接口（API Key + HMAC-SHA256 签名）
