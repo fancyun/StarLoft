@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -114,7 +115,34 @@ func Load() (*Config, error) {
 	// 从环境变量加载所有配置
 	loadFromEnv(cfg)
 
+	// 校验关键密钥（启动早失败，避免带空/弱密钥运行泄露账户或数据）
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+// validate 校验关键必填密钥非空且满足最小长度
+func (cfg *Config) validate() error {
+	checks := []struct {
+		name string
+		val  string
+		min  int
+	}{
+		{"JWT_SECRET", cfg.JWT.Secret, 32},
+		{"JWT_ADMIN_SECRET", cfg.JWT.AdminSecret, 32},
+		{"DB_PASSWORD", cfg.Database.Password, 8},
+		{"REDIS_PASSWORD", cfg.Redis.Password, 8},
+		{"TENCENT_SECRET_ID", cfg.Tencent.SecretID, 8},
+		{"TENCENT_SECRET_KEY", cfg.Tencent.SecretKey, 16},
+	}
+	for _, c := range checks {
+		if len(c.val) < c.min {
+			return fmt.Errorf("关键配置 %s 缺失或强度不足：至少需要 %d 个字符", c.name, c.min)
+		}
+	}
+	return nil
 }
 
 // loadFromEnv 从环境变量加载所有配置

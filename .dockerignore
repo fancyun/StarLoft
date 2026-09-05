@@ -12,6 +12,9 @@ plugin
 certs
 .env
 .env.example
+data
+logs
+backups
 docker-compose.yml
 init.sql
 README.md

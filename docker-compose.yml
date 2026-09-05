@@ -1,5 +1,5 @@
 services:
-  # Redis缓存
+  # Redis缓存（安全加固：强制密码 --requirepass，且不映射宿主端口，仅容器网络内可访问）
   redis:
     image: redis:7-alpine
     container_name: starloft_redis
