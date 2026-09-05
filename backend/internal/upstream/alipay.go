@@ -11,6 +11,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -87,6 +89,67 @@ func (c *AlipayClient) BuildPagePayURL(outTradeNo string, amount float64, subjec
 	values.Set("sign", sign)
 
 	return alipayDefaultGateway + "?" + values.Encode(), nil
+}
+
+// AlipayTradeQuery 支付宝订单查询响应（alipay.trade.query）
+type AlipayTradeQuery struct {
+	AlipayTradeQueryResponse struct {
+		Code        string `json:"code"`
+		Msg         string `json:"msg"`
+		SubCode     string `json:"sub_code"`
+		SubMsg      string `json:"sub_msg"`
+		OutTradeNo  string `json:"out_trade_no"`
+		TradeNo     string `json:"trade_no"`
+		TradeStatus string `json:"trade_status"`
+		TotalAmount string `json:"total_amount"`
+	} `json:"alipay_trade_query_response"`
+	Sign string `json:"sign"`
+}
+
+// QueryOrder 查询支付宝订单状态（alipay.trade.query），用于支付对账与超时补单
+func (c *AlipayClient) QueryOrder(outTradeNo string) (*AlipayTradeQuery, error) {
+	bizContent := fmt.Sprintf(`{"out_trade_no":"%s"}`, outTradeNo)
+	params := map[string]string{
+		"app_id":      c.AppID,
+		"method":      "alipay.trade.query",
+		"format":      "JSON",
+		"charset":     "utf-8",
+		"sign_type":   "RSA2",
+		"timestamp":   time.Now().Format("2006-01-02 15:04:05"),
+		"version":     "1.0",
+		"biz_content": bizContent,
+	}
+	sign, err := c.Sign(params)
+	if err != nil {
+		return nil, err
+	}
+
+	values := url.Values{}
+	for k, v := range params {
+		values.Set(k, v)
+	}
+	values.Set("sign", sign)
+
+	resp, err := http.PostForm(alipayDefaultGateway, values)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result AlipayTradeQuery
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("解析支付宝订单查询响应失败: %w", err)
+	}
+	if result.AlipayTradeQueryResponse.Code != "10000" {
+		return nil, fmt.Errorf("支付宝订单查询失败: code=%s, sub_code=%s, msg=%s",
+			result.AlipayTradeQueryResponse.Code, result.AlipayTradeQueryResponse.SubCode, result.AlipayTradeQueryResponse.Msg)
+	}
+	return &result, nil
 }
 
 // Sign 对参数按 key 升序拼接 key=value（以 & 连接），使用应用私钥做 RSA2 签名

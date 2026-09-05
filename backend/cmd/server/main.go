@@ -7,6 +7,7 @@ import (
 	"starloftrpa/internal/database"
 	"starloftrpa/internal/redis"
 	"starloftrpa/internal/router"
+	"starloftrpa/internal/upstream"
 	"starloftrpa/internal/utils"
 )
 
@@ -38,8 +39,25 @@ func main() {
 	// 初始化路由
 	r, authService, balanceService := router.Setup(cfg)
 
+	// 构建支付客户端（未配置时返回 nil，对账任务会跳过对应渠道）
+	alipayClient, aerr := upstream.NewAlipayClient(cfg.Alipay.AppID, cfg.Alipay.PrivateKey, cfg.Alipay.PublicKey)
+	if aerr != nil {
+		log.Fatalf("初始化支付宝客户端失败: %v", aerr)
+	}
+	wechatClient, werr := upstream.NewWeChatPayClient(
+		cfg.WeChatPay.AppID,
+		cfg.WeChatPay.MchID,
+		cfg.WeChatPay.APIv3Key,
+		cfg.WeChatPay.MchSerialNo,
+		cfg.WeChatPay.MchPrivateKey,
+		cfg.WeChatPay.PlatformPubKey,
+	)
+	if werr != nil {
+		log.Fatalf("初始化微信支付客户端失败: %v", werr)
+	}
+
 	// 启动定时任务
-	cronManager := cron.NewCronManager(authService, balanceService)
+	cronManager := cron.NewCronManager(authService, balanceService, alipayClient, wechatClient)
 	if err := cronManager.Start(); err != nil {
 		log.Fatalf("启动定时任务失败: %v", err)
 	}

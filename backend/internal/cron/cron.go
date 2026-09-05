@@ -6,6 +6,7 @@ import (
 	"github.com/robfig/cron/v3"
 
 	"starloftrpa/internal/service"
+	"starloftrpa/internal/upstream"
 )
 
 // CronManager 定时任务管理器
@@ -13,14 +14,18 @@ type CronManager struct {
 	cron           *cron.Cron
 	authService    *service.AuthService
 	balanceService *service.BalanceService
+	alipay         *upstream.AlipayClient
+	wechat         *upstream.WeChatPayClient
 }
 
 // NewCronManager 创建定时任务管理器
-func NewCronManager(authService *service.AuthService, balanceService *service.BalanceService) *CronManager {
+func NewCronManager(authService *service.AuthService, balanceService *service.BalanceService, alipay *upstream.AlipayClient, wechat *upstream.WeChatPayClient) *CronManager {
 	return &CronManager{
 		cron:           cron.New(),
 		authService:    authService,
 		balanceService: balanceService,
+		alipay:         alipay,
+		wechat:         wechat,
 	}
 }
 
@@ -34,6 +39,12 @@ func (m *CronManager) Start() error {
 
 	// 每分钟释放一次超时未支付的资源包订单（释放占用的库存并退还余额支付部分）
 	_, err = m.cron.AddFunc("*/1 * * * *", m.releaseExpiredResourcePacks)
+	if err != nil {
+		return err
+	}
+
+	// 每日凌晨进行一次支付对账（主动向支付宝/微信查询待支付订单真实状态，补账或关闭）
+	_, err = m.cron.AddFunc("0 0 2 * * *", m.reconcilePaymentOrders)
 	if err != nil {
 		return err
 	}
@@ -74,4 +85,13 @@ func (m *CronManager) releaseExpiredResourcePacks() {
 	}
 
 	log.Println("超时资源包订单释放完成")
+}
+
+// reconcilePaymentOrders 每日支付对账：向支付宝/微信查询待支付订单真实状态并落地
+func (m *CronManager) reconcilePaymentOrders() {
+	log.Println("开始支付对账...")
+
+	m.balanceService.ReconcilePaymentOrders(m.alipay, m.wechat)
+
+	log.Println("支付对账完成")
 }

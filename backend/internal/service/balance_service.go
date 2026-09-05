@@ -10,6 +10,7 @@ import (
 
 	"starloftrpa/internal/model"
 	"starloftrpa/internal/repository"
+	"starloftrpa/internal/upstream"
 )
 
 var (
@@ -350,6 +351,96 @@ func (s *BalanceService) releaseResourcePackOrder(order *model.PaymentOrder) {
 
 	if err := tx.Commit(); err != nil {
 		log.Printf("释放资源包订单提交失败 [order_id=%d]: %v", order.ID, err)
+	}
+}
+
+// ReconcilePaymentOrders 支付对账（每日定时任务调用）：主动向支付渠道查询仍待支付订单的真实状态并落地
+// 仅处理创建超 5 分钟的待支付单，避免干扰正在正常支付流程中的订单
+func (s *BalanceService) ReconcilePaymentOrders(alipay *upstream.AlipayClient, wechat *upstream.WeChatPayClient) {
+	orders, err := s.paymentRepo.GetPendingOrdersForReconcile(time.Now().Add(-5 * time.Minute))
+	if err != nil {
+		log.Printf("支付对账查询待支付订单失败: %v", err)
+		return
+	}
+	for _, o := range orders {
+		s.reconcileOne(o, alipay, wechat)
+	}
+}
+
+// reconcileOne 对单笔待支付订单向对应渠道查询真实状态并补账/关闭（幂等）
+func (s *BalanceService) reconcileOne(o *model.PaymentOrder, alipay *upstream.AlipayClient, wechat *upstream.WeChatPayClient) {
+	switch o.Channel {
+	case "alipay":
+		if alipay == nil {
+			return
+		}
+		res, err := alipay.QueryOrder(o.PayOrderNo)
+		if err != nil {
+			log.Printf("支付宝对账查询失败 [pay_order_no=%s]: %v", o.PayOrderNo, err)
+			return
+		}
+		tr := res.AlipayTradeQueryResponse
+		switch tr.TradeStatus {
+		case "TRADE_SUCCESS", "TRADE_FINISHED":
+			s.settleReconciledPaid(o, tr.TradeNo)
+		case "TRADE_CLOSED":
+			s.closeReconciledOrder(o)
+		}
+	case "wechat":
+		if wechat == nil {
+			return
+		}
+		tx, err := wechat.QueryOrder(o.PayOrderNo)
+		if err != nil {
+			log.Printf("微信对账查询失败 [pay_order_no=%s]: %v", o.PayOrderNo, err)
+			return
+		}
+		switch tx.TradeState {
+		case "SUCCESS":
+			s.settleReconciledPaid(o, tx.TransactionID)
+		case "CLOSED", "REVOKED", "PAYERROR":
+			s.closeReconciledOrder(o)
+		}
+	}
+}
+
+// settleReconciledPaid 对账确认已支付时补账（幂等：与支付回调共用同一套状态条件更新）
+func (s *BalanceService) settleReconciledPaid(o *model.PaymentOrder, channelTradeNo string) {
+	if o.Intent == paymentIntentResourcePack {
+		if err := s.SettleResourcePackPaid(o.ID, channelTradeNo); err != nil {
+			log.Printf("对账补单（资源包）失败 [pay_order_no=%s]: %v", o.PayOrderNo, err)
+		}
+		return
+	}
+	changed, err := s.paymentRepo.MarkOrderPaidIfPending(o.ID, channelTradeNo)
+	if err != nil {
+		log.Printf("对账补单标记失败 [pay_order_no=%s]: %v", o.PayOrderNo, err)
+		return
+	}
+	if !changed {
+		return
+	}
+	if err := s.RechargeBalance(o.UserID, o.Amount, o.ID); err != nil {
+		log.Printf("对账补单入账失败 [pay_order_no=%s]: %v", o.PayOrderNo, err)
+		return
+	}
+	log.Printf("对账补单成功: pay_order_no=%s, amount=%.2f", o.PayOrderNo, o.Amount)
+}
+
+// closeReconciledOrder 对账确认未支付（渠道侧已关闭）时关闭本地订单
+// 资源包订单复用超时释放逻辑（关闭 + 释放库存 + 退还余额部分），普通充值单仅关闭
+func (s *BalanceService) closeReconciledOrder(o *model.PaymentOrder) {
+	if o.Intent == paymentIntentResourcePack {
+		s.releaseResourcePackOrder(o)
+		return
+	}
+	changed, err := s.paymentRepo.CloseOrderIfPending(o.ID)
+	if err != nil {
+		log.Printf("对账关闭订单失败 [pay_order_no=%s]: %v", o.PayOrderNo, err)
+		return
+	}
+	if changed {
+		log.Printf("对账关闭订单: pay_order_no=%s", o.PayOrderNo)
 	}
 }
 

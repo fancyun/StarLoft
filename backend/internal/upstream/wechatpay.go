@@ -128,6 +128,60 @@ func (c *WeChatPayClient) CreateNativeOrder(outTradeNo string, amount float64, d
 	return result.CodeURL, nil
 }
 
+// QueryOrder 查询微信支付订单状态（APIv3 GET /v3/pay/transactions/out-trade-no/{out_trade_no}），用于支付对账与超时补单
+// 成功返回商户私钥鉴权 + 微信支付公钥对响应验签后的交易信息
+func (c *WeChatPayClient) QueryOrder(outTradeNo string) (*WechatTransaction, error) {
+	path := "/v3/pay/transactions/out-trade-no/" + outTradeNo
+	query := "?mchid=" + c.MchID
+	fullURL := wechatAPIBase + path + query
+
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	nonce := utils.GenerateRandomKey(16)
+	message := fmt.Sprintf("GET\n%s%s\n%s\n%s\n\n", path, query, timestamp, nonce)
+	signature, err := c.signMessage(message)
+	if err != nil {
+		return nil, err
+	}
+	auth := fmt.Sprintf(
+		`WECHATPAY2-SHA256-RSA2048 mchid="%s",nonce_str="%s",signature="%s",timestamp="%s",serial_no="%s"`,
+		c.MchID, nonce, signature, timestamp, c.MchSerialNo,
+	)
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "starloft-backend")
+	req.Header.Set("Authorization", auth)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("微信订单查询失败: status=%d, body=%s", resp.StatusCode, string(respBytes))
+	}
+
+	// 对响应体做签名校验（微信支付公钥）
+	if !c.VerifyNotify(resp.Header.Get("Wechatpay-Timestamp"), resp.Header.Get("Wechatpay-Nonce"), string(respBytes), resp.Header.Get("Wechatpay-Signature")) {
+		return nil, errors.New("微信订单查询响应验签失败")
+	}
+
+	var tx WechatTransaction
+	if err := json.Unmarshal(respBytes, &tx); err != nil {
+		return nil, fmt.Errorf("解析微信订单查询响应失败: %w", err)
+	}
+	return &tx, nil
+}
+
 // VerifyNotify 验证微信支付回调签名（微信支付公钥验签）
 // 签名串为 timestamp\nnonce\nbody\n，使用微信支付公钥做 SHA256withRSA 验证
 func (c *WeChatPayClient) VerifyNotify(timestamp, nonce, body, signature string) bool {

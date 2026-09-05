@@ -212,6 +212,68 @@ func (r *PaymentOrderRepository) CloseOrderIfPendingTx(tx *sql.Tx, orderID int64
 	return n > 0, nil
 }
 
+// CloseOrderIfPending 非事务关闭待支付订单（状态 0→3，幂等，供对账单边关闭使用）
+func (r *PaymentOrderRepository) CloseOrderIfPending(orderID int64) (bool, error) {
+	query := `UPDATE ` + model.SysDB + `.payment_order 
+		SET status = 3, updated_at = ? 
+		WHERE id = ? AND status = 0`
+	result, err := r.db.Exec(query, time.Now(), orderID)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// GetPendingOrdersForReconcile 查询早于指定时间创建、仍待支付的支付订单（用于每日对账）
+// olderThan 用于排除刚创建仍在正常支付流程中的订单
+func (r *PaymentOrderRepository) GetPendingOrdersForReconcile(olderThan time.Time) ([]*model.PaymentOrder, error) {
+	query := `SELECT id, pay_order_no, user_id, amount, 
+		channel, COALESCE(channel_trade_no, ''), status, expire_time, paid_at, created_at, updated_at, 
+		refund_status, COALESCE(refund_amount, 0), refunded_at, intent, COALESCE(biz_no, ''), 
+		COALESCE(balance_amount, 0), COALESCE(stock_reserved, 0) 
+		FROM ` + model.SysDB + `.payment_order 
+		WHERE status = 0 AND created_at < ?`
+
+	rows, err := r.db.Query(query, olderThan)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := make([]*model.PaymentOrder, 0)
+	for rows.Next() {
+		order := &model.PaymentOrder{}
+		if err := rows.Scan(
+			&order.ID,
+			&order.PayOrderNo,
+			&order.UserID,
+			&order.Amount,
+			&order.Channel,
+			&order.ChannelTradeNo,
+			&order.Status,
+			&order.ExpireTime,
+			&order.PaidAt,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+			&order.RefundStatus,
+			&order.RefundAmount,
+			&order.RefundedAt,
+			&order.Intent,
+			&order.BizNo,
+			&order.BalanceAmount,
+			&order.StockReserved,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+	return orders, nil
+}
+
 // GetExpiredPendingResourcePackOrders 查询已过期且仍待支付的资源包支付订单（用于定时释放库存）
 func (r *PaymentOrderRepository) GetExpiredPendingResourcePackOrders(now time.Time) ([]*model.PaymentOrder, error) {
 	query := `SELECT id, pay_order_no, user_id, amount, 
