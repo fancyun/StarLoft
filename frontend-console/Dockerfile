@@ -5,6 +5,9 @@ FROM node:20-alpine AS portal-builder
 
 WORKDIR /app/portal
 
+# npm 镜像（腾讯云内网，避免访问 registry.npmjs.org 超时）
+ENV NPM_CONFIG_REGISTRY=https://mirrors.cloud.tencent.com/npm/
+
 # 复制 package 文件
 COPY frontend-portal/package*.json ./
 
@@ -25,6 +28,9 @@ FROM node:20-alpine AS console-builder
 
 WORKDIR /app/console
 
+# npm 镜像（腾讯云内网，避免访问 registry.npmjs.org 超时）
+ENV NPM_CONFIG_REGISTRY=https://mirrors.cloud.tencent.com/npm/
+
 # 复制 package 文件
 COPY frontend-console/package*.json ./
 
@@ -44,6 +50,9 @@ RUN npm run build
 FROM node:20-alpine AS admin-builder
 
 WORKDIR /app/admin
+
+# npm 镜像（腾讯云内网，避免访问 registry.npmjs.org 超时）
+ENV NPM_CONFIG_REGISTRY=https://mirrors.cloud.tencent.com/npm/
 
 # 复制 package 文件
 COPY frontend-admin/package*.json ./
