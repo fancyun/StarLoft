@@ -87,6 +87,14 @@ a:hover {
   color: var(--color-primary-hover);
 }
 
+/* 内容容器：全局约束最大宽度并保留左右内边距，避免卡片贴到区块两侧 */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
 h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
   font-weight: 600;
