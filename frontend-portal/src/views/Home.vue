@@ -1,16 +1,18 @@
 <template>
   <div class="home">
     <!-- Hero 区 -->
-    <section class="hero">
+    <section class="hero" :style="heroBg">
       <div class="container hero-inner">
-        <h1 class="hero-title">一站式云服务平台</h1>
-        <p class="hero-sub">
-          为企业提供弹性云服务器、实名认证、短信等安全可信的云产品能力，
-          简单接入、稳定可靠、按需付费。
-        </p>
-        <div class="hero-actions">
-          <a class="btn-primary" href="https://console.starloft.cn/register">免费注册</a>
-          <router-link class="btn-ghost" to="/docs">了解产品服务</router-link>
+        <div class="hero-panel">
+          <h1 class="hero-title">一站式云服务平台</h1>
+          <p class="hero-sub">
+            为企业提供弹性云服务器、实名认证、短信等安全可信的云产品能力，
+            简单接入、稳定可靠、按需付费。
+          </p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="https://console.starloft.cn/register">免费注册</a>
+            <router-link class="btn-ghost" to="/docs">了解产品服务</router-link>
+          </div>
         </div>
       </div>
     </section>
@@ -74,6 +76,14 @@
 <script setup lang="ts">
 import { products } from '@/config/products'
 
+// Hero 背景：左侧白色渐变留白，右侧铺品牌插画（阿里云/腾讯云风格）
+const heroBg = {
+  backgroundImage: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.94) 34%, rgba(255,255,255,0) 60%), url("https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cloud+technology+concept+illustration%2C+blue+gradient+servers+and+network+cloud%2C+abstract%2C+clean%2C+minimal%2C+right+aligned+on+clean+white+background&image_size=landscape_16_9")',
+  backgroundSize: '100% 100%, 60% auto',
+  backgroundPosition: '0 0, right center',
+  backgroundRepeat: 'no-repeat'
+}
+
 const advantages = [
   {
     title: '安全可靠',
@@ -105,8 +115,8 @@ const advantages = [
 
 /* ========== Hero ========== */
 .hero {
-  background: linear-gradient(135deg, #0052D9 0%, #006EFF 60%, #3A8DFF 100%);
-  color: #fff;
+  background-color: #fff;
+  color: var(--text-primary);
   padding: 72px 0;
   display: flex;
   align-items: center;
@@ -114,30 +124,60 @@ const advantages = [
 }
 
 .hero-inner {
-  max-width: 900px;
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  text-align: center;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* 左侧内容白板：避免右侧背景图影响文字可读性 */
+.hero-panel {
+  max-width: 640px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 40px 44px;
+  border-radius: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.06);
 }
 
 .hero-title {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 1px;
   margin-bottom: 20px;
+  text-align: left;
 }
 
 .hero-sub {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary);
   font-size: 18px;
   line-height: 1.7;
-  margin-bottom: 40px;
+  margin-bottom: 36px;
+  text-align: left;
 }
 
 .hero-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
+}
+
+/* 白板场景下按钮改为品牌蓝实心 / 线框，避免白底白字不可见 */
+.hero-panel .btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.hero-panel .btn-primary:hover {
+  background: #0043b3;
+}
+.hero-panel .btn-ghost {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.hero-panel .btn-ghost:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .btn-primary {

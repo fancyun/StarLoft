@@ -2,21 +2,23 @@
   <div class="product-page">
     <div v-if="product">
       <!-- 产品 Hero -->
-      <section class="hero">
+      <section class="hero" :style="heroBg">
         <div class="container hero-inner">
-          <div class="hero-icon" v-html="product.icon"></div>
-          <h1 class="hero-title">{{ product.name }}</h1>
-          <p class="hero-english">{{ product.english }}</p>
-          <p class="hero-tagline">{{ product.tagline }}</p>
-          <p class="hero-desc">{{ product.description }}</p>
-          <div class="hero-actions">
-            <a
-              v-if="product.status === 'available'"
-              class="btn-primary"
-              :href="product.consolePath"
-            >立即使用</a>
-            <span v-else class="btn-primary btn-disabled">即将上线</span>
-            <router-link class="btn-ghost" to="/docs/api/v1">查看 API 文档</router-link>
+          <div class="hero-panel">
+            <div class="hero-icon" v-html="product.icon"></div>
+            <h1 class="hero-title">{{ product.name }}</h1>
+            <p class="hero-english">{{ product.english }}</p>
+            <p class="hero-tagline">{{ product.tagline }}</p>
+            <p class="hero-desc">{{ product.description }}</p>
+            <div class="hero-actions">
+              <a
+                v-if="product.status === 'available'"
+                class="btn-primary"
+                :href="product.consolePath"
+              >立即使用</a>
+              <span v-else class="btn-primary btn-disabled">即将上线</span>
+              <router-link class="btn-ghost" to="/docs/api/v1">查看 API 文档</router-link>
+            </div>
           </div>
         </div>
       </section>
@@ -73,6 +75,23 @@ import { productByKey } from '@/config/products'
 
 const route = useRoute()
 const product = computed(() => productByKey(String(route.meta.product)))
+
+// Hero 背景：按产品展示不同插画，左侧白色渐变留白 + 白板文字，右侧铺图（阿里云/腾讯云风格）
+const heroImageByKey: Record<string, string> = {
+  kyc: 'identity+verification+face+recognition+illustration%2C+blue+abstract%2C+secure+badge%2C+minimal%2C+clean+white+background%2C+right+aligned',
+  cs: 'cloud+server+data+center+illustration%2C+blue+gradient%2C+minimal%2C+clean+white+background%2C+right+aligned',
+  sms: 'message+and+notification+communication+illustration%2C+blue+gradient%2C+minimal%2C+clean+white+background%2C+right+aligned'
+}
+const IMAGE_ENDPOINT = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image'
+const heroBg = computed(() => {
+  const prompt = heroImageByKey[String(route.meta.product)] || heroImageByKey.kyc
+  return {
+    backgroundImage: `linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.94) 34%, rgba(255,255,255,0) 60%), url("${IMAGE_ENDPOINT}?prompt=${prompt}&image_size=landscape_16_9")`,
+    backgroundSize: '100% 100%, 60% auto',
+    backgroundPosition: '0 0, right center',
+    backgroundRepeat: 'no-repeat'
+  }
+})
 </script>
 
 <style scoped>
@@ -82,8 +101,8 @@ const product = computed(() => productByKey(String(route.meta.product)))
 
 /* ========== Hero ========== */
 .hero {
-  background: linear-gradient(135deg, #0052D9 0%, #006EFF 60%, #3A8DFF 100%);
-  color: #fff;
+  background-color: #fff;
+  color: var(--text-primary);
   padding: 72px 0;
   display: flex;
   align-items: center;
@@ -91,9 +110,20 @@ const product = computed(() => productByKey(String(route.meta.product)))
 }
 
 .hero-inner {
-  max-width: 860px;
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  text-align: center;
+  display: flex;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.hero-panel {
+  max-width: 640px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 40px 44px;
+  border-radius: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.06);
 }
 
 .hero-icon {
@@ -103,8 +133,8 @@ const product = computed(() => productByKey(String(route.meta.product)))
   width: 72px;
   height: 72px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   margin-bottom: 20px;
 }
 
@@ -114,38 +144,59 @@ const product = computed(() => productByKey(String(route.meta.product)))
 }
 
 .hero-title {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 36px;
   font-weight: 700;
   margin-bottom: 4px;
 }
 
 .hero-english {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-muted);
   font-size: 14px;
   letter-spacing: 1px;
   margin-bottom: 16px;
 }
 
 .hero-tagline {
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 16px;
 }
 
 .hero-desc {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-secondary);
   font-size: 15px;
   line-height: 1.8;
-  max-width: 680px;
-  margin: 0 auto 36px;
+  max-width: 600px;
+  margin-bottom: 36px;
 }
 
 .hero-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
+}
+
+/* 白板场景下按钮改为品牌蓝实心 / 线框 */
+.hero-panel .btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.hero-panel .btn-primary:hover {
+  background: #0043b3;
+}
+.hero-panel .btn-primary.btn-disabled {
+  background: var(--bg-soft);
+  color: var(--text-muted);
+}
+.hero-panel .btn-ghost {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.hero-panel .btn-ghost:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .btn-primary {
