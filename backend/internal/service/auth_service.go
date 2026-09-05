@@ -53,7 +53,7 @@ type AuthService struct {
 	kycEntRepo       *repository.KycEnterpriseRepository
 	resourcePackRepo *repository.ResourcePackRepository
 	balanceService   *BalanceService
-	configRepo       *repository.SystemConfigRepository
+	kycPrice         float64 // 平台 KYC 认证单价（元/次），来自环境变量 KYC_PRICE
 }
 
 // NewAuthService 创建认证服务
@@ -66,7 +66,7 @@ func NewAuthService(
 	kycEntRepo *repository.KycEnterpriseRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
 	balanceService *BalanceService,
-	configRepo *repository.SystemConfigRepository,
+	kycPrice float64,
 ) *AuthService {
 	return &AuthService{
 		finAuthClient:    finAuthClient,
@@ -77,7 +77,7 @@ func NewAuthService(
 		kycEntRepo:       kycEntRepo,
 		resourcePackRepo: resourcePackRepo,
 		balanceService:   balanceService,
-		configRepo:       configRepo,
+		kycPrice:         kycPrice,
 	}
 }
 
@@ -316,21 +316,15 @@ func (s *AuthService) startAccountAuth(
 	}, nil
 }
 
-// GetPlatformKycPrice 获取平台KYC认证单价（系统配置 kyc_price）
+// GetPlatformKycPrice 获取平台KYC认证单价（环境变量 KYC_PRICE）
 func (s *AuthService) GetPlatformKycPrice() float64 {
 	return s.getPlatformKycPrice()
 }
 
-// getPlatformKycPrice 获取平台KYC认证单价（系统配置 kyc_price）
+// getPlatformKycPrice 获取平台KYC认证单价（环境变量 KYC_PRICE），未配置时兜底 1.00
 func (s *AuthService) getPlatformKycPrice() float64 {
-	if s.configRepo == nil {
-		return 1.00
-	}
-	priceStr, err := s.configRepo.GetConfig("kyc_price")
-	if err == nil && priceStr != "" {
-		if price, err := strconv.ParseFloat(priceStr, 64); err == nil && price > 0 {
-			return price
-		}
+	if s.kycPrice > 0 {
+		return s.kycPrice
 	}
 	return 1.00
 }

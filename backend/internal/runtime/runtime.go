@@ -2,27 +2,21 @@ package runtime
 
 import (
 	"log"
-	"strconv"
-	"strings"
 	"sync"
 
 	"starloftrpa/internal/config"
-	"starloftrpa/internal/repository"
 	"starloftrpa/internal/service"
 	"starloftrpa/internal/upstream"
 )
 
 // Runtime 持有第三方业务配置对应的上游客户端快照。
-// 管理员在后台修改业务配置后，可通过 Reload 从数据库重新读取并原子替换快照，即时生效（无需重启）。
-// 数据库未配置的业务项兜底回退到环境变量（config.Load 加载的初始值）。
+// 业务配置全部来自环境变量（config.Load 加载），启动时一次性构建，不依赖数据库配置。
 type Runtime struct {
-	mu         sync.RWMutex
-	configRepo *repository.SystemConfigRepository
-	base       *config.Config
-	snp        *snapshot
+	mu  sync.RWMutex
+	snp *snapshot
 }
 
-// snapshot 当前生效的第三方业务客户端快照，Reload 时整体替换。
+// snapshot 当前生效的第三方业务客户端快照。
 type snapshot struct {
 	finAuth      upstream.FinAuthInterface
 	finAuthCfg   config.FinAuthConfig
@@ -32,58 +26,29 @@ type snapshot struct {
 	email        *service.EmailService
 	captcha      *service.CaptchaService
 	captchaAppID string
+	kycPrice     float64
 }
 
-// New 创建运行时控制器，并根据数据库业务配置构建初始快照。
-func New(cfg *config.Config, configRepo *repository.SystemConfigRepository) (*Runtime, error) {
-	rt := &Runtime{
-		configRepo: configRepo,
-		base:       cfg,
-	}
-	if err := rt.Reload(); err != nil {
-		return nil, err
-	}
-	return rt, nil
-}
-
-// Reload 从数据库重新读取第三方业务配置并重建客户端快照，原子替换即时生效。
-func (rt *Runtime) Reload() error {
-	dbConfigs, err := rt.configRepo.GetAllConfigs()
-	if err != nil {
-		return err
-	}
-
-	// get 优先取数据库值，未配置/为空时回退到环境变量初始值
-	get := func(key, envFallback string) string {
-		if v, ok := dbConfigs[key]; ok && v != "" {
-			return v
-		}
-		return envFallback
-	}
-
-	b := rt.base
+// New 根据环境变量配置构建第三方业务客户端快照。
+func New(cfg *config.Config) (*Runtime, error) {
+	rt := &Runtime{}
 	s := &snapshot{}
 
 	// FinAuth
-	s.finAuthCfg = config.FinAuthConfig{
-		APIKey:    get("finauth_api_key", b.FinAuth.APIKey),
-		APISecret: get("finauth_api_secret", b.FinAuth.APISecret),
-		SceneID:   get("finauth_scene_id", b.FinAuth.SceneID),
-		BaseURL:   get("finauth_base_url", b.FinAuth.BaseURL),
-	}
+	s.finAuthCfg = cfg.FinAuth
 	s.finAuth = upstream.NewFinAuthClient(s.finAuthCfg.BaseURL, s.finAuthCfg.APIKey, s.finAuthCfg.APISecret)
 
 	// 腾讯云账号密钥（短信/验证码/邮件复用）
-	secretID := get("tencent_secret_id", b.Tencent.SecretID)
-	secretKey := get("tencent_secret_key", b.Tencent.SecretKey)
+	secretID := cfg.Tencent.SecretID
+	secretKey := cfg.Tencent.SecretKey
 
 	// 短信
 	smsSvc, err := service.NewSMSService(
 		secretID,
 		secretKey,
-		get("tencent_sms_sdk_app_id", b.Tencent.SMS.SDKAppID),
-		get("tencent_sms_sign_name", b.Tencent.SMS.SignName),
-		get("tencent_sms_template_id", b.Tencent.SMS.TemplateID),
+		cfg.Tencent.SMS.SDKAppID,
+		cfg.Tencent.SMS.SignName,
+		cfg.Tencent.SMS.TemplateID,
 	)
 	if err != nil {
 		log.Printf("构建短信服务失败，短信功能暂时不可用: %v", err)
@@ -92,63 +57,52 @@ func (rt *Runtime) Reload() error {
 	}
 
 	// 人机验证码
-	s.captchaAppID = get("tencent_captcha_app_id", b.Tencent.Captcha.CaptchaAppID)
+	s.captchaAppID = cfg.Tencent.Captcha.CaptchaAppID
 	s.captcha = service.NewCaptchaService(
 		secretID,
 		secretKey,
 		s.captchaAppID,
-		get("tencent_captcha_secret", b.Tencent.Captcha.AppSecretKey),
+		cfg.Tencent.Captcha.AppSecretKey,
 	)
 
 	// 邮件（腾讯云 SES，未配置时返回 nil 不启用）
-	tmplStr := get("ses_template_id", "")
-	tmplID := b.Email.TemplateID
-	if tmplStr != "" {
-		if n, e := strconv.ParseUint(tmplStr, 10, 64); e == nil {
-			tmplID = n
-		}
-	}
 	s.email = service.NewEmailService(
 		secretID,
 		secretKey,
-		get("ses_from", b.Email.From),
-		tmplID,
-		get("ses_region", b.Email.Region),
+		cfg.Email.From,
+		cfg.Email.TemplateID,
+		cfg.Email.Region,
 	)
 
 	// 支付宝
-	alipayAppID := get("alipay_app_id", b.Alipay.AppID)
-	alipayPriv := normalizePEM(get("alipay_private_key", b.Alipay.PrivateKey))
-	alipayPub := normalizePEM(get("alipay_public_key", b.Alipay.PublicKey))
-	if alipayAppID != "" && alipayPriv != "" && alipayPub != "" {
-		alipayClient, e := upstream.NewAlipayClient(alipayAppID, alipayPriv, alipayPub)
+	if cfg.Alipay.AppID != "" && cfg.Alipay.PrivateKey != "" && cfg.Alipay.PublicKey != "" {
+		alipayClient, e := upstream.NewAlipayClient(cfg.Alipay.AppID, cfg.Alipay.PrivateKey, cfg.Alipay.PublicKey)
 		if e != nil {
-			log.Printf("重建支付宝支付客户端失败，支付宝充值暂时不可用: %v", e)
+			log.Printf("构建支付宝支付客户端失败，支付宝充值暂时不可用: %v", e)
 		} else {
 			s.alipay = alipayClient
 		}
 	}
 
 	// 微信支付
-	wechatAppID := get("wechat_app_id", b.WeChatPay.AppID)
-	wechatMchID := get("wechat_mch_id", b.WeChatPay.MchID)
-	wechatV3Key := get("wechat_api_v3_key", b.WeChatPay.APIv3Key)
-	wechatSerial := get("wechat_mch_serial_no", b.WeChatPay.MchSerialNo)
-	wechatPriv := normalizePEM(get("wechat_mch_private_key", b.WeChatPay.MchPrivateKey))
-	wechatPub := normalizePEM(get("wechat_platform_public_key", b.WeChatPay.PlatformPubKey))
-	if wechatAppID != "" && wechatMchID != "" && wechatV3Key != "" && wechatSerial != "" && wechatPriv != "" && wechatPub != "" {
-		wechatClient, e := upstream.NewWeChatPayClient(wechatAppID, wechatMchID, wechatV3Key, wechatSerial, wechatPriv, wechatPub)
+	if cfg.WeChatPay.AppID != "" && cfg.WeChatPay.MchID != "" && cfg.WeChatPay.APIv3Key != "" &&
+		cfg.WeChatPay.MchSerialNo != "" && cfg.WeChatPay.MchPrivateKey != "" && cfg.WeChatPay.PlatformPubKey != "" {
+		wechatClient, e := upstream.NewWeChatPayClient(
+			cfg.WeChatPay.AppID, cfg.WeChatPay.MchID, cfg.WeChatPay.APIv3Key,
+			cfg.WeChatPay.MchSerialNo, cfg.WeChatPay.MchPrivateKey, cfg.WeChatPay.PlatformPubKey,
+		)
 		if e != nil {
-			log.Printf("重建微信支付客户端失败，微信充值暂时不可用: %v", e)
+			log.Printf("构建微信支付客户端失败，微信充值暂时不可用: %v", e)
 		} else {
 			s.wechat = wechatClient
 		}
 	}
 
-	rt.mu.Lock()
+	// 平台 KYC 认证单价
+	s.kycPrice = cfg.KycPrice
+
 	rt.snp = s
-	rt.mu.Unlock()
-	return nil
+	return rt, nil
 }
 
 // FinAuth 返回当前生效的 FinAuth 客户端。
@@ -207,7 +161,9 @@ func (rt *Runtime) CaptchaAppID() string {
 	return rt.snp.captchaAppID
 }
 
-// normalizePEM 将 PEM 内容中的字面 \n 还原为换行（数据库中存储的单行 PEM 需还原为多行）。
-func normalizePEM(s string) string {
-	return strings.ReplaceAll(s, "\\n", "\n")
+// KycPrice 返回平台 KYC 认证单价（元/次）。
+func (rt *Runtime) KycPrice() float64 {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	return rt.snp.kycPrice
 }

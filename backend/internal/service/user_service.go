@@ -41,14 +41,12 @@ func ValidateEmail(email string) bool {
 }
 
 type UserService struct {
-	userRepo   *repository.UserRepository
-	configRepo *repository.SystemConfigRepository
+	userRepo *repository.UserRepository
 }
 
-func NewUserService(userRepo *repository.UserRepository, configRepo *repository.SystemConfigRepository) *UserService {
+func NewUserService(userRepo *repository.UserRepository) *UserService {
 	return &UserService{
-		userRepo:   userRepo,
-		configRepo: configRepo,
+		userRepo: userRepo,
 	}
 }
 

@@ -21,7 +21,6 @@ type BalanceService struct {
 	balanceLogRepo   *repository.BalanceLogRepository
 	paymentRepo      *repository.PaymentOrderRepository
 	resourcePackRepo *repository.ResourcePackRepository
-	configRepo       *repository.SystemConfigRepository
 	db               *sql.DB
 }
 
@@ -30,7 +29,6 @@ func NewBalanceService(
 	balanceLogRepo *repository.BalanceLogRepository,
 	paymentRepo *repository.PaymentOrderRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
-	configRepo *repository.SystemConfigRepository,
 	db *sql.DB,
 ) *BalanceService {
 	return &BalanceService{
@@ -38,7 +36,6 @@ func NewBalanceService(
 		balanceLogRepo:   balanceLogRepo,
 		paymentRepo:      paymentRepo,
 		resourcePackRepo: resourcePackRepo,
-		configRepo:       configRepo,
 		db:               db,
 	}
 }

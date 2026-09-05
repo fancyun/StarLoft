@@ -7,30 +7,25 @@ import (
 	"github.com/gin-gonic/gin"
 	qrcode "github.com/skip2/go-qrcode"
 
-	"starloftrpa/internal/repository"
 	"starloftrpa/internal/runtime"
 )
 
 type PublicHandler struct {
-	rt         *runtime.Runtime
-	configRepo *repository.SystemConfigRepository
+	rt *runtime.Runtime
 }
 
-func NewPublicHandler(rt *runtime.Runtime, configRepo *repository.SystemConfigRepository) *PublicHandler {
+func NewPublicHandler(rt *runtime.Runtime) *PublicHandler {
 	return &PublicHandler{
-		rt:         rt,
-		configRepo: configRepo,
+		rt: rt,
 	}
 }
 
 // GetPublicConfig 获取公开配置（无需登录）
 func (h *PublicHandler) GetPublicConfig(c *gin.Context) {
-	// 读取平台 KYC 认证单价（系统配置 kyc_price，统一按平台价格扣费）
-	kycPrice := 1.00
-	if priceStr, err := h.configRepo.GetConfig("kyc_price"); err == nil && priceStr != "" {
-		if price, err := strconv.ParseFloat(priceStr, 64); err == nil && price > 0 {
-			kycPrice = price
-		}
+	// 平台 KYC 认证单价（环境变量 KYC_PRICE，统一按平台价格扣费）
+	kycPrice := h.rt.KycPrice()
+	if kycPrice <= 0 {
+		kycPrice = 1.00
 	}
 
 	c.JSON(http.StatusOK, gin.H{

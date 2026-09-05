@@ -34,11 +34,6 @@ const routes: Array<RouteRecordRaw> = [
         path: 'packs',
         name: 'AdminResourcePacks',
         component: () => import('@/views/admin/ResourcePacks.vue')
-      },
-      {
-        path: 'config',
-        name: 'AdminConfig',
-        component: () => import('@/views/admin/Config.vue')
       }
     ]
   }

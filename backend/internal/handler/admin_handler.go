@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -26,7 +25,6 @@ type AdminHandler struct {
 	userRepo         *repository.UserRepository
 	authRepo         *repository.AuthOrderRepository
 	paymentRepo      *repository.PaymentOrderRepository
-	configRepo       *repository.SystemConfigRepository
 	balanceLogRepo   *repository.BalanceLogRepository
 	resourcePackRepo *repository.ResourcePackRepository
 	loginLogRepo     *repository.LoginLogRepository
@@ -41,7 +39,6 @@ func NewAdminHandler(
 	userRepo *repository.UserRepository,
 	authRepo *repository.AuthOrderRepository,
 	paymentRepo *repository.PaymentOrderRepository,
-	configRepo *repository.SystemConfigRepository,
 	balanceLogRepo *repository.BalanceLogRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
 	loginLogRepo *repository.LoginLogRepository,
@@ -55,7 +52,6 @@ func NewAdminHandler(
 		userRepo:         userRepo,
 		authRepo:         authRepo,
 		paymentRepo:      paymentRepo,
-		configRepo:       configRepo,
 		balanceLogRepo:   balanceLogRepo,
 		resourcePackRepo: resourcePackRepo,
 		loginLogRepo:     loginLogRepo,
@@ -187,84 +183,6 @@ func (h *AdminHandler) AdminLogin(c *gin.Context) {
 			"expire_in": 86400,
 		},
 	})
-}
-
-// GetSystemConfig 获取系统配置
-func (h *AdminHandler) GetSystemConfig(c *gin.Context) {
-	configs, err := h.configRepo.GetAllConfigs()
-	if err != nil {
-		log.Printf("Failed to get system config: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to get system config",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    configs,
-	})
-}
-
-// UpdateSystemConfig 更新系统配置
-func (h *AdminHandler) UpdateSystemConfig(c *gin.Context) {
-	var req map[string]interface{}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    400,
-			"message": "invalid request parameters",
-		})
-		return
-	}
-
-	// 将所有值转换为字符串
-	stringReq := make(map[string]string)
-	for k, v := range req {
-		stringReq[k] = fmt.Sprintf("%v", v)
-	}
-
-	err := h.configRepo.BatchUpdateConfigs(stringReq)
-	if err != nil {
-		log.Printf("Failed to update system config: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "failed to update system config",
-		})
-		return
-	}
-
-	// 业务配置更新后重载运行时快照（重建第三方客户端），使修改即时生效，无需重启
-	if h.rt != nil {
-		if err := h.rt.Reload(); err != nil {
-			log.Printf("配置更新后重载运行时快照失败: %v", err)
-			c.JSON(http.StatusOK, gin.H{
-				"code":    500,
-				"message": "配置已保存但加载失败，部分功能可能未生效，请检查配置后重试",
-			})
-			return
-		}
-	}
-
-	// 记录配置更新操作日志（脱敏：不记录敏感配置值）
-	h.logAdminOperation(c, "config_update", "config", 0, "keys="+strings.Join(sortedKeys(stringReq), ","))
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-	})
-}
-
-// sortedKeys 返回 map 的键，按字典序排序
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 // GetStatisticsOverview 获取统计概览

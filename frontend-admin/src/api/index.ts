@@ -75,16 +75,6 @@ export const adminAPI = {
     return request.get('/payments', { params })
   },
 
-  // 获取系统配置
-  getConfig: () => {
-    return request.get('/config')
-  },
-
-  // 更新系统配置
-  updateConfig: (data: any) => {
-    return request.put('/config', data)
-  },
-
   // 获取统计概览
   getStatsOverview: (): Promise<StatsOverview> => {
     return request.get('/stats/overview')

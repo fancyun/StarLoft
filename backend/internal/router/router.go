@@ -30,22 +30,21 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	paymentRepo := repository.NewPaymentOrderRepository(db)
 	balanceLogRepo := repository.NewBalanceLogRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
-	configRepo := repository.NewSystemConfigRepository(db)
 	kycPersonalRepo := repository.NewKycPersonalRepository(db)
 	kycEnterpriseRepo := repository.NewKycEnterpriseRepository(db)
 	userServiceRepo := repository.NewUserServiceRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
 	loginLogRepo := repository.NewLoginLogRepository(db)
 
-	// 初始化运行时：从数据库业务配置构建第三方客户端快照（管理员后台修改后即时生效）
-	rt, err := runtime.New(cfg, configRepo)
+	// 初始化运行时：从环境变量配置构建第三方业务客户端快照
+	rt, err := runtime.New(cfg)
 	if err != nil {
 		panic("初始化运行时配置失败: " + err.Error())
 	}
 
 	// 初始化 Service
-	userService := service.NewUserService(userRepo, configRepo)
-	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, configRepo, db)
+	userService := service.NewUserService(userRepo)
+	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, db)
 
 	authService := service.NewAuthService(
 		rt.FinAuth,
@@ -56,7 +55,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 		kycEnterpriseRepo,
 		resourcePackRepo,
 		balanceService,
-		configRepo,
+		cfg.KycPrice,
 	)
 
 	// 初始化 JWT Manager
@@ -64,7 +63,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	signMgr := utils.NewSignatureManager()
 
 	// 初始化 Handler
-	publicHandler := handler.NewPublicHandler(rt, configRepo)
+	publicHandler := handler.NewPublicHandler(rt)
 
 	userHandler := handler.NewUserHandler(
 		userService,
@@ -80,7 +79,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 		userRepo,
 		authRepo,
 		paymentRepo,
-		configRepo,
 		balanceLogRepo,
 		resourcePackRepo,
 		loginLogRepo,
@@ -179,10 +177,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 			adminAuth.GET("/orders/recent", adminHandler.GetRecentAuthOrders)
 			adminAuth.GET("/orders/:id", adminHandler.GetAuthOrderDetail)
 			adminAuth.GET("/payments", adminHandler.GetPaymentOrderList)
-
-			// 系统配置
-			adminAuth.GET("/config", adminHandler.GetSystemConfig)
-			adminAuth.PUT("/config", adminHandler.UpdateSystemConfig)
 
 			// 管理员修改密码
 			adminAuth.POST("/change-password", adminHandler.ChangePassword)

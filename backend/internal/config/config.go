@@ -19,6 +19,7 @@ type Config struct {
 	WeChatPay WeChatPayConfig
 	Email     EmailConfig
 	Log       LogConfig
+	KycPrice  float64 // 平台 KYC 认证单价（元/次），API 认证计费与前端展示使用
 }
 
 // EmailConfig 腾讯云 SES 邮件发送配置（用于发送邮箱验证码）
@@ -279,6 +280,13 @@ func loadFromEnv(cfg *Config) {
 	// 日志配置
 	if dir := os.Getenv("LOG_DIR"); dir != "" {
 		cfg.Log.Dir = dir
+	}
+
+	// 平台 KYC 认证单价（元/次），未配置时兜底 1.00
+	if kycPrice := os.Getenv("KYC_PRICE"); kycPrice != "" {
+		if n, err := strconv.ParseFloat(kycPrice, 64); err == nil && n > 0 {
+			cfg.KycPrice = n
+		}
 	}
 }
 
