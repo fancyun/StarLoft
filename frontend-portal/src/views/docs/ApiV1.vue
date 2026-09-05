@@ -13,26 +13,26 @@
       <li>鉴权方式：请求头携带 API Key 与签名（见「请求鉴权」）</li>
     </ul>
 
-    <h2>2. 开通前提（必读）</h2>
-    <p>调用本 API 前，账户必须同时满足以下三个条件：</p>
+    <h2>2. 调用前提（必读）</h2>
+    <p>调用本 API 前，账户必须同时满足以下条件：</p>
     <ol>
       <li>
         <strong>完成企业实名认证。</strong>在星楼云控制台完成「企业实名认证」，
         使账户处于企业实名状态（<code>is_kyc_verified=2</code>）。
       </li>
       <li>
-        <strong>开通 KYC 服务。</strong>在控制台服务管理中开通 <strong>KYC 实名认证 API</strong> 服务
-        （对应用户侧接口 <code>POST /service/open</code>，入参 <code>service_code=kyc</code>）。
-        开通为幂等操作，可重复调用。
+        <strong>获取 API Key 与 API Secret。</strong>两者均可在控制台「API 密钥管理」中查看与重置
+        （API Secret 用于请求签名与回调验签）。
       </li>
       <li>
-        <strong>获取 API Key 与 API Secret。</strong>两者均可在控制台「API 密钥管理」中查看
-        （API Key 注册时自动生成且唯一；API Secret 用于请求签名与回调验签，仅企业实名成功后在系统中下发）。
+        <strong>API 密钥权限覆盖本服务。</strong>密钥权限范围（<code>permission</code>）需为
+        <code>all</code> 或 <code>kyc</code>，可在「API 密钥管理」中调整
+        （对应用户侧接口 <code>POST /api-key/permission</code>，入参 <code>permission</code>）。
       </li>
     </ol>
     <p>
-      未完成企业实名或未开通 KYC 服务时直接调用 <code>/api/kyc/*</code> 接口，
-      将返回 <code>code: 403</code> 与「服务未开通」提示。
+      未完成企业实名、密钥权限未覆盖，或密钥无效时调用 <code>/api/kyc/*</code> 接口，
+      将返回 <code>code: 403</code> 提示。
     </p>
 
     <h2>3. 请求鉴权</h2>
@@ -418,7 +418,7 @@ curl -X POST "https://www.starloft.cn/api/kyc/balance/query" \
         </tr>
         <tr>
           <td><code>403</code></td>
-          <td>权限不足（用户被禁用、未完成企业实名，或 KYC 服务未开通）</td>
+          <td>权限不足（用户被禁用、企业实名未完成，或 API 密钥权限未覆盖该服务）</td>
         </tr>
         <tr>
           <td><code>404</code></td>

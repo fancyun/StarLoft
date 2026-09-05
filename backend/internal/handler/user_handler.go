@@ -435,8 +435,6 @@ func (h *UserHandler) Login(c *gin.Context) {
 			"email":      user.Email,
 			"token":      token,
 			"expire_in":  86400,
-			"api_key":    user.APIKey,
-			"api_secret": user.APISecret,
 		},
 	})
 }
@@ -474,6 +472,16 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		}
 	}
 
+	// 当前生效的 API 密钥（密钥对存于 api 表；完整 api_secret 仅返回给用户本人展示/复制）
+	apiKey, apiSecret, apiPermission := "", "", ""
+	if ak, err := h.userService.GetAPIKeyByUser(userID); err == nil {
+		apiKey = ak.APIKey
+		apiPermission = ak.Permission
+		if user.IsKYCVerified > 0 {
+			apiSecret = ak.APISecret
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
@@ -486,9 +494,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"kyc_name":        kycName,
 			"kyc_number":      kycNumber,
 			"balance":         user.Balance,
-			"api_key":         user.APIKey,
-			// api_secret 仅返回给用户本人（用于 API 管理页展示/复制）；实名前为空字符串
-			"api_secret": user.APISecret,
+			"api_key":         apiKey,
+			"api_secret":      apiSecret,
+			"api_permission":  apiPermission,
 			"created_at": user.CreatedAt,
 			// 账户实名免费认证次数（free_auth_limit 终身免费上限，free_auth_remaining 剩余免费次数）
 			"free_auth_limit":     3,
@@ -535,6 +543,26 @@ func (h *UserHandler) ResetAPIKey(c *gin.Context) {
 			"api_secret": apiSecret,
 		},
 	})
+}
+
+// SetAPIKeyPermission 设置 API 密钥权限范围（all-全部服务，或单个服务标识如 kyc）
+func (h *UserHandler) SetAPIKeyPermission(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+
+	var req struct {
+		Permission string `json:"permission" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "invalid request parameters"})
+		return
+	}
+
+	if err := h.userService.SetAPIKeyPermission(userID, req.Permission); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "设置 API 密钥权限失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": gin.H{"permission": req.Permission}})
 }
 
 // ChangePassword 修改密码

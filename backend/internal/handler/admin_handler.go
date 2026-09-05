@@ -460,15 +460,13 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		return
 	}
 
-	// API Key 创建时自动生成（唯一），API Secret 需完成账户实名后再生成下发
+	// 创建用户
 	user := &model.User{
 		Phone:         req.Phone,
 		Username:      req.Username,
 		Email:         req.Email,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
-		APIKey:        utils.GenerateRandomKey(32),
-		APISecret:     "",
 		IsKYCVerified: 0,
 		Status:        1,
 		CreatedAt:     time.Now(),
@@ -736,7 +734,6 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) {
 			"username":        user.Username,
 			"email":           user.Email,
 			"balance":         user.Balance,
-			"api_key":         user.APIKey,
 			"is_kyc_verified": user.IsKYCVerified,
 			"kyc_name":        kycName,
 			"kyc_number":      kycIDCard,
@@ -967,13 +964,12 @@ func (h *AdminHandler) GetUserList(c *gin.Context) {
 			"email":           user.Email,
 			"balance":         user.Balance,
 			"is_kyc_verified": user.IsKYCVerified,
-			"kyc_name":        kycName,
-			"kyc_number":      kycIDCard,
-			"api_key":         user.APIKey,
-			"status":          user.Status,
-			"last_login_at":   user.LastLoginAt,
-			"created_at":      user.CreatedAt,
-		})
+				"kyc_name":        kycName,
+				"kyc_number":      kycIDCard,
+				"status":          user.Status,
+				"last_login_at":   user.LastLoginAt,
+				"created_at":      user.CreatedAt,
+			})
 	}
 
 	c.JSON(http.StatusOK, gin.H{

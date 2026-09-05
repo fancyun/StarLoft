@@ -49,13 +49,13 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 
 	// 初始化 Repository
 	userRepo := repository.NewUserRepository(db)
+	apiRepo := repository.NewApiKeyRepository(db)
 	authRepo := repository.NewAuthOrderRepository(db)
 	paymentRepo := repository.NewPaymentOrderRepository(db)
 	balanceLogRepo := repository.NewBalanceLogRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
 	kycPersonalRepo := repository.NewKycPersonalRepository(db)
 	kycEnterpriseRepo := repository.NewKycEnterpriseRepository(db)
-	userServiceRepo := repository.NewUserServiceRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
 	loginLogRepo := repository.NewLoginLogRepository(db)
 
@@ -66,7 +66,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	}
 
 	// 初始化 Service
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, apiRepo)
 	balanceService := service.NewBalanceService(userRepo, balanceLogRepo, paymentRepo, resourcePackRepo, db)
 
 	authService := service.NewAuthService(
@@ -74,6 +74,7 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 		rt.FinAuthCfg,
 		authRepo,
 		userRepo,
+		apiRepo,
 		kycPersonalRepo,
 		kycEnterpriseRepo,
 		resourcePackRepo,
@@ -119,7 +120,6 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	)
 
 	dashboardHandler := handler.NewDashboardHandler(db)
-	serviceHandler := handler.NewServiceHandler(userRepo, userServiceRepo)
 	enterpriseAdminHandler := handler.NewEnterpriseAdminHandler(authService)
 
 	// 路由注册（按前端分为三组）
@@ -148,14 +148,12 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 			// 企业实名（Web）
 			auth.GET("/kyc/enterprise/status", authHandler.GetEnterpriseAuthStatus)
 			auth.POST("/kyc/enterprise", authHandler.StartEnterpriseAuthForWeb)
-			// 服务开通
-			auth.GET("/service/summary", serviceHandler.ServiceSummary)
-			auth.POST("/service/open", serviceHandler.OpenService)
 			auth.GET("/records", authHandler.GetUserAuthRecords)
 			auth.GET("/stats/calls", authHandler.GetUserAuthCallStats)
 			auth.POST("/recharge", authHandler.CreateRecharge)
 			auth.GET("/recharge/result", authHandler.GetRechargeResult)
 			auth.POST("/api-key/reset", userHandler.ResetAPIKey)
+			auth.POST("/api-key/permission", userHandler.SetAPIKeyPermission)
 			auth.POST("/change-password", userHandler.ChangePassword)
 			// 资源包（余额购买 / 在线组合支付）
 			auth.GET("/packs", authHandler.ListResourcePacks)                   // 在售资源包列表
@@ -221,8 +219,11 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	// ============ 外部 API 路由（面向下游/插件） ============
 	api := r.Group("/api")
 	{
-		// KYC认证API（API Key鉴权 + 服务开通校验：需先开通 kyc 服务）
-		kyc := api.Group("/kyc", middleware.APIKeyMiddleware(userRepo, signMgr), middleware.ServiceOpenMiddleware(userServiceRepo, "kyc"))
+		// KYC认证API（API Key 鉴权 + 服务访问权限/企业实名校验）
+		kyc := api.Group("/kyc",
+			middleware.APIKeyMiddleware(userRepo, apiRepo, signMgr),
+			middleware.ServiceAccessGuard("kyc", 2),
+		)
 		{
 			kyc.POST("/start", authHandler.StartAuth)
 			kyc.POST("/result", authHandler.GetAuthResult)

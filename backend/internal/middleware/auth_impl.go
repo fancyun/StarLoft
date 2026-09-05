@@ -13,8 +13,8 @@ import (
 )
 
 // APIKeyMiddleware API Key authentication middleware
-// 校验平台用户（user）的 API Key 与请求签名
-func APIKeyMiddleware(userRepo *repository.UserRepository, signMgr *utils.SignatureManager) gin.HandlerFunc {
+// 校验平台用户（user）的 API Key 与请求签名，密钥对存放于 sys 库 api 表
+func APIKeyMiddleware(userRepo *repository.UserRepository, apiKeyRepo *repository.ApiKeyRepository, signMgr *utils.SignatureManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get API Key and signature info from Header
 		apiKey := c.GetHeader("X-Api-Key")
@@ -67,8 +67,18 @@ func APIKeyMiddleware(userRepo *repository.UserRepository, signMgr *utils.Signat
 			return
 		}
 
-		// 平台用户
-		user, err := userRepo.GetByAPIKey(apiKey)
+		// 按 API Key 查询密钥记录并定位所属用户
+		cred, err := apiKeyRepo.GetByAPIKey(apiKey)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    401,
+				"message": "invalid api key",
+			})
+			c.Abort()
+			return
+		}
+
+		user, err := userRepo.GetUserByID(cred.UserID)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code":    401,
@@ -88,7 +98,7 @@ func APIKeyMiddleware(userRepo *repository.UserRepository, signMgr *utils.Signat
 			return
 		}
 
-		if !signMgr.VerifyHMACSHA256(user.APISecret, string(bodyBytes), sign) {
+		if !signMgr.VerifyHMACSHA256(cred.APISecret, string(bodyBytes), sign) {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code":    401,
 				"message": "invalid signature",
@@ -97,9 +107,10 @@ func APIKeyMiddleware(userRepo *repository.UserRepository, signMgr *utils.Signat
 			return
 		}
 
-		// Store user info in context
+		// Store user & api info in context
 		c.Set("user_id", user.ID)
 		c.Set("user", user)
+		c.Set("api", cred)
 
 		c.Next()
 	}

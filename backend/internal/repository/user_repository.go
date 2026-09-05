@@ -25,8 +25,8 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 // CreateUser 创建用户
 func (r *UserRepository) CreateUser(user *model.User) error {
 	query := `INSERT INTO ` + model.SysDB + `.user 
-		(phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, status, created_at, updated_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		(phone, username, email, password_hash, balance, is_kyc_verified, status, created_at, updated_at) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		user.Phone,
@@ -34,8 +34,6 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 		user.Email,
 		user.PasswordHash,
 		user.Balance,
-		user.APIKey,
-		user.APISecret,
 		user.IsKYCVerified,
 		user.Status,
 		time.Now(),
@@ -54,7 +52,7 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 }
 
 // userColumns 平台用户常用查询列（含 username/email）
-const userColumns = `id, phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_name, kyc_number, status, last_login_at, created_at, updated_at`
+const userColumns = `id, phone, username, email, password_hash, balance, is_kyc_verified, kyc_name, kyc_number, status, last_login_at, created_at, updated_at`
 
 // scanUser 将查询结果扫描到 User
 func scanUser(row interface{ Scan(...interface{}) error }) (*model.User, error) {
@@ -66,8 +64,6 @@ func scanUser(row interface{ Scan(...interface{}) error }) (*model.User, error) 
 		&user.Email,
 		&user.PasswordHash,
 		&user.Balance,
-		&user.APIKey,
-		&user.APISecret,
 		&user.IsKYCVerified,
 		&user.KYCName,
 		&user.KYCNumber,
@@ -124,38 +120,10 @@ func (r *UserRepository) GetUserByID(id int64) (*model.User, error) {
 	return user, nil
 }
 
-// GetByAPIKey 根据API Key查询用户
-func (r *UserRepository) GetByAPIKey(apiKey string) (*model.User, error) {
-	query := `SELECT ` + userColumns + ` FROM ` + model.SysDB + `.user WHERE api_key = ?`
-
-	user, err := scanUser(r.db.QueryRow(query, apiKey))
-	if err == sql.ErrNoRows {
-		return nil, ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
 // UpdateUserPassword 更新用户密码
 func (r *UserRepository) UpdateUserPassword(userID int64, passwordHash string) error {
 	query := `UPDATE ` + model.SysDB + `.user SET password_hash = ?, updated_at = ? WHERE id = ?`
 	_, err := r.db.Exec(query, passwordHash, time.Now(), userID)
-	return err
-}
-
-// UpdateUserAPIKey 更新用户API密钥（Key 与 Secret 一并更新）
-func (r *UserRepository) UpdateUserAPIKey(userID int64, apiKey, apiSecret string) error {
-	query := `UPDATE ` + model.SysDB + `.user SET api_key = ?, api_secret = ?, updated_at = ? WHERE id = ?`
-	_, err := r.db.Exec(query, apiKey, apiSecret, time.Now(), userID)
-	return err
-}
-
-// UpdateUserAPISecret 更新用户API Secret（实名成功后单独生成下发）
-func (r *UserRepository) UpdateUserAPISecret(userID int64, apiSecret string) error {
-	query := `UPDATE ` + model.SysDB + `.user SET api_secret = ?, updated_at = ? WHERE id = ?`
-	_, err := r.db.Exec(query, apiSecret, time.Now(), userID)
 	return err
 }
 

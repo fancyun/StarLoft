@@ -47,8 +47,6 @@ CREATE TABLE IF NOT EXISTS `user` (
   `email`          varchar(100) NOT NULL,
   `password_hash`  varchar(255) NOT NULL,
   `balance`        decimal(10,2) NOT NULL DEFAULT 0,
-  `api_key`        varchar(64)  NOT NULL,
-  `api_secret`     varchar(64)  NOT NULL,
   `is_kyc_verified` tinyint     NOT NULL DEFAULT 0 COMMENT '实名状态：0-未实名 1-个人实名 2-企业实名',
   `kyc_name`       varchar(100) NULL COMMENT '实名主体名称（个人=姓名，企业=企业名称）',
   `kyc_number`     varchar(100) NULL COMMENT '实名主体证件号（个人=身份证号，企业=统一社会信用代码）',
@@ -60,9 +58,22 @@ CREATE TABLE IF NOT EXISTS `user` (
   UNIQUE KEY `idx_user_phone` (`phone`),
   UNIQUE KEY `idx_user_username` (`username`),
   UNIQUE KEY `idx_user_email` (`email`),
-  UNIQUE KEY `idx_user_api_key` (`api_key`),
   KEY `idx_user_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台用户';
+
+-- 平台 API 密钥（下游调用平台产品服务的鉴权凭据）
+CREATE TABLE IF NOT EXISTS `api` (
+  `id`         bigint      NOT NULL AUTO_INCREMENT,
+  `user_id`    bigint      NOT NULL,
+  `api_key`    varchar(64) NOT NULL,
+  `api_secret` varchar(64) NOT NULL,
+  `permission` varchar(32) NOT NULL DEFAULT 'all' COMMENT '权限范围：all-全部服务，或单个服务标识（如 kyc）',
+  `created_at` datetime(3) NOT NULL,
+  `updated_at` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_api_key` (`api_key`),
+  KEY `idx_api_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台 API 密钥';
 
 -- 管理员
 CREATE TABLE IF NOT EXISTS `admin_user` (
@@ -138,21 +149,6 @@ CREATE TABLE IF NOT EXISTS `kyc_enterprise` (
   KEY `idx_kyc_enterprise_up_biz_id` (`up_biz_id`),
   KEY `idx_kyc_enterprise_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='企业实名认证记录';
-
--- 用户已开通服务
-CREATE TABLE IF NOT EXISTS `user_service` (
-  `id`           bigint      NOT NULL AUTO_INCREMENT,
-  `user_id`      bigint      NOT NULL,
-  `service_code` varchar(50) NOT NULL COMMENT '服务标识（如 kyc）',
-  `status`       tinyint     NOT NULL DEFAULT 1 COMMENT '1-已开通 2-已停用',
-  `opened_at`    datetime(3) NOT NULL,
-  `created_at`   datetime(3) NOT NULL,
-  `updated_at`   datetime(3) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_user_service_user_id` (`user_id`),
-  KEY `idx_user_service_service_code` (`service_code`),
-  UNIQUE KEY `idx_user_service_user_service` (`user_id`,`service_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户已开通服务';
 
 -- 余额流水
 CREATE TABLE IF NOT EXISTS `balance_log` (

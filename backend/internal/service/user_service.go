@@ -41,12 +41,14 @@ func ValidateEmail(email string) bool {
 }
 
 type UserService struct {
-	userRepo *repository.UserRepository
+	userRepo  *repository.UserRepository
+	apiKeyRepo *repository.ApiKeyRepository
 }
 
-func NewUserService(userRepo *repository.UserRepository) *UserService {
+func NewUserService(userRepo *repository.UserRepository, apiKeyRepo *repository.ApiKeyRepository) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:   userRepo,
+		apiKeyRepo: apiKeyRepo,
 	}
 }
 
@@ -93,17 +95,13 @@ func (s *UserService) Register(phone, username, email, password string) (*model.
 		return nil, err
 	}
 
-	// API Key 注册时自动生成（唯一），API Secret 需完成账户实名后再生成下发
-
-	// 创建用户（API Key 注册时自动生成；API Secret 实名成功后生成）
+	// 创建用户
 	user := &model.User{
 		Phone:         phone,
 		Username:      username,
 		Email:         email,
 		PasswordHash:  string(hashedPassword),
 		Balance:       0,
-		APIKey:        utils.GenerateRandomKey(32),
-		APISecret:     "",
 		IsKYCVerified: 0,
 		Status:        1,
 	}
@@ -165,15 +163,47 @@ func (s *UserService) ChangePassword(userID int64, newPassword string) error {
 	return s.userRepo.UpdateUserPassword(userID, string(passwordHash))
 }
 
-// ResetAPIKey 重置API密钥（需先完成账户实名认证，Key 与 Secret 一并重新生成）
+// ResetAPIKey 重置用户 API 密钥（Key 与 Secret 一并重新生成，默认权限 all）
 func (s *UserService) ResetAPIKey(userID int64) (string, string, error) {
 	apiKey := utils.GenerateRandomKey(32)
 	apiSecret := utils.GenerateRandomKey(32)
 
-	err := s.userRepo.UpdateUserAPIKey(userID, apiKey, apiSecret)
-	if err != nil {
+	if err := s.apiKeyRepo.DeleteByUser(userID); err != nil {
+		return "", "", err
+	}
+	k := &model.ApiKey{
+		UserID:     userID,
+		APIKey:     apiKey,
+		APISecret:  apiSecret,
+		Permission: "all",
+	}
+	if err := s.apiKeyRepo.Create(k); err != nil {
 		return "", "", err
 	}
 
 	return apiKey, apiSecret, nil
+}
+
+// EnsureAPIKey 实名为用户补发 API 密钥对（不存在时生成，默认权限 all）
+func (s *UserService) EnsureAPIKey(userID int64) error {
+	if _, err := s.apiKeyRepo.GetByUser(userID); err == nil {
+		return nil
+	}
+	k := &model.ApiKey{
+		UserID:     userID,
+		APIKey:     utils.GenerateRandomKey(32),
+		APISecret:  utils.GenerateRandomKey(32),
+		Permission: "all",
+	}
+	return s.apiKeyRepo.Create(k)
+}
+
+// GetAPIKeyByUser 查询用户当前生效的 API 密钥
+func (s *UserService) GetAPIKeyByUser(userID int64) (*model.ApiKey, error) {
+	return s.apiKeyRepo.GetByUser(userID)
+}
+
+// SetAPIKeyPermission 设置用户 API 密钥权限范围（all 或单个服务标识）
+func (s *UserService) SetAPIKeyPermission(userID int64, permission string) error {
+	return s.apiKeyRepo.SetPermission(userID, permission)
 }

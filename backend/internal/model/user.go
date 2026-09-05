@@ -15,8 +15,6 @@ type User struct {
 	Email         string         `json:"email" gorm:"size:100;not null;uniqueIndex"`
 	PasswordHash  string         `json:"-" gorm:"size:255;not null"`
 	Balance       float64        `json:"balance" gorm:"type:decimal(10,2);not null;default:0"`
-	APIKey        string         `json:"api_key" gorm:"size:64;not null;uniqueIndex"`
-	APISecret     string         `json:"-" gorm:"size:64;not null"`
 	IsKYCVerified int            `json:"is_kyc_verified" gorm:"type:tinyint;not null;default:0"` // 实名状态：0-未实名 1-个人实名 2-企业实名
 	KYCName       sql.NullString `json:"kyc_name,omitempty" gorm:"size:100"`                     // 实名主体名称（个人=姓名，企业=企业名称）
 	KYCNumber     sql.NullString `json:"kyc_number,omitempty" gorm:"size:100"`                   // 实名主体证件号（个人=身份证号，企业=统一社会信用代码）
@@ -40,17 +38,17 @@ type AdminUser struct {
 	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
-// UserService 用户已开通的服务
-func (UserService) TableName() string { return SysDB + ".user_service" }
+// ApiKey 平台 API 密钥（下游调用平台产品服务的鉴权凭据，存放于 sys 库）
+func (ApiKey) TableName() string { return SysDB + ".api" }
 
-type UserService struct {
-	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
-	UserID      int64     `json:"user_id" gorm:"not null;index"`                 // 用户ID
-	ServiceCode string    `json:"service_code" gorm:"size:50;not null;index"`    // 服务标识（如 kyc）
-	Status      int       `json:"status" gorm:"type:tinyint;not null;default:1"` // 状态：1-已开通 2-已停用
-	OpenedAt    time.Time `json:"opened_at" gorm:"autoCreateTime"`               // 开通时间
-	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+type ApiKey struct {
+	ID         int64     `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID     int64     `json:"user_id" gorm:"not null;index"`
+	APIKey     string    `json:"api_key" gorm:"size:64;not null;uniqueIndex"`
+	APISecret  string    `json:"-" gorm:"size:64;not null"`
+	Permission string    `json:"permission" gorm:"size:32;not null;default:'all'"` // 权限范围：all-全部服务，或单个服务标识（如 kyc）
+	CreatedAt  time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // BalanceLog 余额流水

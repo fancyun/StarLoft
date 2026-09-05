@@ -49,6 +49,7 @@ type AuthService struct {
 	finAuthCfg       func() config.FinAuthConfig
 	orderRepo        *repository.AuthOrderRepository
 	userRepo         *repository.UserRepository
+	apiKeyRepo       *repository.ApiKeyRepository
 	kycRecordRepo    *repository.KycPersonalRepository
 	kycEntRepo       *repository.KycEnterpriseRepository
 	resourcePackRepo *repository.ResourcePackRepository
@@ -62,6 +63,7 @@ func NewAuthService(
 	finAuthCfg func() config.FinAuthConfig,
 	orderRepo *repository.AuthOrderRepository,
 	userRepo *repository.UserRepository,
+	apiKeyRepo *repository.ApiKeyRepository,
 	kycRecordRepo *repository.KycPersonalRepository,
 	kycEntRepo *repository.KycEnterpriseRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
@@ -73,6 +75,7 @@ func NewAuthService(
 		finAuthCfg:       finAuthCfg,
 		orderRepo:        orderRepo,
 		userRepo:         userRepo,
+		apiKeyRepo:       apiKeyRepo,
 		kycRecordRepo:    kycRecordRepo,
 		kycEntRepo:       kycEntRepo,
 		resourcePackRepo: resourcePackRepo,
@@ -732,30 +735,22 @@ func (s *AuthService) applyUserVerified(userID int64, verified int, name, number
 	s.ensureAPISecret(userID)
 }
 
-// ensureAPISecret 实名成功后为缺少 API 密钥的用户补全平台密钥对（API Key/API Secret）
+// ensureAPISecret 实名成功后为缺少 API 密钥的用户补全平台密钥对（存于 api 表）
 func (s *AuthService) ensureAPISecret(userID int64) {
-	user, err := s.userRepo.GetUserByID(userID)
-	if err != nil {
+	if _, err := s.apiKeyRepo.GetByUser(userID); err == nil {
 		return
 	}
-	// 已有 Secret 则不重复生成
-	if user.APISecret != "" {
+	k := &model.ApiKey{
+		UserID:     userID,
+		APIKey:     utils.GenerateRandomKey(32),
+		APISecret:  utils.GenerateRandomKey(32),
+		Permission: "all",
+	}
+	if err := s.apiKeyRepo.Create(k); err != nil {
+		log.Printf("实名成功后生成 API 密钥失败 [user_id=%d]: %v", userID, err)
 		return
 	}
-	// API Key 为空时一并补全，确保用户具备完整密钥对
-	if user.APIKey == "" {
-		apiKey := utils.GenerateRandomKey(32)
-		if err := s.userRepo.UpdateUserAPIKey(userID, apiKey, ""); err != nil {
-			log.Printf("实名成功后补发 API Key 失败 [user_id=%d]: %v", userID, err)
-			return
-		}
-	}
-	apiSecret := utils.GenerateRandomKey(32)
-	if err := s.userRepo.UpdateUserAPISecret(userID, apiSecret); err != nil {
-		log.Printf("实名成功后生成 API Secret 失败 [user_id=%d]: %v", userID, err)
-		return
-	}
-	log.Printf("实名成功，已为用户生成 API Secret [user_id=%d]", userID)
+	log.Printf("实名成功，已为用户生成 API 密钥 [user_id=%d]", userID)
 }
 
 // isInProgressMessage 判断上游返回的 result_message 是否表示「认证尚未开始/进行中」。
@@ -938,10 +933,10 @@ func (s *AuthService) NotifyDownstream(order *model.AuthOrder) {
 		return
 	}
 
-	// 使用订单所属平台用户的 api_secret 生成签名（下游用同一 secret 校验）
+	// 使用订单所属平台用户的 API 密钥 secret 生成签名（下游用同一 secret 校验）
 	sign := ""
-	if user, err := s.userRepo.GetUserByID(order.UserID); err == nil && user != nil && user.APISecret != "" {
-		sign = buildNotifySign(user.APISecret, order)
+	if cred, err := s.apiKeyRepo.GetByUser(order.UserID); err == nil && cred != nil && cred.APISecret != "" {
+		sign = buildNotifySign(cred.APISecret, order)
 	}
 
 	payload := map[string]interface{}{

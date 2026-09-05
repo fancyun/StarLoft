@@ -48,6 +48,11 @@ func Init(cfg config.DatabaseConfig) error {
 		return fmt.Errorf("failed to auto migrate database: %w", err)
 	}
 
+	// 清理旧结构：迁移存量 API 密钥到新 api 表，并删除 user 表 api_key/api_secret 列与废弃的 user_service 表
+	if err := migrateLegacyRemoval(); err != nil {
+		return fmt.Errorf("failed to migrate legacy schema: %w", err)
+	}
+
 	log.Println("Database connected successfully with TLS support")
 	return nil
 }
@@ -66,13 +71,13 @@ func autoMigrate() error {
 	migrateModels := []interface{}{
 		&model.User{},
 		&model.AdminUser{},
+		&model.ApiKey{},
 		&model.KycPersonal{},
 		&model.KycEnterprise{},
 		&model.BalanceLog{},
 		&model.PaymentOrder{},
 		&model.UserLoginLog{},
 		&model.AdminLoginLog{},
-		&model.UserService{},
 	}
 	// 实名认证产品库（starloft_kyc）：跨库表 AutoMigrate 会按当前库匹配全限定表名，
 	// 导致已存在表被误判为不存在而重复 CREATE（报 1050）。这里用原生 SQL 按实际库检测，
@@ -105,6 +110,56 @@ func tableExists(schemaName, tableName string) (bool, error) {
 		schemaName, tableName,
 	).Scan(&n)
 	return n > 0, err
+}
+
+// columnExists 判断指定库表中某列是否存在
+func columnExists(schemaName, tableName, columnName string) (bool, error) {
+	var n int
+	err := DB.QueryRow(
+		`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?`,
+		schemaName, tableName, columnName,
+	).Scan(&n)
+	return n > 0, err
+}
+
+// migrateLegacyRemoval 移除已废弃的旧结构（仅在对应表/列仍存在时执行，具备幂等性）：
+//   - 将 user 表存量 api_key/api_secret 迁入新的 api 表（permission 置为 all）
+//   - 删除 user 表 api_key/api_secret 列
+//   - 删除废弃的 user_service 表
+func migrateLegacyRemoval() error {
+	// 数据迁移：存量 API 密钥迁入 api 表
+	if ex, err := columnExists(model.SysDB, "user", "api_key"); err != nil {
+		return err
+	} else if ex {
+		if _, err := DB.Exec(`INSERT INTO ` + model.SysDB + `.api (user_id, api_key, api_secret, permission, created_at, updated_at)
+			SELECT id, api_key, api_secret, 'all', NOW(), NOW()
+			FROM ` + model.SysDB + `.user WHERE api_key != ''
+			ON DUPLICATE KEY UPDATE api_secret = VALUES(api_secret)`); err != nil {
+			return err
+		}
+	}
+
+	// 删除 user 表 api_key / api_secret 列
+	for _, col := range []string{"api_key", "api_secret"} {
+		if ex, err := columnExists(model.SysDB, "user", col); err != nil {
+			return err
+		} else if ex {
+			if _, err := DB.Exec(`ALTER TABLE ` + model.SysDB + `.user DROP COLUMN ` + col); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 删除废弃的 user_service 表
+	if ex, err := tableExists(model.SysDB, "user_service"); err != nil {
+		return err
+	} else if ex {
+		if _, err := DB.Exec(`DROP TABLE ` + model.SysDB + `.user_service`); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func Close() error {
