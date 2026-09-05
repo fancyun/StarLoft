@@ -536,9 +536,10 @@ const handleRegister = async () => {
   line-height: 46px;
 }
 
-/* 验证码行 */
+/* 验证码行：按钮随输入框等高对齐 */
 .sms-row {
   display: flex;
+  align-items: stretch;
   gap: 10px;
 }
 
@@ -550,7 +551,6 @@ const handleRegister = async () => {
 .sms-btn {
   flex-shrink: 0;
   min-width: 110px;
-  height: 46px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
