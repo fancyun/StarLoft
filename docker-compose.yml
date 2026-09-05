@@ -43,7 +43,7 @@ services:
       # 首次初始化（数据目录为空时）自动执行 init.sql；.md 文档会被 MySQL 初始化目录忽略
       - ./database:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysql -uroot -p'${DB_PASSWORD}' -N -e 'SELECT COUNT(*) FROM starloft_sys.platform_user LIMIT 1;'"]
+      test: ["CMD-SHELL", "mysql -uroot -p'${DB_PASSWORD}' -N -e 'SELECT COUNT(*) FROM starloft_sys.user LIMIT 1;'"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -88,9 +88,6 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ADMIN_SECRET: ${JWT_ADMIN_SECRET}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-24}
-      
-      # 加密配置
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       
       # FinAuth实名认证配置
       FINAUTH_API_KEY: ${FINAUTH_API_KEY}
