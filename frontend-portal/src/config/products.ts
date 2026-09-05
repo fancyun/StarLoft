@@ -43,8 +43,7 @@ export const products: Product[] = [
       { title: '活体检测', desc: '集成活体识别能力，有效防范照片、视频等攻击手段' },
       { title: 'API 开放', desc: 'RESTful 接口 + HMAC-SHA256 签名鉴权，快速接入下游系统' },
       { title: '灵活计费', desc: '资源包 + 余额组合计费，先扣资源包、余额兜底' },
-      { title: '结果回流', desc: '异步通知 + 同步跳转双通道，认证结果安全送达' },
-      { title: '年龄限制', desc: '支持按身份证出生日期计算周岁，设置最低认证年龄' }
+      { title: '结果回流', desc: '异步通知 + 同步跳转双通道，认证结果安全送达' }
     ],
     scenarios: ['账号实名', '电商交易', '金融开户', '内容平台', '直播平台', '业务风控'],
     consolePath: 'https://console.starloft.cn/kyc',
