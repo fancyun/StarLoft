@@ -543,7 +543,7 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 	}
 
 	// API Key 创建时自动生成（唯一），API Secret 需完成账户实名后再生成下发
-	user := &model.PlatformUser{
+	user := &model.User{
 		Phone:         req.Phone,
 		Username:      req.Username,
 		Email:         req.Email,
@@ -805,8 +805,8 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) {
 		kycName = user.KYCName.String
 	}
 	kycIDCard := ""
-	if user.KYCIDCard.Valid {
-		kycIDCard = user.KYCIDCard.String
+	if user.KYCNumber.Valid {
+		kycIDCard = user.KYCNumber.String
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -821,7 +821,7 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) {
 			"api_key":         user.APIKey,
 			"is_kyc_verified": user.IsKYCVerified,
 			"kyc_name":        kycName,
-			"kyc_id_card":     kycIDCard,
+			"kyc_number":      kycIDCard,
 			"status":          user.Status,
 			"last_login_at":   user.LastLoginAt,
 			"created_at":      user.CreatedAt,
@@ -1038,8 +1038,8 @@ func (h *AdminHandler) GetUserList(c *gin.Context) {
 			kycName = user.KYCName.String
 		}
 		kycIDCard := ""
-		if user.KYCIDCard.Valid {
-			kycIDCard = user.KYCIDCard.String
+		if user.KYCNumber.Valid {
+			kycIDCard = user.KYCNumber.String
 		}
 
 		userList = append(userList, gin.H{
@@ -1050,7 +1050,7 @@ func (h *AdminHandler) GetUserList(c *gin.Context) {
 			"balance":         user.Balance,
 			"is_kyc_verified": user.IsKYCVerified,
 			"kyc_name":        kycName,
-			"kyc_id_card":     kycIDCard,
+			"kyc_number":      kycIDCard,
 			"api_key":         user.APIKey,
 			"status":          user.Status,
 			"last_login_at":   user.LastLoginAt,

@@ -161,10 +161,10 @@ type RecentAuthOrder struct {
 // GetRecentOrders 获取最近认证订单列表（含用户手机号和姓名）
 func (r *AuthOrderRepository) GetRecentOrders(limit int) ([]*RecentAuthOrder, error) {
 	query := `SELECT ao.biz_no, u.phone, 
-		COALESCE((SELECT kr.name FROM ` + model.SysDB + `.kyc_record kr WHERE kr.user_id = ao.user_id ORDER BY kr.id DESC LIMIT 1), ''), 
+		COALESCE((SELECT kr.name FROM ` + model.SysDB + `.kyc_personal kr WHERE kr.user_id = ao.user_id ORDER BY kr.id DESC LIMIT 1), ''), 
 		ao.status, ao.cost, ao.created_at
 		FROM ` + model.KycDB + `.auth_order ao
-		JOIN ` + model.SysDB + `.platform_user u ON u.id = ao.user_id
+		JOIN ` + model.SysDB + `.user u ON u.id = ao.user_id
 		ORDER BY ao.created_at DESC LIMIT ?`
 
 	rows, err := r.db.Query(query, limit)
@@ -325,7 +325,7 @@ func (r *AuthOrderRepository) GetLatestPendingOrder(userID int64) (*model.AuthOr
 func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, userID *int64) ([]*model.AuthOrder, int64, error) {
 	offset := (page - 1) * pageSize
 
-	// 构建查询条件（带 ao. 前缀，避免与 platform_user 联表后的列名歧义）
+	// 构建查询条件（带 ao. 前缀，避免与 user 联表后的列名歧义）
 	whereClause := ""
 	args := []interface{}{}
 
@@ -344,7 +344,7 @@ func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, user
 	}
 
 	// 查询总数
-	countQuery := "SELECT COUNT(*) FROM ` + model.KycDB + `.auth_order ao JOIN ` + model.SysDB + `.platform_user u ON u.id = ao.user_id " + whereClause
+	countQuery := "SELECT COUNT(*) FROM ` + model.KycDB + `.auth_order ao JOIN ` + model.SysDB + `.user u ON u.id = ao.user_id " + whereClause
 	var total int64
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
@@ -359,7 +359,7 @@ func (r *AuthOrderRepository) GetAllOrders(page, pageSize int, status *int, user
 		ao.status, ao.cost, ao.is_refunded, ao.notify_times, 
 		ao.notify_status, ao.created_at, ao.updated_at, ao.finished_at, u.phone 
 		FROM ` + model.KycDB + `.auth_order ao 
-		JOIN ` + model.SysDB + `.platform_user u ON u.id = ao.user_id
+		JOIN ` + model.SysDB + `.user u ON u.id = ao.user_id
 		` + whereClause + ` ORDER BY ao.created_at DESC LIMIT ? OFFSET ?`
 
 	args = append(args, pageSize, offset)

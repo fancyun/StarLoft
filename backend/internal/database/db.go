@@ -64,14 +64,16 @@ func autoMigrate() error {
 	}
 	return gormDB.AutoMigrate(
 		// 系统库（starloft_sys）：用户/管理员/实名记录/余额流水/充值订单/系统配置/登录日志
-		&model.PlatformUser{},
+		&model.User{},
 		&model.AdminUser{},
-		&model.KycRecord{},
+		&model.KycPersonal{},
+		&model.KycEnterprise{},
 		&model.BalanceLog{},
 		&model.PaymentOrder{},
 		&model.SystemConfig{},
 		&model.UserLoginLog{},
 		&model.AdminLoginLog{},
+		&model.UserService{},
 		// 实名认证产品库（starloft_kyc）：认证订单/资源包
 		&model.AuthOrder{},
 		&model.ResourcePack{},

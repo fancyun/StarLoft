@@ -53,7 +53,7 @@ func NewUserService(userRepo *repository.UserRepository, configRepo *repository.
 }
 
 // Register 用户注册（手机号+用户名+邮箱必填；验证码已在 handler 层校验）
-func (s *UserService) Register(phone, username, email, password string) (*model.PlatformUser, error) {
+func (s *UserService) Register(phone, username, email, password string) (*model.User, error) {
 	// 校验用户名与邮箱格式
 	if !ValidateUsername(username) {
 		return nil, ErrInvalidUsername
@@ -98,7 +98,7 @@ func (s *UserService) Register(phone, username, email, password string) (*model.
 	// API Key 注册时自动生成（唯一），API Secret 需完成账户实名后再生成下发
 
 	// 创建用户（API Key 注册时自动生成；API Secret 实名成功后生成）
-	user := &model.PlatformUser{
+	user := &model.User{
 		Phone:         phone,
 		Username:      username,
 		Email:         email,
@@ -119,7 +119,7 @@ func (s *UserService) Register(phone, username, email, password string) (*model.
 }
 
 // Login 用户登录（支持用户名/手机号/邮箱）
-func (s *UserService) Login(account, password string) (*model.PlatformUser, error) {
+func (s *UserService) Login(account, password string) (*model.User, error) {
 	// 查询用户
 	user, err := s.userRepo.GetUserByAccount(account)
 	if err != nil {
@@ -147,12 +147,12 @@ func (s *UserService) Login(account, password string) (*model.PlatformUser, erro
 }
 
 // GetUserByID 根据ID获取用户
-func (s *UserService) GetUserByID(id int64) (*model.PlatformUser, error) {
+func (s *UserService) GetUserByID(id int64) (*model.User, error) {
 	return s.userRepo.GetUserByID(id)
 }
 
 // GetUserByPhone 根据手机号获取用户
-func (s *UserService) GetUserByPhone(phone string) (*model.PlatformUser, error) {
+func (s *UserService) GetUserByPhone(phone string) (*model.User, error) {
 	return s.userRepo.GetUserByPhone(phone)
 }
 

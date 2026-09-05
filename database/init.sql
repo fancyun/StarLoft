@@ -40,7 +40,7 @@ CREATE DATABASE IF NOT EXISTS `starloft_sms` DEFAULT CHARACTER SET utf8mb4 COLLA
 USE `starloft_sys`;
 
 -- 平台用户
-CREATE TABLE IF NOT EXISTS `platform_user` (
+CREATE TABLE IF NOT EXISTS `user` (
   `id`             bigint       NOT NULL AUTO_INCREMENT,
   `phone`          varchar(20)  NOT NULL,
   `username`       varchar(50)  NOT NULL,
@@ -49,19 +49,19 @@ CREATE TABLE IF NOT EXISTS `platform_user` (
   `balance`        decimal(10,2) NOT NULL DEFAULT 0,
   `api_key`        varchar(64)  NOT NULL,
   `api_secret`     varchar(64)  NOT NULL,
-  `is_kyc_verified` tinyint     NOT NULL DEFAULT 0,
-  `kyc_name`       varchar(100) NULL,
-  `kyc_id_card`    varchar(100) NULL,
+  `is_kyc_verified` tinyint     NOT NULL DEFAULT 0 COMMENT '实名状态：0-未实名 1-个人实名 2-企业实名',
+  `kyc_name`       varchar(100) NULL COMMENT '实名主体名称（个人=姓名，企业=企业名称）',
+  `kyc_number`     varchar(100) NULL COMMENT '实名主体证件号（个人=身份证号，企业=统一社会信用代码）',
   `status`         tinyint      NOT NULL DEFAULT 1,
   `last_login_at`  datetime(3)  NULL,
   `created_at`     datetime(3)  NOT NULL,
   `updated_at`     datetime(3)  NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_platform_user_phone` (`phone`),
-  UNIQUE KEY `idx_platform_user_username` (`username`),
-  UNIQUE KEY `idx_platform_user_email` (`email`),
-  UNIQUE KEY `idx_platform_user_api_key` (`api_key`),
-  KEY `idx_platform_user_status` (`status`)
+  UNIQUE KEY `idx_user_phone` (`phone`),
+  UNIQUE KEY `idx_user_username` (`username`),
+  UNIQUE KEY `idx_user_email` (`email`),
+  UNIQUE KEY `idx_user_api_key` (`api_key`),
+  KEY `idx_user_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台用户';
 
 -- 管理员
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS `admin_user` (
   UNIQUE KEY `idx_admin_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员';
 
--- 账户实名认证记录
-CREATE TABLE IF NOT EXISTS `kyc_record` (
+-- 个人实名认证记录
+CREATE TABLE IF NOT EXISTS `kyc_personal` (
   `id`            bigint       NOT NULL AUTO_INCREMENT,
   `user_id`       bigint       NOT NULL,
   `source`        tinyint      NOT NULL DEFAULT 2 COMMENT '来源：1-账户实名 2-API调用',
@@ -101,13 +101,58 @@ CREATE TABLE IF NOT EXISTS `kyc_record` (
   `created_at`    datetime(3) NOT NULL,
   `updated_at`    datetime(3) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_kyc_record_user_id` (`user_id`),
-  KEY `idx_kyc_record_source` (`source`),
-  UNIQUE KEY `idx_kyc_record_biz_no` (`biz_no`),
-  KEY `idx_kyc_record_up_biz_id` (`up_biz_id`),
-  KEY `idx_kyc_record_auth_order_id` (`auth_order_id`),
-  KEY `idx_kyc_record_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='账户实名认证记录';
+  KEY `idx_kyc_personal_user_id` (`user_id`),
+  KEY `idx_kyc_personal_source` (`source`),
+  UNIQUE KEY `idx_kyc_personal_biz_no` (`biz_no`),
+  KEY `idx_kyc_personal_up_biz_id` (`up_biz_id`),
+  KEY `idx_kyc_personal_auth_order_id` (`auth_order_id`),
+  KEY `idx_kyc_personal_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='个人实名认证记录';
+
+-- 企业实名认证记录
+CREATE TABLE IF NOT EXISTS `kyc_enterprise` (
+  `id`               bigint       NOT NULL AUTO_INCREMENT,
+  `user_id`          bigint       NOT NULL,
+  `biz_no`           varchar(50)  NOT NULL COMMENT '全平台唯一业务流水号（平台调用时随机生成）',
+  `company_name`     varchar(100) NOT NULL COMMENT '企业名称',
+  `credit_code`      varchar(20)  NOT NULL COMMENT '统一社会信用代码',
+  `legal_name`       varchar(50)  NULL COMMENT '法人姓名（后台人工实名不填写）',
+  `legal_id_card`    varchar(18)  NULL COMMENT '法人身份证号（后台人工实名不填写）',
+  `source`           tinyint      NOT NULL DEFAULT 0 COMMENT '来源：0-自助 1-后台人工',
+  `admin_id`         bigint       NULL COMMENT '后台人工实名操作的管理员ID',
+  `four_factor_status` tinyint    NOT NULL DEFAULT 0 COMMENT '工商四要素核验：0-待核验 1-通过 2-未通过',
+  `four_factor_data` text         NULL,
+  `up_token`         varchar(100) NULL,
+  `up_biz_id`        varchar(50)  NULL,
+  `up_request_id`    varchar(50)  NULL,
+  `status`           tinyint      NOT NULL DEFAULT 0 COMMENT '0-待四要素 1-待法人扫脸 2-通过 3-未通过',
+  `result_code`      varchar(20)  NULL,
+  `result_message`   varchar(255) NULL,
+  `result_data`      text         NULL,
+  `verified_at`      datetime(3)  NULL,
+  `created_at`       datetime(3)  NOT NULL,
+  `updated_at`       datetime(3)  NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_kyc_enterprise_user_id` (`user_id`),
+  UNIQUE KEY `idx_kyc_enterprise_biz_no` (`biz_no`),
+  KEY `idx_kyc_enterprise_up_biz_id` (`up_biz_id`),
+  KEY `idx_kyc_enterprise_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='企业实名认证记录';
+
+-- 用户已开通服务
+CREATE TABLE IF NOT EXISTS `user_service` (
+  `id`           bigint      NOT NULL AUTO_INCREMENT,
+  `user_id`      bigint      NOT NULL,
+  `service_code` varchar(50) NOT NULL COMMENT '服务标识（如 kyc）',
+  `status`       tinyint     NOT NULL DEFAULT 1 COMMENT '1-已开通 2-已停用',
+  `opened_at`    datetime(3) NOT NULL,
+  `created_at`   datetime(3) NOT NULL,
+  `updated_at`   datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_service_user_id` (`user_id`),
+  KEY `idx_user_service_service_code` (`service_code`),
+  UNIQUE KEY `idx_user_service_user_service` (`user_id`,`service_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户已开通服务';
 
 -- 余额流水
 CREATE TABLE IF NOT EXISTS `balance_log` (

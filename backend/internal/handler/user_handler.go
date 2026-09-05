@@ -363,7 +363,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	// 根据登录方式验证（login_type 已在上方校验，仅 password/sms_code 两种）
-	var user *model.PlatformUser
+	var user *model.User
 	var loginErr error
 	switch req.LoginType {
 	case "password":
@@ -456,13 +456,13 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	// 脱敏处理
 	kycName := ""
-	kycIDCard := ""
-	if user.IsKYCVerified == 1 {
+	kycNumber := ""
+	if user.IsKYCVerified == 1 || user.IsKYCVerified == 2 {
 		if user.KYCName.Valid {
 			kycName = maskName(user.KYCName.String)
 		}
-		if user.KYCIDCard.Valid {
-			kycIDCard = maskIDCard(user.KYCIDCard.String)
+		if user.KYCNumber.Valid {
+			kycNumber = maskIDCard(user.KYCNumber.String)
 		}
 	}
 
@@ -484,7 +484,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"email":           user.Email,
 			"is_kyc_verified": user.IsKYCVerified,
 			"kyc_name":        kycName,
-			"kyc_id_card":     kycIDCard,
+			"kyc_number":      kycNumber,
 			"balance":         user.Balance,
 			"api_key":         user.APIKey,
 			// api_secret 仅返回给用户本人（用于 API 管理页展示/复制）；实名前为空字符串
@@ -510,7 +510,7 @@ func (h *UserHandler) ResetAPIKey(c *gin.Context) {
 		})
 		return
 	}
-	if user.IsKYCVerified != 1 {
+	if user.IsKYCVerified == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    403,
 			"message": "请先完成实名认证后开通 API",

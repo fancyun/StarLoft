@@ -31,7 +31,9 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	balanceLogRepo := repository.NewBalanceLogRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
 	configRepo := repository.NewSystemConfigRepository(db)
-	kycRecordRepo := repository.NewKycRecordRepository(db)
+	kycPersonalRepo := repository.NewKycPersonalRepository(db)
+	kycEnterpriseRepo := repository.NewKycEnterpriseRepository(db)
+	userServiceRepo := repository.NewUserServiceRepository(db)
 	resourcePackRepo := repository.NewResourcePackRepository(db)
 	loginLogRepo := repository.NewLoginLogRepository(db)
 
@@ -50,7 +52,8 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 		rt.FinAuthCfg,
 		authRepo,
 		userRepo,
-		kycRecordRepo,
+		kycPersonalRepo,
+		kycEnterpriseRepo,
 		resourcePackRepo,
 		balanceService,
 		configRepo,
@@ -95,6 +98,8 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	)
 
 	dashboardHandler := handler.NewDashboardHandler(db)
+	serviceHandler := handler.NewServiceHandler(userRepo, userServiceRepo)
+	enterpriseAdminHandler := handler.NewEnterpriseAdminHandler(authService)
 
 	// 路由注册（按前端分为三组）
 
@@ -119,6 +124,12 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 			auth.POST("/kyc/sync", authHandler.SyncKycResult)
 			auth.POST("/kyc", authHandler.StartAuthForWeb)
 			auth.DELETE("/kyc", authHandler.CancelKycRecord)
+			// 企业实名（Web）
+			auth.GET("/kyc/enterprise/status", authHandler.GetEnterpriseAuthStatus)
+			auth.POST("/kyc/enterprise", authHandler.StartEnterpriseAuthForWeb)
+			// 服务开通
+			auth.GET("/service/summary", serviceHandler.ServiceSummary)
+			auth.POST("/service/open", serviceHandler.OpenService)
 			auth.GET("/records", authHandler.GetUserAuthRecords)
 			auth.GET("/stats/calls", authHandler.GetUserAuthCallStats)
 			auth.POST("/recharge", authHandler.CreateRecharge)
@@ -126,10 +137,10 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 			auth.POST("/api-key/reset", userHandler.ResetAPIKey)
 			auth.POST("/change-password", userHandler.ChangePassword)
 			// 资源包（余额购买 / 在线组合支付）
-			auth.GET("/packs", authHandler.ListResourcePacks)                    // 在售资源包列表
-			auth.POST("/packs/:id/purchase", authHandler.PurchaseResourcePack)   // 使用余额购买资源包
-			auth.POST("/packs/:id/pay", authHandler.PurchaseResourcePackOnline)  // 在线购买（余额+支付宝/微信组合支付）
-			auth.GET("/packs/mine", authHandler.MyResourcePacks)                 // 我的资源包
+			auth.GET("/packs", authHandler.ListResourcePacks)                   // 在售资源包列表
+			auth.POST("/packs/:id/purchase", authHandler.PurchaseResourcePack)  // 使用余额购买资源包
+			auth.POST("/packs/:id/pay", authHandler.PurchaseResourcePackOnline) // 在线购买（余额+支付宝/微信组合支付）
+			auth.GET("/packs/mine", authHandler.MyResourcePacks)                // 我的资源包
 		}
 	}
 
@@ -145,6 +156,10 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 			// 用户管理
 			adminAuth.GET("/users", adminHandler.GetUserList)
 			adminAuth.GET("/users/:id", adminHandler.GetUserDetail)
+
+			// 企业实名管理
+			adminAuth.GET("/kyc/enterprise", enterpriseAdminHandler.ListEnterpriseRecords)
+			adminAuth.POST("/kyc/enterprise/verify", enterpriseAdminHandler.VerifyEnterprise)
 			adminAuth.PUT("/users/:id/status", adminHandler.UpdateUserStatus)
 			adminAuth.DELETE("/users/:id", adminHandler.DeleteUser)
 			adminAuth.POST("/users/:id/recharge", adminHandler.RechargeUserBalance)     // 人工充值（需银行流水单号）
@@ -189,8 +204,8 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	// ============ 外部 API 路由（面向下游/插件） ============
 	api := r.Group("/api")
 	{
-		// KYC认证API（API Key鉴权）
-		kyc := api.Group("/kyc", middleware.APIKeyMiddleware(userRepo, signMgr))
+		// KYC认证API（API Key鉴权 + 服务开通校验：需先开通 kyc 服务）
+		kyc := api.Group("/kyc", middleware.APIKeyMiddleware(userRepo, signMgr), middleware.ServiceOpenMiddleware(userServiceRepo, "kyc"))
 		{
 			kyc.POST("/start", authHandler.StartAuth)
 			kyc.POST("/result", authHandler.GetAuthResult)

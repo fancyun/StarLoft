@@ -46,23 +46,6 @@ func (h *AuthHandler) wechat() *upstream.WeChatPayClient { return h.rt.Wechat() 
 func (h *AuthHandler) StartAuth(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
-	// 平台用户需先完成实名才能调用
-	user, err := h.authService.GetUserByID(userID)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    404,
-			"message": "user not found",
-		})
-		return
-	}
-	if user.IsKYCVerified != 1 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    403,
-			"message": "用户未完成实名认证，请先实名",
-		})
-		return
-	}
-
 	var req struct {
 		Name         string `json:"name" binding:"required"`
 		IDCard       string `json:"id_card" binding:"required"`
@@ -159,23 +142,6 @@ func (h *AuthHandler) StartAuth(c *gin.Context) {
 func (h *AuthHandler) GetAuthResult(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
-	// 平台用户需先完成实名才能调用
-	user, err := h.authService.GetUserByID(userID)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    404,
-			"message": "user not found",
-		})
-		return
-	}
-	if user.IsKYCVerified != 1 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    403,
-			"message": "用户未完成实名认证，请先实名",
-		})
-		return
-	}
-
 	var req struct {
 		BizNo string `json:"biz_no" binding:"required"`
 	}
@@ -226,14 +192,6 @@ func (h *AuthHandler) QueryBalance(c *gin.Context) {
 		return
 	}
 
-	if user.IsKYCVerified != 1 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    403,
-			"message": "用户未完成实名认证，请先实名",
-		})
-		return
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
@@ -258,24 +216,24 @@ func (h *AuthHandler) GetUserAuthStatus(c *gin.Context) {
 		return
 	}
 
-	// 获取最新 kyc_record
+	// 获取最新 kyc_personal
 	kycRecord, _ := h.authService.GetLatestKycRecord(userID)
 
-	// 提取 platform_user 实名信息
+	// 提取 user 实名信息
 	kycName := ""
 	if user.KYCName.Valid {
 		kycName = user.KYCName.String
 	}
-	kycIDCard := ""
-	if user.KYCIDCard.Valid {
-		kycIDCard = user.KYCIDCard.String
+	kycNumber := ""
+	if user.KYCNumber.Valid {
+		kycNumber = user.KYCNumber.String
 	}
 
-	// 构建响应：包含 platform_user 实名状态 + kyc_record 最新记录
+	// 构建响应：包含 user 实名状态 + kyc_personal 最新记录
 	resp := gin.H{
 		"is_kyc_verified": user.IsKYCVerified,
 		"kyc_name":        kycName,
-		"kyc_id_card":     kycIDCard,
+		"kyc_number":      kycNumber,
 	}
 
 	if kycRecord != nil {
@@ -363,6 +321,66 @@ func (h *AuthHandler) SyncKycResult(c *gin.Context) {
 			"record_status": record.Status,
 			"up_token":      record.UpToken,
 			"return_url":    record.ReturnURL,
+		},
+	})
+}
+
+// StartEnterpriseAuthForWeb 发起企业实名（Web 前端调用）
+func (h *AuthHandler) StartEnterpriseAuthForWeb(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+
+	var req struct {
+		CompanyName string `json:"company_name" binding:"required"`
+		CreditCode  string `json:"credit_code" binding:"required"`
+		LegalName   string `json:"legal_name" binding:"required"`
+		LegalIDCard string `json:"legal_id_card" binding:"required"`
+		ReturnURL   string `json:"return_url"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请填写完整的企业与法人信息"})
+		return
+	}
+
+	result, err := h.authService.StartEnterpriseAuth(
+		userID, req.CompanyName, req.CreditCode, req.LegalName, req.LegalIDCard, req.ReturnURL,
+	)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"auth_url": result.AuthURL,
+		},
+	})
+}
+
+// GetEnterpriseAuthStatus 查询企业实名认证状态（Web 前端调用）
+func (h *AuthHandler) GetEnterpriseAuthStatus(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+
+	rec, err := h.authService.GetEnterpriseAuthRecord(userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+			"data": gin.H{
+				"record_status": -1, // 无企业实名记录
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": gin.H{
+			"company_name":     rec.CompanyName,
+			"credit_code":      rec.CreditCode,
+			"four_factor":      rec.FourFactorStatus,
+			"record_status":    rec.Status,
+			"pending_auth_url": h.authService.BuildEnterpriseAuthURL(rec),
 		},
 	})
 }
@@ -792,9 +810,9 @@ func (h *AuthHandler) PurchaseResourcePackOnline(c *gin.Context) {
 			"code":    0,
 			"message": "购买成功",
 			"data": gin.H{
-				"user_pack":       result.UserPack,
-				"fully_paid":      true,
-				"balance_amount":  result.BalanceAmount,
+				"user_pack":      result.UserPack,
+				"fully_paid":     true,
+				"balance_amount": result.BalanceAmount,
 			},
 		})
 		return
@@ -802,12 +820,12 @@ func (h *AuthHandler) PurchaseResourcePackOnline(c *gin.Context) {
 
 	order := result.PaymentOrder
 	data := gin.H{
-		"pay_order_no":   order.PayOrderNo,
-		"amount":         result.ExternalAmount,
-		"balance_part":   result.BalanceAmount,
-		"expire_time":    order.ExpireTime.Unix(),
-		"channel":        order.Channel,
-		"fully_paid":     false,
+		"pay_order_no": order.PayOrderNo,
+		"amount":       result.ExternalAmount,
+		"balance_part": result.BalanceAmount,
+		"expire_time":  order.ExpireTime.Unix(),
+		"channel":      order.Channel,
+		"fully_paid":   false,
 	}
 
 	switch req.Channel {

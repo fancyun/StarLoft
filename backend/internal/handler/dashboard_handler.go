@@ -38,17 +38,17 @@ func (h *DashboardHandler) GetDailyFinanceStats(c *gin.Context) {
 func (h *DashboardHandler) GetDashboardStats(c *gin.Context) {
 	// 1. 用户统计
 	var totalUsers, activeUsers, kycVerifiedUsers int64
-	err := h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.platform_user").Scan(&totalUsers)
+	err := h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.user").Scan(&totalUsers)
 	if err != nil {
 		log.Printf("Failed to count total users: %v", err)
 	}
 
-	err = h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.platform_user WHERE status = 1").Scan(&activeUsers)
+	err = h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.user WHERE status = 1").Scan(&activeUsers)
 	if err != nil {
 		log.Printf("Failed to count active users: %v", err)
 	}
 
-	err = h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.platform_user WHERE is_kyc_verified = 1").Scan(&kycVerifiedUsers)
+	err = h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.user WHERE is_kyc_verified > 0").Scan(&kycVerifiedUsers)
 	if err != nil {
 		log.Printf("Failed to count KYC verified users: %v", err)
 	}
@@ -56,7 +56,7 @@ func (h *DashboardHandler) GetDashboardStats(c *gin.Context) {
 	// 2. 今日新增用户
 	today := time.Now().Format("2006-01-02")
 	var todayNewUsers int64
-	err = h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.platform_user WHERE DATE(created_at) = ?", today).Scan(&todayNewUsers)
+	err = h.db.QueryRow("SELECT COUNT(*) FROM ` + model.SysDB + `.user WHERE DATE(created_at) = ?", today).Scan(&todayNewUsers)
 	if err != nil {
 		log.Printf("Failed to count today new users: %v", err)
 	}
@@ -106,7 +106,7 @@ func (h *DashboardHandler) GetDashboardStats(c *gin.Context) {
 
 	// 6. 系统余额统计
 	var totalUserBalance float64
-	err = h.db.QueryRow("SELECT COALESCE(SUM(balance), 0) FROM ` + model.SysDB + `.platform_user").Scan(&totalUserBalance)
+	err = h.db.QueryRow("SELECT COALESCE(SUM(balance), 0) FROM ` + model.SysDB + `.user").Scan(&totalUserBalance)
 	if err != nil {
 		log.Printf("Failed to count total user balance: %v", err)
 	}
@@ -126,7 +126,7 @@ func (h *DashboardHandler) GetDashboardStats(c *gin.Context) {
 		SELECT 
 			DATE(created_at) as date,
 			COUNT(*) as new_users
-		FROM ` + model.SysDB + `.platform_user 
+		FROM `+model.SysDB+`.user 
 		WHERE DATE(created_at) >= ? 
 		GROUP BY DATE(created_at)
 		ORDER BY date ASC
@@ -238,7 +238,7 @@ func (h *DashboardHandler) GetFinanceStats(c *gin.Context) {
 		SELECT 
 			COALESCE(SUM(amount), 0) as total_amount,
 			COUNT(*) as total_count
-		FROM ` + model.SysDB + `.balance_log 
+		FROM `+model.SysDB+`.balance_log 
 		WHERE type = 2 AND DATE(created_at) BETWEEN ? AND ?
 	`, startDate, endDate).Scan(&consumeStats.TotalAmount, &consumeStats.TotalCount)
 
@@ -249,7 +249,7 @@ func (h *DashboardHandler) GetFinanceStats(c *gin.Context) {
 	// KYC消费
 	h.db.QueryRow(`
 		SELECT COALESCE(SUM(cost), 0), COUNT(*) 
-		FROM ` + model.KycDB + `.auth_order 
+		FROM `+model.KycDB+`.auth_order 
 		WHERE status = 2 AND DATE(finished_at) BETWEEN ? AND ?
 	`, startDate, endDate).Scan(&consumeStats.KYCConsumeAmount, &consumeStats.KYCConsumeCount)
 

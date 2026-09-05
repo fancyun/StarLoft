@@ -26,7 +26,7 @@ import (
 // 账户实名（source=1）不产生认证订单，走 Record；API 调用（source=2）走 Order
 type StartAuthResult struct {
 	Order   *model.AuthOrder
-	Record  *model.KycRecord
+	Record  *model.KycPersonal
 	AuthURL string // 上游认证 URL
 	Token   string // 上游 token
 	BizID   string // 上游 biz_id
@@ -49,7 +49,8 @@ type AuthService struct {
 	finAuthCfg       func() config.FinAuthConfig
 	orderRepo        *repository.AuthOrderRepository
 	userRepo         *repository.UserRepository
-	kycRecordRepo    *repository.KycRecordRepository
+	kycRecordRepo    *repository.KycPersonalRepository
+	kycEntRepo       *repository.KycEnterpriseRepository
 	resourcePackRepo *repository.ResourcePackRepository
 	balanceService   *BalanceService
 	configRepo       *repository.SystemConfigRepository
@@ -61,7 +62,8 @@ func NewAuthService(
 	finAuthCfg func() config.FinAuthConfig,
 	orderRepo *repository.AuthOrderRepository,
 	userRepo *repository.UserRepository,
-	kycRecordRepo *repository.KycRecordRepository,
+	kycRecordRepo *repository.KycPersonalRepository,
+	kycEntRepo *repository.KycEnterpriseRepository,
 	resourcePackRepo *repository.ResourcePackRepository,
 	balanceService *BalanceService,
 	configRepo *repository.SystemConfigRepository,
@@ -72,6 +74,7 @@ func NewAuthService(
 		orderRepo:        orderRepo,
 		userRepo:         userRepo,
 		kycRecordRepo:    kycRecordRepo,
+		kycEntRepo:       kycEntRepo,
 		resourcePackRepo: resourcePackRepo,
 		balanceService:   balanceService,
 		configRepo:       configRepo,
@@ -95,7 +98,8 @@ func (s *AuthService) GetFreeAuthRemaining(userID int64) (int, error) {
 // StartAuth 发起认证
 // source: 1-账户实名（Web） 2-API调用
 //   - 账户实名（source=1）：完全不经过实名认证产品库（starloft_kyc），无认证订单、无计费，
-//     认证信息单独储存在系统库的实名记录表（kyc_record）中。
+//
+// 认证信息单独储存在系统库的实名记录表（kyc_personal）中。
 //   - API 调用（source=2）：走认证订单 + 计费流程。
 //
 // free: 保留参数，账户实名始终免费，不再使用。
@@ -155,7 +159,7 @@ func (s *AuthService) StartAuth(
 	}
 
 	// 创建 KYC 认证记录（保存实名信息，关联订单流程）
-	kycRecord := &model.KycRecord{
+	kycRecord := &model.KycPersonal{
 		UserID: userID,
 		Source: 2,
 		BizNo:  bizNo,
@@ -252,7 +256,7 @@ func (s *AuthService) startAccountAuth(
 	name, idCard, bizNo, returnURL, notifyURL, bizExtraData string,
 ) (*StartAuthResult, error) {
 	// 创建实名记录（状态：认证中）
-	kycRecord := &model.KycRecord{
+	kycRecord := &model.KycPersonal{
 		UserID:       userID,
 		Source:       1,
 		BizNo:        bizNo,
@@ -338,7 +342,7 @@ func (s *AuthService) deductOrderCharge(
 	userPack *model.UserResourcePack,
 	userID int64,
 	kycPrice float64,
-	kycRecord *model.KycRecord,
+	kycRecord *model.KycPersonal,
 ) error {
 	if order.PayType == 2 && userPack != nil {
 		ok, err := s.resourcePackRepo.DeductUserPackCount(userPack.ID, userID)
@@ -370,7 +374,7 @@ func (s *AuthService) deductOrderCharge(
 }
 
 // markOrderDeductFailed 扣费失败时将订单与实名记录标记为失败，避免悬挂订单
-func (s *AuthService) markOrderDeductFailed(order *model.AuthOrder, kycRecord *model.KycRecord) {
+func (s *AuthService) markOrderDeductFailed(order *model.AuthOrder, kycRecord *model.KycPersonal) {
 	_ = s.orderRepo.UpdateOrderResult(order.ID, "DEDUCT_FAILED", "扣费失败", 3)
 	if kycRecord != nil {
 		_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 3, "DEDUCT_FAILED", "扣费失败", "", nil)
@@ -419,13 +423,142 @@ func (s *AuthService) GetAuthResult(userID int64, bizNo string) (*model.AuthOrde
 }
 
 // GetUserByID 查询用户
-func (s *AuthService) GetUserByID(userID int64) (*model.PlatformUser, error) {
+func (s *AuthService) GetUserByID(userID int64) (*model.User, error) {
 	return s.userRepo.GetUserByID(userID)
 }
 
 // GetLatestKycRecord 获取用户最新 KYC 记录
-func (s *AuthService) GetLatestKycRecord(userID int64) (*model.KycRecord, error) {
+func (s *AuthService) GetLatestKycRecord(userID int64) (*model.KycPersonal, error) {
 	return s.kycRecordRepo.GetLatestByUserID(userID)
+}
+
+// StartEnterpriseAuth 发起企业实名（自助）：
+// 创建企业实名记录，复用上游人脸核身（FinAuth）对法人进行扫脸认证，返回跳转地址。
+// 企业实名信息在法人扫脸通过后落地 user 表（is_kyc_verified=2）。
+func (s *AuthService) StartEnterpriseAuth(
+	userID int64,
+	companyName, creditCode, legalName, legalIDCard, returnURL string,
+) (*StartAuthResult, error) {
+	// 已企业实名则无需重复认证
+	if user, err := s.userRepo.GetUserByID(userID); err == nil && user.IsKYCVerified == 2 {
+		return nil, errors.New("已企业实名，无需重复认证")
+	}
+
+	if returnURL == "" {
+		returnURL = "/user/kyc"
+	}
+
+	bizNo := utils.GenerateRandomDigits(20)
+
+	// 创建企业实名记录（状态：待法人扫脸）
+	rec := &model.KycEnterprise{
+		UserID:           userID,
+		BizNo:            bizNo,
+		CompanyName:      companyName,
+		CreditCode:       creditCode,
+		LegalName:        legalName,
+		LegalIDCard:      legalIDCard,
+		Source:           0, // 自助
+		FourFactorStatus: 0,
+		Status:           0,
+	}
+	if err := s.kycEntRepo.Create(rec); err != nil {
+		return nil, fmt.Errorf("create kyc enterprise record failed: %w", err)
+	}
+
+	req := &upstream.GetTokenRequest{
+		SignVersion:    upstream.SignVersionHMACSHA256,
+		ReturnURL:      returnURL,
+		NotifyURL:      finAuthNotifyURL,
+		BizNo:          bizNo,
+		SceneID:        s.finAuthCfg().SceneID,
+		ComparisonType: "1", // 人脸核身模式
+		UUID:           fmt.Sprintf("%d", userID),
+		IDCardMode:     "0", // 直接传入法人姓名与身份证号
+		IDCardName:     legalName,
+		IDCardNumber:   legalIDCard,
+	}
+
+	tokenResp, err := s.finAuthClient().GetToken(req)
+	if err != nil {
+		_ = s.kycEntRepo.UpdateResult(rec.ID, 3, "TIMEOUT", "连接超时", "", nil)
+		return nil, fmt.Errorf("get token failed: %w", err)
+	}
+
+	if err := s.kycEntRepo.UpdateUpstreamInfo(rec.ID, tokenResp.Token, tokenResp.BizID, tokenResp.RequestID); err != nil {
+		_ = s.kycEntRepo.UpdateResult(rec.ID, 3, "TIMEOUT", "写入token失败", "", nil)
+		return nil, fmt.Errorf("update kyc enterprise upstream info failed: %w", err)
+	}
+
+	return &StartAuthResult{
+		AuthURL: s.BuildAuthURL(tokenResp.Token),
+		Token:   tokenResp.Token,
+		BizID:   tokenResp.BizID,
+	}, nil
+}
+
+// GetEnterpriseAuthRecord 获取用户最新企业实名记录
+func (s *AuthService) GetEnterpriseAuthRecord(userID int64) (*model.KycEnterprise, error) {
+	return s.kycEntRepo.GetLatestByUserID(userID)
+}
+
+// BuildEnterpriseAuthURL 企业实名记录为「待法人扫脸」且已有上游 token 时返回继续认证地址
+func (s *AuthService) BuildEnterpriseAuthURL(rec *model.KycEnterprise) string {
+	if rec == nil || rec.Status != 1 || rec.UpToken == "" {
+		return ""
+	}
+	return s.BuildAuthURL(rec.UpToken)
+}
+
+// applyEnterpriseCallback 落地企业实名回调结果：只有法人扫脸通过时才更新 user 表实名信息
+func (s *AuthService) applyEnterpriseCallback(rec *model.KycEnterprise, notifyData *upstream.NotifyData) error {
+	if isInProgressMessage(notifyData.ResultMessage) {
+		return nil
+	}
+
+	status := 3
+	switch notifyData.ResultCode {
+	case 1000:
+		status = 2 // 认证成功
+	}
+	resultCode := fmt.Sprintf("%d", notifyData.ResultCode)
+	var verifiedAt *time.Time
+	if status == 2 {
+		t := time.Now()
+		verifiedAt = &t
+	}
+	if err := s.kycEntRepo.UpdateResult(rec.ID, status, resultCode, notifyData.ResultMessage, "", verifiedAt); err != nil {
+		return fmt.Errorf("update kyc enterprise result failed: %w", err)
+	}
+	if status == 2 {
+		s.applyUserVerified(rec.UserID, 2, rec.CompanyName, rec.CreditCode)
+	}
+	return nil
+}
+
+// AdminCreateEnterpriseManual 后台人工企业实名（=公户验证）：
+// 管理员录入企业名称与统一社会信用代码，直接为企业开通企业实名
+func (s *AuthService) AdminCreateEnterpriseManual(userID int64, companyName, creditCode string, adminID int64) error {
+	bizNo := utils.GenerateRandomDigits(20)
+	rec := &model.KycEnterprise{
+		UserID:      userID,
+		BizNo:       bizNo,
+		CompanyName: companyName,
+		CreditCode:  creditCode,
+		Source:      1, // 后台人工
+		AdminID:     adminID,
+		Status:      2, // 已通过
+	}
+	if err := s.kycEntRepo.Create(rec); err != nil {
+		return err
+	}
+	s.applyUserVerified(userID, 2, companyName, creditCode)
+	return nil
+}
+
+// ListEnterpriseRecords 企业实名记录列表（管理后台）
+func (s *AuthService) ListEnterpriseRecords(page, pageSize int) ([]*model.KycEnterprise, int64, error) {
+	return s.kycEntRepo.GetEnterpriseRecords(page, pageSize)
 }
 
 // GetLatestPendingOrder 获取用户最新进行中的认证订单（用于继续认证）
@@ -434,7 +567,7 @@ func (s *AuthService) GetLatestPendingOrder(userID int64) (*model.AuthOrder, err
 }
 
 // SyncKycRecord 同步用户最新进行中实名记录的上游结果（账户实名 source=1）
-func (s *AuthService) SyncKycRecord(userID int64) (*model.KycRecord, error) {
+func (s *AuthService) SyncKycRecord(userID int64) (*model.KycPersonal, error) {
 	record, err := s.kycRecordRepo.GetPendingByUserID(userID)
 	if err != nil {
 		return nil, err
@@ -446,7 +579,7 @@ func (s *AuthService) SyncKycRecord(userID int64) (*model.KycRecord, error) {
 }
 
 // syncKycRecordResult 同步实名记录结果（从上游查询，账户实名 source=1）
-func (s *AuthService) syncKycRecordResult(record *model.KycRecord) {
+func (s *AuthService) syncKycRecordResult(record *model.KycPersonal) {
 	if record.UpBizID == "" {
 		return
 	}
@@ -495,15 +628,12 @@ func (s *AuthService) syncKycRecordResult(record *model.KycRecord) {
 
 	// 实名成功：更新用户实名信息并生成下发 API Secret
 	if status == 2 {
-		if err := s.userRepo.UpdateUserKYCInfo(record.UserID, record.Name, record.IDCard); err != nil {
-			log.Printf("更新用户实名信息失败 [user_id=%d]: %v", record.UserID, err)
-		}
-		s.ensureAPISecret(record.UserID)
+		s.applyUserVerified(record.UserID, 1, record.Name, record.IDCard)
 	}
 }
 
 // applyRecordCallback 落地账户实名（source=1）回调结果：更新实名记录、实名成功时下发用户实名信息与 API Secret
-func (s *AuthService) applyRecordCallback(record *model.KycRecord, notifyData *upstream.NotifyData) error {
+func (s *AuthService) applyRecordCallback(record *model.KycPersonal, notifyData *upstream.NotifyData) error {
 	// 未开始/进行中：认证尚未完结，忽略本次回调，保持「认证中」
 	if isInProgressMessage(notifyData.ResultMessage) {
 		log.Printf("回调表示实名认证尚未开始或进行中，忽略 [record_id=%d, biz_id=%s, result_message=%s]", record.ID, notifyData.BizInfo.BizID, notifyData.ResultMessage)
@@ -531,10 +661,7 @@ func (s *AuthService) applyRecordCallback(record *model.KycRecord, notifyData *u
 
 	// 实名成功：更新用户实名信息并生成下发 API Secret
 	if status == 2 {
-		if err := s.userRepo.UpdateUserKYCInfo(record.UserID, record.Name, record.IDCard); err != nil {
-			log.Printf("更新用户实名信息失败 [user_id=%d]: %v", record.UserID, err)
-		}
-		s.ensureAPISecret(record.UserID)
+		s.applyUserVerified(record.UserID, 1, record.Name, record.IDCard)
 	}
 	return nil
 }
@@ -552,7 +679,7 @@ func (s *AuthService) CancelKycRecord(userID int64) error {
 }
 
 // GetUserAuthRecords 查询用户认证记录（来自系统库实名记录表）
-func (s *AuthService) GetUserAuthRecords(userID int64, page, pageSize int) ([]*model.KycRecord, int64, error) {
+func (s *AuthService) GetUserAuthRecords(userID int64, page, pageSize int) ([]*model.KycPersonal, int64, error) {
 	records, total, err := s.kycRecordRepo.GetUserKycRecords(userID, page, pageSize)
 	if err != nil {
 		return nil, 0, err
@@ -585,6 +712,30 @@ func (s *AuthService) GetUserAuthCallStats(userID int64, days int) ([]string, []
 	}
 
 	return dates, counts, nil
+}
+
+// applyUserVerified 实名成功后落地 user 表实名信息（仅成功后更新）
+// verified: 1-个人实名 2-企业实名。
+// 更换规则：已企业实名（is_kyc_verified=2）后不得降级为个人实名，企业实名结果保持不变；
+// 未实名（0）或已个人实名（1）可升级为企业实名。
+func (s *AuthService) applyUserVerified(userID int64, verified int, name, number string) {
+	if verified == 1 {
+		current, err := s.userRepo.GetUserByID(userID)
+		if err != nil {
+			log.Printf("查询用户失败，跳过个人实名落地 [user_id=%d]: %v", userID, err)
+			return
+		}
+		// 已企业实名：不允许降级为个人实名，忽略本次个人实名结果
+		if current.IsKYCVerified == 2 {
+			log.Printf("用户已企业实名，忽略个人实名落地 [user_id=%d]", userID)
+			return
+		}
+	}
+	if err := s.userRepo.UpdateUserKYCInfo(userID, verified, name, number); err != nil {
+		log.Printf("更新用户实名信息失败 [user_id=%d]: %v", userID, err)
+		return
+	}
+	s.ensureAPISecret(userID)
 }
 
 // ensureAPISecret 实名成功后生成并下发 API Secret（API Key 已于注册时自动生成）
@@ -673,19 +824,15 @@ func (s *AuthService) syncOrderResult(order *model.AuthOrder) {
 	// 不计费结果（6000/6100）退还预扣余额
 	s.refundIfNotChargeable(order, int(result.ResultCode))
 
-	// 更新 kyc_record 状态
+	// 更新 kyc_personal 状态
 	if status == 2 {
 		kycRecord, err := s.kycRecordRepo.GetLatestByUserID(order.UserID)
 		if err == nil && kycRecord != nil {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, result.ResultMessage, "", &now)
 		}
-		// ✅ 使用加密后的身份证号更新用户实名信息
 		if err == nil && kycRecord != nil {
-			err = s.userRepo.UpdateUserKYCInfo(order.UserID, kycRecord.Name, kycRecord.IDCard)
-			if err != nil {
-				log.Printf("更新用户实名信息失败 [user_id=%d]: %v", order.UserID, err)
-			}
+			s.applyUserVerified(order.UserID, 1, kycRecord.Name, kycRecord.IDCard)
 		}
 		// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
 		s.ensureAPISecret(order.UserID)
@@ -725,6 +872,10 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 		// 未查到订单：账户实名（source=1）不写认证订单，改按系统库实名记录处理（无订单、无计费）
 		if record, rerr := s.kycRecordRepo.GetByUpBizID(notifyData.BizInfo.BizID); rerr == nil && record != nil {
 			return s.applyRecordCallback(record, &notifyData)
+		}
+		// 企业实名（法人扫脸）也未写认证订单，按企业实名记录处理
+		if ent, eerr := s.kycEntRepo.GetByUpBizID(notifyData.BizInfo.BizID); eerr == nil && ent != nil {
+			return s.applyEnterpriseCallback(ent, &notifyData)
 		}
 		log.Printf("查找订单及实名记录均失败 [biz_id=%s]: %v", notifyData.BizInfo.BizID, err)
 		return fmt.Errorf("order not found: %w", err)
@@ -766,12 +917,8 @@ func (s *AuthService) HandleUpstreamCallback(data, sign string) error {
 			now := time.Now()
 			_ = s.kycRecordRepo.UpdateResult(kycRecord.ID, 2, resultCode, notifyData.ResultMessage, "", &now)
 		}
-		// ✅ 使用加密后的身份证号更新用户实名信息
 		if err == nil && kycRecord != nil {
-			err = s.userRepo.UpdateUserKYCInfo(order.UserID, kycRecord.Name, kycRecord.IDCard)
-			if err != nil {
-				log.Printf("更新用户实名信息失败 [user_id=%d]: %v", order.UserID, err)
-			}
+			s.applyUserVerified(order.UserID, 1, kycRecord.Name, kycRecord.IDCard)
 		}
 		// 实名成功后自动生成下发 API Secret（开通 API 需先完成实名）
 		s.ensureAPISecret(order.UserID)
@@ -868,7 +1015,7 @@ func buildNotifySign(apiSecret string, order *model.AuthOrder) string {
 }
 
 // revertStartAuth 发起认证失败时退还预扣费用并将结果标记为连接超时（免费流程不涉及退费）
-func (s *AuthService) revertStartAuth(order *model.AuthOrder, kycRecord *model.KycRecord, remark string) {
+func (s *AuthService) revertStartAuth(order *model.AuthOrder, kycRecord *model.KycPersonal, remark string) {
 	if order.Cost > 0 {
 		if err := s.refundOrderCharge(order, remark); err != nil {
 			log.Printf("发起认证失败退费失败 [order_id=%d]: %v", order.ID, err)

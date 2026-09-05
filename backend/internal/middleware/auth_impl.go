@@ -13,7 +13,7 @@ import (
 )
 
 // APIKeyMiddleware API Key authentication middleware
-// 校验平台用户（platform_user）的 API Key 与请求签名
+// 校验平台用户（user）的 API Key 与请求签名
 func APIKeyMiddleware(userRepo *repository.UserRepository, signMgr *utils.SignatureManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get API Key and signature info from Header
