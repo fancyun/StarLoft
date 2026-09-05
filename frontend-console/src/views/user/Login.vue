@@ -108,6 +108,7 @@
                     @keyup.enter="handleSMSLogin"
                   />
                   <el-button
+                    size="large"
                     :disabled="countdown > 0 || !smsForm.phone"
                     class="sms-btn"
                     @click="sendCode"
@@ -480,7 +481,7 @@ const sendCode = async () => {
   color: var(--color-primary);
 }
 
-/* 验证码行：按钮随输入框等高对齐 */
+/* 验证码行：按钮随输入框等高，固定宽度与输入框同尺寸对齐 */
 .sms-row {
   display: flex;
   align-items: stretch;
@@ -494,10 +495,12 @@ const sendCode = async () => {
 
 .sms-btn {
   flex-shrink: 0;
-  min-width: 110px;
+  width: 128px;
+  padding: 0;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* 提交按钮 */

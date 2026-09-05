@@ -80,6 +80,7 @@
                 prefix-icon="Message"
               />
               <el-button
+                size="large"
                 :disabled="smsCountdown > 0 || !form.phone"
                 class="sms-btn"
                 @click="sendSMSCode"
@@ -109,6 +110,7 @@
                 prefix-icon="Message"
               />
               <el-button
+                size="large"
                 :disabled="emailCountdown > 0 || !form.email"
                 class="sms-btn"
                 @click="sendEmailCode"
@@ -536,7 +538,7 @@ const handleRegister = async () => {
   line-height: 46px;
 }
 
-/* 验证码行：按钮随输入框等高对齐 */
+/* 验证码行：按钮随输入框等高，固定宽度与输入框同尺寸对齐 */
 .sms-row {
   display: flex;
   align-items: stretch;
@@ -550,10 +552,12 @@ const handleRegister = async () => {
 
 .sms-btn {
   flex-shrink: 0;
-  min-width: 110px;
+  width: 128px;
+  padding: 0;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* 协议复选框 */
