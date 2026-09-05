@@ -2,13 +2,14 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"starloftrpa/internal/config"
 	"starloftrpa/internal/model"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	gomysql "github.com/go-sql-driver/mysql"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -62,7 +63,7 @@ func autoMigrate() error {
 	if err != nil {
 		return err
 	}
-	return gormDB.AutoMigrate(
+	if err := gormDB.AutoMigrate(
 		// 系统库（starloft_sys）：用户/管理员/实名记录/余额流水/充值订单/登录日志
 		&model.User{},
 		&model.AdminUser{},
@@ -77,7 +78,16 @@ func autoMigrate() error {
 		&model.AuthOrder{},
 		&model.ResourcePack{},
 		&model.UserResourcePack{},
-	)
+	); err != nil {
+		// 表由 init.sql 提前建好，AutoMigrate 仅用于补列（只增不减）；
+		// 跨库表现有情况下内省失败会误判表不存在而触发 CREATE，ignore "表已存在(1050)"
+		var me *gomysql.MySQLError
+		if errors.As(err, &me) && me.Number == 1050 {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func Close() error {
