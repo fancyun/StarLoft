@@ -329,7 +329,8 @@ watch(() => route.path, closeMenu)
 
 .footer-cols {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  /* 6 列拆成两行（3x2），避免每列过窄 */
+  grid-template-columns: repeat(3, 1fr);
   gap: 32px;
 }
 
