@@ -2,14 +2,13 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"starloftrpa/internal/config"
 	"starloftrpa/internal/model"
 	"time"
 
-	gomysql "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -63,8 +62,8 @@ func autoMigrate() error {
 	if err != nil {
 		return err
 	}
-	if err := gormDB.AutoMigrate(
-		// 系统库（starloft_sys）：用户/管理员/实名记录/余额流水/充值订单/登录日志
+	// 系统库（starloft_sys）：位于默认连接库，AutoMigrate 内省可直接识别已存在的表并仅补列
+	migrateModels := []interface{}{
 		&model.User{},
 		&model.AdminUser{},
 		&model.KycPersonal{},
@@ -74,20 +73,38 @@ func autoMigrate() error {
 		&model.UserLoginLog{},
 		&model.AdminLoginLog{},
 		&model.UserService{},
-		// 实名认证产品库（starloft_kyc）：认证订单/资源包
-		&model.AuthOrder{},
-		&model.ResourcePack{},
-		&model.UserResourcePack{},
-	); err != nil {
-		// 表由 init.sql 提前建好，AutoMigrate 仅用于补列（只增不减）；
-		// 跨库表现有情况下内省失败会误判表不存在而触发 CREATE，ignore "表已存在(1050)"
-		var me *gomysql.MySQLError
-		if errors.As(err, &me) && me.Number == 1050 {
-			return nil
-		}
-		return err
 	}
-	return nil
+	// 实名认证产品库（starloft_kyc）：跨库表 AutoMigrate 会按当前库匹配全限定表名，
+	// 导致已存在表被误判为不存在而重复 CREATE（报 1050）。这里用原生 SQL 按实际库检测，
+	// 表已存在（由 init.sql 创建）则跳过迁移，仅迁移缺失的表
+	kycTables := []struct {
+		model interface{}
+		table string
+	}{
+		{&model.AuthOrder{}, "auth_order"},
+		{&model.ResourcePack{}, "resource_pack"},
+		{&model.UserResourcePack{}, "user_resource_pack"},
+	}
+	for _, t := range kycTables {
+		exists, err := tableExists(model.KycDB, t.table)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			migrateModels = append(migrateModels, t.model)
+		}
+	}
+	return gormDB.AutoMigrate(migrateModels...)
+}
+
+// tableExists 判断指定库下表是否存在（跨库存在性检查基于原生查询，避免 AutoMigrate 按当前库误判）
+func tableExists(schemaName, tableName string) (bool, error) {
+	var n int
+	err := DB.QueryRow(
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?`,
+		schemaName, tableName,
+	).Scan(&n)
+	return n > 0, err
 }
 
 func Close() error {
