@@ -58,23 +58,25 @@
             <router-link to="/docs/plugin" class="footer-link">插件教程</router-link>
           </div>
           <div class="footer-col">
-            <div class="footer-title">资源入口</div>
-            <a class="footer-link" href="https://console.starloft.cn">云控制台</a>
-            <a class="footer-link" href="https://console.starloft.cn/login">控制台登录</a>
-            <a class="footer-link" href="https://console.starloft.cn/register">账号注册</a>
-          </div>
-          <div class="footer-col">
-            <div class="footer-title">公司信息</div>
-            <span class="footer-link">上海星楼网络科技有限公司</span>
-            <span class="footer-link">上海市崇明区东平镇东冉路547号</span>
-          </div>
-          <div class="footer-col">
             <div class="footer-title">联系我们</div>
             <a class="footer-link" href="mailto:fancy@starloft.cn">fancy@starloft.cn</a>
             <a class="footer-link" href="tel:13472507077">13472507077</a>
             <span class="footer-link">微信：StarLoftCoLtd</span>
             <span class="footer-link">QQ：2735124804</span>
             <span class="footer-link">服务时间：周一至周日 8:00 - 24:00</span>
+          </div>
+
+          <div class="footer-col">
+            <div class="footer-title">公司信息</div>
+            <span class="footer-link">上海星楼网络科技有限公司</span>
+            <span class="footer-link">上海市崇明区东平镇东冉路547号</span>
+          </div>
+
+          <div class="footer-col">
+            <div class="footer-title">资源入口</div>
+            <a class="footer-link" href="https://console.starloft.cn">云控制台</a>
+            <a class="footer-link" href="https://console.starloft.cn/login">控制台登录</a>
+            <a class="footer-link" href="https://console.starloft.cn/register">账号注册</a>
           </div>
         </div>
         <div class="footer-bottom">
