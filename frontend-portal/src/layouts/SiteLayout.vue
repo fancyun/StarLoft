@@ -64,12 +64,22 @@
             <a class="footer-link" href="https://console.starloft.cn/register">账号注册</a>
           </div>
           <div class="footer-col">
+            <div class="footer-title">公司信息</div>
+            <span class="footer-link">上海星楼网络科技有限公司</span>
+            <span class="footer-link">上海市崇明区东平镇东冉路547号</span>
+          </div>
+          <div class="footer-col">
             <div class="footer-title">联系我们</div>
-            <a class="footer-link" href="mailto:support@starloft.tech">support@starloft.tech</a>
+            <a class="footer-link" href="mailto:fancy@starloft.cn">fancy@starloft.cn</a>
+            <a class="footer-link" href="tel:13472507077">13472507077</a>
+            <span class="footer-link">微信：StarLoftCoLtd</span>
+            <span class="footer-link">QQ：2735124804</span>
+            <span class="footer-link">服务时间：周一至周日 8:00 - 24:00</span>
           </div>
         </div>
         <div class="footer-bottom">
-          <span>© 2026 星楼云 StarLoft · 保留所有权利</span>
+          <span>© {{ currentYear }} 星楼云 StarLoft · 保留所有权利</span>
+          <a class="icp-link" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026043262号</a>
         </div>
       </div>
     </footer>
@@ -81,6 +91,9 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
+
+// 版权年份动态取当前年
+const currentYear = new Date().getFullYear()
 
 // 产品下拉：桌面端 hover 展开，移动端触屏点击展开（menuOpen）
 const menuOpen = ref(false)
@@ -316,7 +329,7 @@ watch(() => route.path, closeMenu)
 
 .footer-cols {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
   gap: 32px;
 }
 
@@ -363,6 +376,17 @@ watch(() => route.path, closeMenu)
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.icp-link {
+  margin-left: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.icp-link:hover {
+  color: var(--color-primary);
 }
 
 @media (max-width: 900px) {
