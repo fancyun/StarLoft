@@ -7,7 +7,7 @@ export interface ProductFeature {
 }
 
 export interface Product {
-  /** URL 路径段，如 /kyc、/cs、/sms */
+  /** URL 路径段，如 kyc、cs、sms（对应 /product/xxx 门户页） */
   key: string
   name: string
   english: string

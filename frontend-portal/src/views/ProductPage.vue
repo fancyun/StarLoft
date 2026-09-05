@@ -3,23 +3,20 @@
     <div v-if="product">
       <!-- 产品 Hero -->
       <section class="hero">
-        <div class="hero-visual" :style="{ backgroundImage: heroImage }"></div>
         <div class="container hero-inner">
-          <div class="hero-panel">
-            <div class="hero-icon" v-html="product.icon"></div>
-            <h1 class="hero-title">{{ product.name }}</h1>
-            <p class="hero-english">{{ product.english }}</p>
-            <p class="hero-tagline">{{ product.tagline }}</p>
-            <p class="hero-desc">{{ product.description }}</p>
-            <div class="hero-actions">
-              <a
-                v-if="product.status === 'available'"
-                class="btn-primary"
-                :href="product.consolePath"
-              >立即使用</a>
-              <span v-else class="btn-primary btn-disabled">即将上线</span>
-              <router-link class="btn-ghost" to="/docs/api/v1">查看 API 文档</router-link>
-            </div>
+          <div class="hero-icon" v-html="product.icon"></div>
+          <h1 class="hero-title">{{ product.name }}</h1>
+          <p class="hero-english">{{ product.english }}</p>
+          <p class="hero-tagline">{{ product.tagline }}</p>
+          <p class="hero-desc">{{ product.description }}</p>
+          <div class="hero-actions">
+            <a
+              v-if="product.status === 'available'"
+              class="btn-primary"
+              :href="product.consolePath"
+            >立即使用</a>
+            <span v-else class="btn-primary btn-disabled">即将上线</span>
+            <router-link class="btn-ghost" to="/docs/api/v1">查看 API 文档</router-link>
           </div>
         </div>
       </section>
@@ -76,17 +73,6 @@ import { productByKey } from '@/config/products'
 
 const route = useRoute()
 const product = computed(() => productByKey(String(route.meta.product)))
-
-// Hero 右侧插画：按产品选用 Unsplash 免费直链，经蒙版从左侧平滑淡入（无接缝）
-const heroImageByKey: Record<string, string> = {
-  kyc: 'https://images.unsplash.com/photo-1667372283587-e1557c08aca4?auto=format&fit=crop&w=1200&q=80',
-  cs: 'https://images.unsplash.com/photo-1782330300479-02550a1a3c7a?auto=format&fit=crop&w=1200&q=80',
-  sms: 'https://images.unsplash.com/photo-1667372283545-1261fb5c427a?auto=format&fit=crop&w=1200&q=80'
-}
-const heroImage = computed(() => {
-  const url = heroImageByKey[String(route.meta.product)] || heroImageByKey.kyc
-  return `url("${url}")`
-})
 </script>
 
 <style scoped>
@@ -96,46 +82,18 @@ const heroImage = computed(() => {
 
 /* ========== Hero ========== */
 .hero {
-  position: relative;
-  overflow: hidden;
-  background-color: #fff;
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #0052D9 0%, #006EFF 60%, #3A8DFF 100%);
+  color: #fff;
   padding: 72px 0;
   display: flex;
   align-items: center;
   min-height: 440px;
 }
 
-/* 右侧插画背景层：蒙版从左侧平滑淡入，避免出现竖直接缝 */
-.hero-visual {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 60%;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
-  pointer-events: none;
-}
-
 .hero-inner {
-  max-width: 1200px;
-  width: 100%;
+  max-width: 860px;
   margin: 0 auto;
-  display: flex;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.hero-panel {
-  max-width: 640px;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 40px 44px;
-  border-radius: 20px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.06);
+  text-align: center;
 }
 
 .hero-icon {
@@ -145,8 +103,8 @@ const heroImage = computed(() => {
   width: 72px;
   height: 72px;
   border-radius: 16px;
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
   margin-bottom: 20px;
 }
 
@@ -156,59 +114,38 @@ const heroImage = computed(() => {
 }
 
 .hero-title {
-  color: var(--text-primary);
+  color: #fff;
   font-size: 36px;
   font-weight: 700;
   margin-bottom: 4px;
 }
 
 .hero-english {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
   letter-spacing: 1px;
   margin-bottom: 16px;
 }
 
 .hero-tagline {
-  color: var(--text-primary);
+  color: rgba(255, 255, 255, 0.95);
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 16px;
 }
 
 .hero-desc {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 15px;
   line-height: 1.8;
-  max-width: 600px;
-  margin-bottom: 36px;
+  max-width: 680px;
+  margin: 0 auto 36px;
 }
 
 .hero-actions {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 16px;
-}
-
-/* 白板场景下按钮改为品牌蓝实心 / 线框 */
-.hero-panel .btn-primary {
-  background: var(--color-primary);
-  color: #fff;
-}
-.hero-panel .btn-primary:hover {
-  background: #0043b3;
-}
-.hero-panel .btn-primary.btn-disabled {
-  background: var(--bg-soft);
-  color: var(--text-muted);
-}
-.hero-panel .btn-ghost {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-.hero-panel .btn-ghost:hover {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
 }
 
 .btn-primary {

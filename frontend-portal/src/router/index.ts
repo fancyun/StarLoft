@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 // 门户应用路由（部署于 www.starloft.cn）
-// 产品页共用 ProductPage.vue，通过 meta.product 指定产品 key（/kyc /cs /sms 等）
+// 产品页共用 ProductPage.vue，通过 meta.product 指定产品 key（/product/kyc、/product/cs、/product/sms 等）
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -14,19 +14,19 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/Home.vue')
       },
       {
-        path: 'kyc',
+        path: 'product/kyc',
         name: 'KYC',
         component: () => import('@/views/ProductPage.vue'),
         meta: { product: 'kyc' }
       },
       {
-        path: 'cs',
+        path: 'product/cs',
         name: 'CloudServer',
         component: () => import('@/views/ProductPage.vue'),
         meta: { product: 'cs' }
       },
       {
-        path: 'sms',
+        path: 'product/sms',
         name: 'SMS',
         component: () => import('@/views/ProductPage.vue'),
         meta: { product: 'sms' }

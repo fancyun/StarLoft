@@ -11,14 +11,14 @@
         <nav class="site-nav">
           <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">首页</router-link>
           <div class="nav-dropdown" :class="{ open: menuOpen }">
-            <span class="nav-item" @click="toggleMenu" :class="{ active: ['/kyc','/cs','/sms'].some(p => $route.path.startsWith(p)) }">
+            <span class="nav-item" @click="toggleMenu" :class="{ active: $route.path.startsWith('/product') }">
               产品
               <i class="dropdown-caret"></i>
             </span>
             <div class="dropdown-menu" :class="{ 'menu-open': menuOpen }">
-              <router-link to="/kyc" class="dropdown-item" @click="closeMenu">实名认证</router-link>
-              <router-link to="/cs" class="dropdown-item" @click="closeMenu">云服务器</router-link>
-              <router-link to="/sms" class="dropdown-item" @click="closeMenu">短信服务</router-link>
+              <router-link to="/product/kyc" class="dropdown-item" @click="closeMenu">实名认证</router-link>
+              <router-link to="/product/cs" class="dropdown-item" @click="closeMenu">云服务器</router-link>
+              <router-link to="/product/sms" class="dropdown-item" @click="closeMenu">短信服务</router-link>
             </div>
           </div>
           <router-link to="/docs" class="nav-item" :class="{ active: $route.path.startsWith('/docs') }">文档中心</router-link>
@@ -47,9 +47,9 @@
           </div>
           <div class="footer-col">
             <div class="footer-title">产品服务</div>
-            <router-link to="/kyc" class="footer-link">实名认证</router-link>
-            <router-link to="/cs" class="footer-link">云服务器</router-link>
-            <router-link to="/sms" class="footer-link">短信服务</router-link>
+            <router-link to="/product/kyc" class="footer-link">实名认证</router-link>
+            <router-link to="/product/cs" class="footer-link">云服务器</router-link>
+            <router-link to="/product/sms" class="footer-link">短信服务</router-link>
           </div>
           <div class="footer-col">
             <div class="footer-title">开发文档</div>
