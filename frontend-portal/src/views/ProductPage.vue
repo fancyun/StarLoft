@@ -78,10 +78,11 @@ const route = useRoute()
 const product = computed(() => productByKey(String(route.meta.product)))
 
 // Hero 右侧插画背景层：按产品选择不同插画，通过蒙版从左侧平滑淡入（无接缝）
+// 插画由平台文图接口生成：浅色底、蓝色扁平云服务插画、无文字水印，贴近云平台门户配图风格
 const heroImageByKey: Record<string, string> = {
-  kyc: 'identity+verification+face+recognition+illustration%2C+blue+abstract%2C+secure+badge%2C+minimal%2C+clean+white+background%2C+right+aligned',
-  cs: 'cloud+server+data+center+illustration%2C+blue+gradient%2C+minimal%2C+clean+white+background%2C+right+aligned',
-  sms: 'message+and+notification+communication+illustration%2C+blue+gradient%2C+minimal%2C+clean+white+background%2C+right+aligned'
+  kyc: 'identity+verification+and+face+recognition+concept+illustration%2C+flat+design%2C+blue+and+white%2C+human+face+outline+with+secure+shield+and+badge+checkmark%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner',
+  cs: 'cloud+server+and+data+center+concept+illustration%2C+flat+design%2C+blue+and+white%2C+rack+of+servers+and+cloud+network%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner',
+  sms: 'sms+message+and+notification+communication+concept+illustration%2C+flat+design%2C+blue+and+white%2C+smartphone+with+message+bubbles+and+mail+icons%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner'
 }
 const IMAGE_ENDPOINT = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image'
 const heroImage = computed(() => {
