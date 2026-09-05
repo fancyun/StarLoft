@@ -9,12 +9,14 @@ RUN apk add --no-cache git ca-certificates tzdata
 # 设置工作目录
 WORKDIR /app
 
+# Go 模块代理（国内镜像，避免访问 proxy.golang.org 超时）
+ENV GOPROXY=https://mirrors.tencent.com/go/,https://goproxy.cn,direct
+
 # 复制源代码
 COPY . .
 
-# 整理并下载依赖（在源码就绪后执行；go mod tidy 会扫描源码 import，
-# 重建 go.mod/go.sum 并补齐所有缺失校验和，避免 go build 报 missing go.sum entry）
-RUN go mod tidy
+# 按 go.mod 声明下载依赖（比 go mod tidy 更快且不改写 go.mod/go.sum）
+RUN go mod download
 
 # 编译应用（禁用CGO以获得静态二进制）
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
