@@ -62,6 +62,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'plugin/zjmf_mfcw',
         name: 'PluginZjfMfcw',
         component: () => import('@/views/docs/PluginZjfMfcw.vue')
+      },
+      {
+        path: 'plugin/zjmf_v10',
+        name: 'PluginZjfV10',
+        component: () => import('@/views/docs/PluginZjfV10.vue')
       }
     ]
   },

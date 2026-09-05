@@ -15,15 +15,34 @@
         <nav class="docs-nav">
           <div v-for="group in navGroups" :key="group.title" class="nav-group">
             <div class="nav-group-title">{{ group.title }}</div>
-            <router-link
-              v-for="item in group.items"
-              :key="item.path"
-              :to="item.path"
-              class="nav-item"
-              :class="{ active: $route.path === item.path }"
-            >
-              {{ item.label }}
-            </router-link>
+
+            <!-- 二级菜单：按产品细分（如多个产品各含若干插件/文档） -->
+            <template v-if="group.subGroups">
+              <div v-for="sub in group.subGroups" :key="sub.label" class="nav-subgroup">
+                <div class="nav-subgroup-title">{{ sub.label }}</div>
+                <router-link
+                  v-for="item in sub.items"
+                  :key="item.path"
+                  :to="item.path"
+                  class="nav-item sub"
+                  :class="{ active: $route.path === item.path }"
+                >
+                  {{ item.label }}
+                </router-link>
+              </div>
+            </template>
+
+            <template v-else>
+              <router-link
+                v-for="item in group.items"
+                :key="item.path"
+                :to="item.path"
+                class="nav-item"
+                :class="{ active: $route.path === item.path }"
+              >
+                {{ item.label }}
+              </router-link>
+            </template>
           </div>
         </nav>
       </aside>
@@ -50,9 +69,16 @@ const navGroups = [
   },
   {
     title: '插件教程',
-    items: [
-      { label: '插件列表', path: '/docs/plugin' },
-      { label: '智简魔方·财务版', path: '/docs/plugin/zjmf_mfcw' }
+    // 二级菜单：按产品划分，各产品下再展示其对应插件/服务文档
+    subGroups: [
+      {
+        label: '实名认证 · KYC',
+        items: [
+          { label: '插件列表', path: '/docs/plugin' },
+          { label: '智简魔方·财务版', path: '/docs/plugin/zjmf_mfcw' },
+          { label: '智简魔方业务系统 v10', path: '/docs/plugin/zjmf_v10' }
+        ]
+      }
     ]
   }
 ]
@@ -159,6 +185,28 @@ const navGroups = [
   color: var(--color-primary);
   background: var(--bg-active);
   font-weight: 600;
+}
+
+/* 二级菜单（子分组）样式 */
+.nav-subgroup {
+  margin: 2px 0 12px;
+}
+
+.nav-subgroup-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 12px 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nav-item.sub {
+  padding-left: 24px;
+  font-size: 13px;
 }
 
 .docs-main {
