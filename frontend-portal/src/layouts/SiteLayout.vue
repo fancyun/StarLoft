@@ -38,7 +38,7 @@
     <footer class="site-footer">
       <div class="container footer-inner">
         <div class="footer-cols">
-          <div class="footer-col">
+          <div class="footer-col footer-brand-col">
             <div class="footer-brand">
               <span class="brand-logo">SL</span>
               <span>星楼云</span>
@@ -329,9 +329,16 @@ watch(() => route.path, closeMenu)
 
 .footer-cols {
   display: grid;
-  /* 6 列拆成两行（3x2），避免每列过窄 */
-  grid-template-columns: repeat(3, 1fr);
+  /* 星楼云单独占满左侧一列，其余信息在右侧（左侧一列 + 右侧三列两行） */
+  grid-template-columns: 260px repeat(3, 1fr);
+  grid-template-rows: auto auto;
   gap: 32px;
+}
+
+/* 品牌列：左侧单独竖排，跨两行占满高度 */
+.footer-brand-col {
+  grid-row: 1 / span 2;
+  grid-column: 1;
 }
 
 .footer-brand {
@@ -393,6 +400,11 @@ watch(() => route.path, closeMenu)
 @media (max-width: 900px) {
   .footer-cols {
     grid-template-columns: 1fr 1fr;
+  }
+  /* 移动端：品牌列恢复为普通一列，不再跨两行 */
+  .footer-brand-col {
+    grid-row: auto;
+    grid-column: 1 / -1;
   }
   .brand-sub {
     display: none;
