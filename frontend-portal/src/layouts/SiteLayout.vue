@@ -10,9 +10,17 @@
 
         <nav class="site-nav">
           <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">首页</router-link>
-          <router-link to="/kyc" class="nav-item" :class="{ active: $route.path === '/kyc' }">实名认证</router-link>
-          <router-link to="/cs" class="nav-item" :class="{ active: $route.path === '/cs' }">云服务器</router-link>
-          <router-link to="/sms" class="nav-item" :class="{ active: $route.path === '/sms' }">短信服务</router-link>
+          <div class="nav-dropdown">
+            <span class="nav-item" :class="{ active: ['/kyc','/cs','/sms'].some(p => $route.path.startsWith(p)) }">
+              产品
+              <i class="dropdown-caret"></i>
+            </span>
+            <div class="dropdown-menu">
+              <router-link to="/kyc" class="dropdown-item">实名认证</router-link>
+              <router-link to="/cs" class="dropdown-item">云服务器</router-link>
+              <router-link to="/sms" class="dropdown-item">短信服务</router-link>
+            </div>
+          </div>
           <router-link to="/docs" class="nav-item" :class="{ active: $route.path.startsWith('/docs') }">文档中心</router-link>
         </nav>
 
@@ -143,6 +151,76 @@
 }
 
 .nav-item.active {
+  color: var(--color-primary);
+  background: var(--bg-active);
+  font-weight: 600;
+}
+
+/* 产品下拉菜单（hover 展开） */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown .nav-item {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dropdown-caret {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform 0.15s;
+}
+
+.nav-dropdown:hover .dropdown-caret {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  padding: 6px;
+  background: var(--bg-panel, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  z-index: 100;
+}
+
+.nav-dropdown:hover .dropdown-menu,
+.nav-dropdown:focus-within .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: block;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.dropdown-item:hover {
+  color: var(--color-primary);
+  background: var(--bg-hover);
+}
+
+.dropdown-item.router-link-active {
   color: var(--color-primary);
   background: var(--bg-active);
   font-weight: 600;
