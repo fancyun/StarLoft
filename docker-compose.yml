@@ -2,7 +2,7 @@ services:
   # Redis缓存
   redis:
     image: redis:7-alpine
-    container_name: kyc_redis
+    container_name: starloft_redis
     restart: unless-stopped
     command: >
       redis-server
@@ -21,7 +21,7 @@ services:
   # 本地MySQL数据库（替换原云数据库；首次启动自动执行 database/init.sql 完成建库与初始化）
   mysql:
     image: mysql:8.0
-    container_name: kyc_mysql
+    container_name: starloft_mysql
     restart: unless-stopped
     command:
       - --character-set-server=utf8mb4
@@ -54,7 +54,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: kyc_backend
+    container_name: starloft_backend
     restart: unless-stopped
     env_file:
       - .env
@@ -147,7 +147,7 @@ services:
       context: .
       dockerfile: frontend-console/Dockerfile
       shm_size: '2gb'  # 增加共享内存
-    container_name: kyc_frontend
+    container_name: starloft_frontend
     restart: unless-stopped
     depends_on:
       - backend
