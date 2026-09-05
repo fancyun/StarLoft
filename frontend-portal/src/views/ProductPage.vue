@@ -77,17 +77,15 @@ import { productByKey } from '@/config/products'
 const route = useRoute()
 const product = computed(() => productByKey(String(route.meta.product)))
 
-// Hero 右侧插画背景层：按产品选择不同插画，通过蒙版从左侧平滑淡入（无接缝）
-// 插画由平台文图接口生成：浅色底、蓝色扁平云服务插画、无文字水印，贴近云平台门户配图风格
+// Hero 右侧插画：按产品选用 Unsplash 免费直链，经蒙版从左侧平滑淡入（无接缝）
 const heroImageByKey: Record<string, string> = {
-  kyc: 'identity+verification+and+face+recognition+concept+illustration%2C+flat+design%2C+blue+and+white%2C+human+face+outline+with+secure+shield+and+badge+checkmark%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner',
-  cs: 'cloud+server+and+data+center+concept+illustration%2C+flat+design%2C+blue+and+white%2C+rack+of+servers+and+cloud+network%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner',
-  sms: 'sms+message+and+notification+communication+concept+illustration%2C+flat+design%2C+blue+and+white%2C+smartphone+with+message+bubbles+and+mail+icons%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner'
+  kyc: 'https://images.unsplash.com/photo-1667372283587-e1557c08aca4?auto=format&fit=crop&w=1200&q=80',
+  cs: 'https://images.unsplash.com/photo-1782330300479-02550a1a3c7a?auto=format&fit=crop&w=1200&q=80',
+  sms: 'https://images.unsplash.com/photo-1667372283545-1261fb5c427a?auto=format&fit=crop&w=1200&q=80'
 }
-const IMAGE_ENDPOINT = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image'
 const heroImage = computed(() => {
-  const prompt = heroImageByKey[String(route.meta.product)] || heroImageByKey.kyc
-  return `url("${IMAGE_ENDPOINT}?prompt=${prompt}&image_size=landscape_16_9")`
+  const url = heroImageByKey[String(route.meta.product)] || heroImageByKey.kyc
+  return `url("${url}")`
 })
 </script>
 

@@ -77,9 +77,8 @@
 <script setup lang="ts">
 import { products } from '@/config/products'
 
-// Hero 右侧品牌插画（独立背景图层，通过蒙版从左侧平滑淡入，无接缝）
-// 插画由平台文图接口生成：浅色底、蓝色扁平云服务插画、无文字水印，贴近云平台门户配图风格
-const heroVisualImage = 'url("https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern+cloud+computing+concept+illustration%2C+flat+design%2C+light+blue+and+white+color+palette%2C+floating+server+icons+cloud+certificate+shield+and+message+bubbles%2C+isometric%2C+soft+shadows%2C+clean+minimal+background%2C+no+text+no+letters+no+watermark%2C+wide+banner&image_size=landscape_16_9")'
+// Hero 右侧品牌插画（Unsplash 免费直链，蓝色云主题，独立图层经蒙版从左侧平滑淡入）
+const heroVisualImage = 'url("https://images.unsplash.com/photo-1667372283496-893f0b1e7c16?auto=format&fit=crop&w=1200&q=80")'
 
 const advantages = [
   {
