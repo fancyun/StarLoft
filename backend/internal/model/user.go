@@ -20,7 +20,6 @@ type PlatformUser struct {
 	IsKYCVerified int            `json:"is_kyc_verified" gorm:"type:tinyint;not null;default:0"`
 	KYCName       sql.NullString `json:"kyc_name,omitempty" gorm:"size:100"`
 	KYCIDCard     sql.NullString `json:"kyc_id_card,omitempty" gorm:"size:100"`
-	KYCPrice      float64        `json:"-" gorm:"type:decimal(10,2);not null;default:1"` // 已废弃的个人KYC单价（资源包上线后统一按平台价格扣费），仅保留字段以兼容数据库列
 	Status        int            `json:"status" gorm:"type:tinyint;not null;default:1;index"`
 	LastLoginAt   *time.Time     `json:"last_login_at,omitempty"`
 	CreatedAt     time.Time      `json:"created_at" gorm:"autoCreateTime"`

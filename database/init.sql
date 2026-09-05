@@ -52,7 +52,6 @@ CREATE TABLE IF NOT EXISTS `platform_user` (
   `is_kyc_verified` tinyint     NOT NULL DEFAULT 0,
   `kyc_name`       varchar(100) NULL,
   `kyc_id_card`    varchar(100) NULL,
-  `kyc_price`      decimal(10,2) NOT NULL DEFAULT 1 COMMENT '已废弃的个人KYC单价，仅保留字段兼容',
   `status`         tinyint      NOT NULL DEFAULT 1,
   `last_login_at`  datetime(3)  NULL,
   `created_at`     datetime(3)  NOT NULL,

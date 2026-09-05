@@ -542,15 +542,6 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		return
 	}
 
-	// 使用系统默认KYC单价（已取消个人单价设置，统一按平台价格扣费）
-	kycPrice := 1.00
-	priceStr, err := h.configRepo.GetConfig("kyc_price")
-	if err == nil && priceStr != "" {
-		if price, err := strconv.ParseFloat(priceStr, 64); err == nil && price > 0 {
-			kycPrice = price
-		}
-	}
-
 	// API Key 创建时自动生成（唯一），API Secret 需完成账户实名后再生成下发
 	user := &model.PlatformUser{
 		Phone:         req.Phone,
@@ -561,7 +552,6 @@ func (h *AdminHandler) ManualRegisterUser(c *gin.Context) {
 		APIKey:        utils.GenerateRandomKey(32),
 		APISecret:     "",
 		IsKYCVerified: 0,
-		KYCPrice:      kycPrice,
 		Status:        1,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),

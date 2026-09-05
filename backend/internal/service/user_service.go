@@ -2,9 +2,7 @@ package service
 
 import (
 	"errors"
-	"log"
 	"regexp"
-	"strconv"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -99,19 +97,6 @@ func (s *UserService) Register(phone, username, email, password string) (*model.
 
 	// API Key 注册时自动生成（唯一），API Secret 需完成账户实名后再生成下发
 
-	// 获取系统KYC价格（默认1.00）
-	kycPrice := 1.00
-	if s.configRepo != nil {
-		priceStr, err := s.configRepo.GetConfig("kyc_price")
-		if err == nil && priceStr != "" {
-			if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
-				kycPrice = price
-			}
-		}
-	}
-
-	log.Printf("新用户注册，设置KYC单价: %.2f元", kycPrice)
-
 	// 创建用户（API Key 注册时自动生成；API Secret 实名成功后生成）
 	user := &model.PlatformUser{
 		Phone:         phone,
@@ -122,7 +107,6 @@ func (s *UserService) Register(phone, username, email, password string) (*model.
 		APIKey:        utils.GenerateRandomKey(32),
 		APISecret:     "",
 		IsKYCVerified: 0,
-		KYCPrice:      kycPrice, // 设置KYC单价（下游 API 业务调用扣费）
 		Status:        1,
 	}
 

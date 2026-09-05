@@ -25,8 +25,8 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 // CreateUser 创建用户
 func (r *UserRepository) CreateUser(user *model.PlatformUser) error {
 	query := `INSERT INTO ` + model.SysDB + `.platform_user 
-		(phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_price, status, created_at, updated_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		(phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, status, created_at, updated_at) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := r.db.Exec(query,
 		user.Phone,
@@ -37,7 +37,6 @@ func (r *UserRepository) CreateUser(user *model.PlatformUser) error {
 		user.APIKey,
 		user.APISecret,
 		user.IsKYCVerified,
-		user.KYCPrice, // KYC单价，注册时设置
 		user.Status,
 		time.Now(),
 		time.Now(),
@@ -55,7 +54,7 @@ func (r *UserRepository) CreateUser(user *model.PlatformUser) error {
 }
 
 // userColumns 平台用户常用查询列（含 username/email）
-const userColumns = `id, phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_name, kyc_id_card, kyc_price, status, last_login_at, created_at, updated_at`
+const userColumns = `id, phone, username, email, password_hash, balance, api_key, api_secret, is_kyc_verified, kyc_name, kyc_id_card, status, last_login_at, created_at, updated_at`
 
 // scanUser 将查询结果扫描到 PlatformUser
 func scanUser(row interface{ Scan(...interface{}) error }) (*model.PlatformUser, error) {
@@ -72,7 +71,6 @@ func scanUser(row interface{ Scan(...interface{}) error }) (*model.PlatformUser,
 		&user.IsKYCVerified,
 		&user.KYCName,
 		&user.KYCIDCard,
-		&user.KYCPrice,
 		&user.Status,
 		&user.LastLoginAt,
 		&user.CreatedAt,
