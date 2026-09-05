@@ -26,7 +26,7 @@
 
         <div class="header-actions">
           <a class="action-btn action-btn-plain" href="https://console.starloft.cn/login">登录</a>
-          <a class="action-btn" href="https://console.starloft.cn/register">立即注册</a>
+          <a class="action-btn" href="https://console.starloft.cn/register">注册</a>
         </div>
       </div>
     </header>

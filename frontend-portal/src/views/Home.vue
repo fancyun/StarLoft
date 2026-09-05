@@ -65,7 +65,7 @@
       <div class="container cta-inner">
         <h2>立即开始使用星楼云</h2>
         <p>注册账号，开通云服务，几分钟内完成对接</p>
-        <a class="btn-primary" href="https://console.starloft.cn/register">立即注册</a>
+        <a class="btn-primary" href="https://console.starloft.cn/register">注册</a>
       </div>
     </section>
   </div>
