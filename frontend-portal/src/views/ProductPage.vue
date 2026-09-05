@@ -2,7 +2,8 @@
   <div class="product-page">
     <div v-if="product">
       <!-- 产品 Hero -->
-      <section class="hero" :style="heroBg">
+      <section class="hero">
+        <div class="hero-visual" :style="{ backgroundImage: heroImage }"></div>
         <div class="container hero-inner">
           <div class="hero-panel">
             <div class="hero-icon" v-html="product.icon"></div>
@@ -76,21 +77,16 @@ import { productByKey } from '@/config/products'
 const route = useRoute()
 const product = computed(() => productByKey(String(route.meta.product)))
 
-// Hero 背景：按产品展示不同插画，左侧白色渐变留白 + 白板文字，右侧铺图（阿里云/腾讯云风格）
+// Hero 右侧插画背景层：按产品选择不同插画，通过蒙版从左侧平滑淡入（无接缝）
 const heroImageByKey: Record<string, string> = {
   kyc: 'identity+verification+face+recognition+illustration%2C+blue+abstract%2C+secure+badge%2C+minimal%2C+clean+white+background%2C+right+aligned',
   cs: 'cloud+server+data+center+illustration%2C+blue+gradient%2C+minimal%2C+clean+white+background%2C+right+aligned',
   sms: 'message+and+notification+communication+illustration%2C+blue+gradient%2C+minimal%2C+clean+white+background%2C+right+aligned'
 }
 const IMAGE_ENDPOINT = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image'
-const heroBg = computed(() => {
+const heroImage = computed(() => {
   const prompt = heroImageByKey[String(route.meta.product)] || heroImageByKey.kyc
-  return {
-    backgroundImage: `linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.94) 34%, rgba(255,255,255,0) 60%), url("${IMAGE_ENDPOINT}?prompt=${prompt}&image_size=landscape_16_9")`,
-    backgroundSize: '100% 100%, 60% auto',
-    backgroundPosition: '0 0, right center',
-    backgroundRepeat: 'no-repeat'
-  }
+  return `url("${IMAGE_ENDPOINT}?prompt=${prompt}&image_size=landscape_16_9")`
 })
 </script>
 
@@ -101,12 +97,29 @@ const heroBg = computed(() => {
 
 /* ========== Hero ========== */
 .hero {
+  position: relative;
+  overflow: hidden;
   background-color: #fff;
   color: var(--text-primary);
   padding: 72px 0;
   display: flex;
   align-items: center;
   min-height: 440px;
+}
+
+/* 右侧插画背景层：蒙版从左侧平滑淡入，避免出现竖直接缝 */
+.hero-visual {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 60%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+  pointer-events: none;
 }
 
 .hero-inner {

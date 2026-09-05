@@ -1,7 +1,8 @@
 <template>
   <div class="home">
     <!-- Hero 区 -->
-    <section class="hero" :style="heroBg">
+    <section class="hero">
+      <div class="hero-visual" :style="{ backgroundImage: heroVisualImage }"></div>
       <div class="container hero-inner">
         <div class="hero-panel">
           <h1 class="hero-title">一站式云服务平台</h1>
@@ -76,13 +77,8 @@
 <script setup lang="ts">
 import { products } from '@/config/products'
 
-// Hero 背景：左侧白色渐变留白，右侧铺品牌插画（阿里云/腾讯云风格）
-const heroBg = {
-  backgroundImage: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.94) 34%, rgba(255,255,255,0) 60%), url("https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cloud+technology+concept+illustration%2C+blue+gradient+servers+and+network+cloud%2C+abstract%2C+clean%2C+minimal%2C+right+aligned+on+clean+white+background&image_size=landscape_16_9")',
-  backgroundSize: '100% 100%, 60% auto',
-  backgroundPosition: '0 0, right center',
-  backgroundRepeat: 'no-repeat'
-}
+// Hero 右侧品牌插画（独立背景图层，通过蒙版从左侧平滑淡入，无接缝）
+const heroVisualImage = 'url("https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cloud+technology+concept+illustration%2C+blue+gradient+servers+and+network+cloud%2C+abstract%2C+clean%2C+minimal%2C+right+aligned+on+clean+white+background&image_size=landscape_16_9")'
 
 const advantages = [
   {
@@ -115,12 +111,29 @@ const advantages = [
 
 /* ========== Hero ========== */
 .hero {
+  position: relative;
+  overflow: hidden;
   background-color: #fff;
   color: var(--text-primary);
   padding: 72px 0;
   display: flex;
   align-items: center;
   min-height: 440px;
+}
+
+/* 右侧插画背景层：蒙版从左侧平滑淡入，避免出现竖直接缝 */
+.hero-visual {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 60%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+  pointer-events: none;
 }
 
 .hero-inner {
