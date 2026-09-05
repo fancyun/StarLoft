@@ -1,10 +1,13 @@
 package router
 
 import (
+	"net/http"
+
 	"starloftrpa/internal/config"
 	"starloftrpa/internal/database"
 	"starloftrpa/internal/handler"
 	"starloftrpa/internal/middleware"
+	"starloftrpa/internal/redis"
 	"starloftrpa/internal/repository"
 	"starloftrpa/internal/runtime"
 	"starloftrpa/internal/service"
@@ -20,6 +23,26 @@ func Setup(cfg *config.Config) (*gin.Engine, *service.AuthService, *service.Bala
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.RequestLogger())
 	r.Use(middleware.Recovery())
+
+	// 健康检查：/healthz 存活探针（进程存活即通过）；/readyz 就绪探针（依赖的 DB/Redis 可用才通过）
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	r.GET("/readyz", func(c *gin.Context) {
+		ctx := c.Request.Context()
+		if err := database.DB.PingContext(ctx); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "detail": "database"})
+			return
+		}
+		if err := redis.Client.Ping(ctx).Err(); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "detail": "redis"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	})
+
+	// Prometheus 指标采集端点
+	r.GET("/metrics", metricsHandler)
 
 	// 获取数据库连接
 	db := database.DB

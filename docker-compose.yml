@@ -133,8 +133,9 @@ services:
     # 不暴露端口到宿主机，仅内部网络访问
     expose:
       - "8080"
+    # 就绪探针：依赖的 DB/Redis 均可用时 /readyz 才返回 200（用于 depends_on)
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/console/config"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/readyz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -158,6 +159,7 @@ services:
       # 证书目录：www.starloft.cn/、console.starloft.cn/、admin.starloft.cn/ 子目录各含 fullchain.pem + privkey.pem，
       # 证书由服务商（腾讯云）自动续费，到期后替换对应子目录文件并重启前端生效
       - ./certs:/etc/nginx/certs:ro
+    # 存活探针：Nginx 存活可响应 /healthz 即通过（liveness）
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/healthz"]
       interval: 30s
