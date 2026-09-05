@@ -17,7 +17,7 @@
         </nav>
 
         <div class="header-actions">
-          <a class="action-link" href="https://console.starloft.cn/login">登录</a>
+          <a class="action-btn action-btn-plain" href="https://console.starloft.cn/login">登录</a>
           <a class="action-btn" href="https://console.starloft.cn/register">立即注册</a>
         </div>
       </div>
@@ -154,19 +154,13 @@
   gap: 16px;
 }
 
-.action-link {
-  color: var(--text-secondary);
-  font-size: 14px;
-  text-decoration: none;
-}
-
-.action-link:hover {
-  color: var(--color-primary);
-}
-
 .action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 18px;
   border-radius: var(--radius-md);
+  border: 1px solid transparent;
   background: var(--color-primary);
   color: #fff;
   font-size: 14px;
@@ -178,6 +172,18 @@
 .action-btn:hover {
   background: var(--color-primary-hover);
   color: #fff;
+}
+
+/* 登录：与注册按钮同尺寸，采用描边风格突出主次 */
+.action-btn.action-btn-plain {
+  background: transparent;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.action-btn.action-btn-plain:hover {
+  background: var(--bg-active);
+  color: var(--color-primary);
 }
 
 /* ========== 主体 ========== */
