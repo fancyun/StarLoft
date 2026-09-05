@@ -186,6 +186,8 @@
   top: 100%;
   left: 0;
   min-width: 160px;
+  max-height: 70vh;   /* 限制最大高度，超出后内部滚动，避免产品增多时下拉溢出屏幕 */
+  overflow-y: auto;
   padding: 6px;
   background: var(--bg-panel, #fff);
   border: 1px solid var(--border-color, #e5e7eb);
