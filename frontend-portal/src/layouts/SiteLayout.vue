@@ -10,15 +10,15 @@
 
         <nav class="site-nav">
           <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">首页</router-link>
-          <div class="nav-dropdown">
-            <span class="nav-item" :class="{ active: ['/kyc','/cs','/sms'].some(p => $route.path.startsWith(p)) }">
+          <div class="nav-dropdown" :class="{ open: menuOpen }">
+            <span class="nav-item" @click="toggleMenu" :class="{ active: ['/kyc','/cs','/sms'].some(p => $route.path.startsWith(p)) }">
               产品
               <i class="dropdown-caret"></i>
             </span>
-            <div class="dropdown-menu">
-              <router-link to="/kyc" class="dropdown-item">实名认证</router-link>
-              <router-link to="/cs" class="dropdown-item">云服务器</router-link>
-              <router-link to="/sms" class="dropdown-item">短信服务</router-link>
+            <div class="dropdown-menu" :class="{ 'menu-open': menuOpen }">
+              <router-link to="/kyc" class="dropdown-item" @click="closeMenu">实名认证</router-link>
+              <router-link to="/cs" class="dropdown-item" @click="closeMenu">云服务器</router-link>
+              <router-link to="/sms" class="dropdown-item" @click="closeMenu">短信服务</router-link>
             </div>
           </div>
           <router-link to="/docs" class="nav-item" :class="{ active: $route.path.startsWith('/docs') }">文档中心</router-link>
@@ -76,7 +76,36 @@
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+// 产品下拉：桌面端 hover 展开，移动端触屏点击展开（menuOpen）
+const menuOpen = ref(false)
+
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value
+}
+
+const closeMenu = () => {
+  menuOpen.value = false
+}
+
+// 点击下拉区域之外时收起菜单
+const onClickOutside = (e: MouseEvent) => {
+  if (!(e.target as HTMLElement).closest('.nav-dropdown')) {
+    closeMenu()
+  }
+}
+
+onMounted(() => document.addEventListener('click', onClickOutside))
+onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
+
+// 路由变化时收起菜单
+watch(() => route.path, closeMenu)
+</script>
 
 <style scoped>
 .site-layout {
@@ -177,7 +206,8 @@
   transition: transform 0.15s;
 }
 
-.nav-dropdown:hover .dropdown-caret {
+.nav-dropdown:hover .dropdown-caret,
+.nav-dropdown.open .dropdown-caret {
   transform: rotate(180deg);
 }
 
@@ -200,8 +230,10 @@
   z-index: 100;
 }
 
+/* hover（桌面端）与点击展开（移动端触屏）两种方式均可显示菜单 */
 .nav-dropdown:hover .dropdown-menu,
-.nav-dropdown:focus-within .dropdown-menu {
+.nav-dropdown:focus-within .dropdown-menu,
+.nav-dropdown .dropdown-menu.menu-open {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
